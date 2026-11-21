@@ -18,6 +18,8 @@ export class ApiError extends Error {
     public readonly status: number, // 0 = jaringan / tanpa respons
     message: string,
     public readonly fieldErrors: Record<string, string[]> = {},
+    /** Pesan asli dari server (mis. alasan undangan ditolak), kalau ada. */
+    public readonly serverMessage?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -104,9 +106,9 @@ function toApiError(error: AxiosError<{ message?: string; errors?: Record<string
   if (status === 0) return new ApiError(0, 'Tidak bisa terhubung ke server. Periksa koneksi Anda.');
   if (status === 422) return new ApiError(422, body?.message ?? 'Periksa kembali isian Anda.', body?.errors ?? {});
   if (status === 401) return new ApiError(401, 'Sesi Anda berakhir. Silakan masuk lagi.');
-  if (status === 403) return new ApiError(403, 'Anda tidak punya akses untuk tindakan ini.');
-  if (status === 404) return new ApiError(404, body?.message || 'Data tidak ditemukan.');
-  if (status === 410) return new ApiError(410, body?.message || 'Tautan ini sudah tidak berlaku.');
+  if (status === 403) return new ApiError(403, 'Anda tidak punya akses untuk tindakan ini.', {}, body?.message);
+  if (status === 404) return new ApiError(404, body?.message || 'Data tidak ditemukan.', {}, body?.message);
+  if (status === 410) return new ApiError(410, body?.message || 'Tautan ini sudah tidak berlaku.', {}, body?.message);
   if (status === 429) return new ApiError(429, 'Terlalu banyak percobaan. Coba lagi sebentar lagi.');
   return new ApiError(status, 'Terjadi kesalahan di server. Coba lagi.');
 }
