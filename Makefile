@@ -2,7 +2,7 @@
 COMPOSE ?= docker compose
 APP     := $(COMPOSE) exec app
 
-.PHONY: help up down logs setup install migrate test seed fresh shell reconcile load-test
+.PHONY: help up down logs setup install migrate test seed fresh shell reconcile load-test web web-dev lint
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -26,6 +26,17 @@ install: ## Install dependency JS (pnpm) dan PHP (composer)
 test: ## Jalankan test API (Pest) dan test JS workspace
 	$(APP) php artisan test
 	pnpm test
+
+web: ## Build SPA ke apps/web/dist (disajikan nginx di http://localhost:8080)
+	pnpm --filter @household-finance/web build
+
+web-dev: ## Vite dev server di http://localhost:5173 (proxy /api ke :8080, hot reload)
+	pnpm --filter @household-finance/web dev
+
+lint: ## Lint web (larangan float) + Pint + Larastan
+	pnpm --filter @household-finance/web lint
+	$(APP) composer lint
+	$(APP) composer analyse
 
 migrate: ## Jalankan migration
 	$(APP) php artisan migrate

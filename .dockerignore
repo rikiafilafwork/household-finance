@@ -6,3 +6,4 @@ apps/api/storage/logs/*
 apps/mobile
 **/*.csv
 backups
+apps/web/dist
