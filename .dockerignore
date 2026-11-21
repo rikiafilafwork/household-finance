@@ -1,0 +1,8 @@
+.git
+**/node_modules
+apps/api/vendor
+apps/api/.env
+apps/api/storage/logs/*
+apps/mobile
+**/*.csv
+backups
