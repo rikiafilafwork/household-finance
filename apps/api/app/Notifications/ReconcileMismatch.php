@@ -33,6 +33,11 @@ class ReconcileMismatch extends Notification implements ShouldQueue
         return ['database', 'mail'];
     }
 
+    public function databaseType(object $notifiable): string
+    {
+        return 'reconcile_mismatch';
+    }
+
     /**
      * @return array<string, mixed>
      */

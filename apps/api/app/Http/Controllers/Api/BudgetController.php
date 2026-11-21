@@ -7,6 +7,7 @@ use App\Actions\Budgets\SetMonthlyBudgets;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Budgets\SetBudgetsRequest;
 use App\Http\Resources\MonthlyBudgetResource;
+use App\Jobs\CheckBudgetThresholds;
 use App\Models\Budget;
 use App\Models\Household;
 use App\Support\BudgetMonth;
@@ -31,6 +32,11 @@ class BudgetController extends Controller
 
         $start = BudgetMonth::parse($month);
         $setBudgets->handle($household, $start, $request->limits());
+
+        // Limit yang diturunkan bisa langsung menembus ambang.
+        foreach (array_keys($request->limits()) as $categoryId) {
+            CheckBudgetThresholds::dispatch($household->id, $categoryId, $start->toDateString());
+        }
 
         return new MonthlyBudgetResource($household, $start);
     }
