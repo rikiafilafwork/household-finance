@@ -52,8 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('wallets/{wallet}/unarchive', [WalletController::class, 'unarchive']);
         Route::post('wallets/{wallet}/adjust', [WalletController::class, 'adjust']);
 
-        // index (filter + cursor pagination) di #20
-        Route::apiResource('transactions', TransactionController::class)->except('index');
+        Route::apiResource('transactions', TransactionController::class);
 
         // {transfer} = transfer_group_id (UUID); dua baris berpasangan (Keputusan #4)
         Route::post('transfers', [TransferController::class, 'store']);
