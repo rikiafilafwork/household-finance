@@ -32,5 +32,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('register', fn (Request $request) => Limit::perHour(10)->by($request->ip()));
+
+        // Mencegah household dipakai untuk spam email.
+        RateLimiter::for('invitations', fn (Request $request) => Limit::perHour(20)->by((string) $request->user()?->getAuthIdentifier()));
     }
 }

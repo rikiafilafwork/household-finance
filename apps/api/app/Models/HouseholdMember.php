@@ -20,6 +20,9 @@ class HouseholdMember extends Pivot
 
     public $timestamps = false;
 
+    /**
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [

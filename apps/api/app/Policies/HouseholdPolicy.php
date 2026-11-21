@@ -14,4 +14,10 @@ class HouseholdPolicy
     {
         return $household->hasMember($user);
     }
+
+    /** Undang / cabut undangan / keluarkan anggota / ubah peran: owner saja. */
+    public function manageMembers(User $user, Household $household): bool
+    {
+        return $household->isOwner($user);
+    }
 }

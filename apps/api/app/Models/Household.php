@@ -37,6 +37,14 @@ class Household extends Model
     }
 
     /**
+     * @return HasMany<HouseholdInvitation, $this>
+     */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(HouseholdInvitation::class);
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function creator(): BelongsTo

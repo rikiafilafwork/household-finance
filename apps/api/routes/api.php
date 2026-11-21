@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HouseholdController;
+use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\TokenController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,5 +32,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // supaya mis. /households/1/wallets/9 gagal (404) kalau wallet 9 bukan milik household 1.
     Route::prefix('households/{household}')->scopeBindings()->group(function () {
         Route::get('/', [HouseholdController::class, 'show']);
+
+        Route::get('invitations', [InvitationController::class, 'index']);
+        Route::post('invitations', [InvitationController::class, 'store'])->middleware('throttle:invitations');
+        Route::delete('invitations/{invitation}', [InvitationController::class, 'destroy']);
     });
 });
