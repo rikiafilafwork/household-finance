@@ -49,17 +49,17 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #22 BalanceConsistencyTest: semua skenario → reconcile 0 `test`
 - [x] #23 Load test k6: tulis paralel ke wallet yang sama `test` `perf`
 
-## Minggu 3 — Kategori, Budget, Policy (0/7)
+## Minggu 3 — Kategori, Budget, Policy (7/7)
 
 > **Done kalau:** test alert dan test privasi hijau.
 
-- [ ] #24 Kategori CRUD + arsip `api`
-- [ ] #25 Service `VisibleWallets` (satu sumber kebenaran visibilitas) `api`
-- [ ] #26 Policies sesuai matriks peran `api` `test`
-- [ ] #27 Budget: migration + API bulanan `api`
-- [ ] #28 Job `CheckBudgetThresholds` + notifikasi `BudgetThresholdReached` `api`
-- [ ] #29 BudgetAlertTest `test`
-- [ ] #30 PrivateWalletVisibilityTest (list, transaksi, detail, pencarian) `test`
+- [x] #24 Kategori CRUD + arsip `api`
+- [x] #25 Service `VisibleWallets` (satu sumber kebenaran visibilitas) `api`
+- [x] #26 Policies sesuai matriks peran `api` `test`
+- [x] #27 Budget: migration + API bulanan `api`
+- [x] #28 Job `CheckBudgetThresholds` + notifikasi `BudgetThresholdReached` `api`
+- [x] #29 BudgetAlertTest `test`
+- [x] #30 PrivateWalletVisibilityTest (list, transaksi, detail, pencarian) `test`
 
 ## Minggu 4 — Web Inti + Dogfooding (0/12)
 
