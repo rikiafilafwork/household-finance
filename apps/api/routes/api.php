@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\InvitationAcceptController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\TokenController;
+use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +49,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('wallets', WalletController::class);
         Route::post('wallets/{wallet}/archive', [WalletController::class, 'archive']);
         Route::post('wallets/{wallet}/unarchive', [WalletController::class, 'unarchive']);
+
+        // index (filter + cursor pagination) di #20
+        Route::apiResource('transactions', TransactionController::class)->except('index');
 
         Route::get('invitations', [InvitationController::class, 'index']);
         Route::post('invitations', [InvitationController::class, 'store'])->middleware('throttle:invitations');
