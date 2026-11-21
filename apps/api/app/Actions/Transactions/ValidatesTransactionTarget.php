@@ -28,7 +28,11 @@ trait ValidatesTransactionTarget
         }
     }
 
-    protected function assertCategoryMatches(?int $categoryId, TransactionType $type, Household $household): void
+    /**
+     * @param  int|null  $keepArchivedId  kategori lama transaksi yang sedang diedit: boleh tetap
+     *                                    dipakai walau sudah diarsip (yang baru tidak boleh).
+     */
+    protected function assertCategoryMatches(?int $categoryId, TransactionType $type, Household $household, ?int $keepArchivedId = null): void
     {
         if ($categoryId === null) {
             return;
@@ -44,7 +48,7 @@ trait ValidatesTransactionTarget
             throw ValidationException::withMessages(['category_id' => 'Jenis kategori tidak cocok dengan tipe transaksi.']);
         }
 
-        if ($category->archived_at !== null) {
+        if ($category->archived_at !== null && $category->getKey() !== $keepArchivedId) {
             throw ValidationException::withMessages(['category_id' => 'Kategori ini sudah diarsip.']);
         }
     }

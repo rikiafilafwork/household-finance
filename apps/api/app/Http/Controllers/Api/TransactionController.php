@@ -40,6 +40,7 @@ class TransactionController extends Controller
         $filters = $request->safe()->except(['per_page', 'cursor']);
 
         $page = TransactionQuery::for($user, $household, $filters)
+            ->with('category')
             ->orderByDesc('occurred_on')
             ->orderByDesc('id')
             ->cursorPaginate($request->integer('per_page', 50))
@@ -58,14 +59,14 @@ class TransactionController extends Controller
         [$transaction, $created] = $createTransaction->handle($household, $user, $request->toInput());
 
         // Retry dengan client_id yang sama → 200 + transaksi lama (Keputusan #11).
-        return (new TransactionResource($transaction))->response()->setStatusCode($created ? 201 : 200);
+        return (new TransactionResource($transaction->load('category')))->response()->setStatusCode($created ? 201 : 200);
     }
 
     public function show(Household $household, Transaction $transaction): TransactionResource
     {
         Gate::authorize('view', $transaction);
 
-        return new TransactionResource($transaction);
+        return new TransactionResource($transaction->load('category'));
     }
 
     public function update(UpdateTransactionRequest $request, Household $household, Transaction $transaction, UpdateTransaction $updateTransaction): TransactionResource
@@ -76,7 +77,7 @@ class TransactionController extends Controller
         $user = $request->user();
 
         return new TransactionResource(
-            $updateTransaction->handle($household, $user, $transaction, $request->toInput($transaction))
+            $updateTransaction->handle($household, $user, $transaction, $request->toInput($transaction))->load('category')
         );
     }
 
