@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\InvitationAcceptController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\TokenController;
+use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -43,6 +44,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('members', [MemberController::class, 'index']);
         Route::patch('members/{member}', [MemberController::class, 'update']);
         Route::delete('members/{member}', [MemberController::class, 'destroy']);
+
+        Route::apiResource('wallets', WalletController::class);
+        Route::post('wallets/{wallet}/archive', [WalletController::class, 'archive']);
+        Route::post('wallets/{wallet}/unarchive', [WalletController::class, 'unarchive']);
 
         Route::get('invitations', [InvitationController::class, 'index']);
         Route::post('invitations', [InvitationController::class, 'store'])->middleware('throttle:invitations');
