@@ -37,6 +37,14 @@ class Household extends Model
     }
 
     /**
+     * @return HasMany<Budget, $this>
+     */
+    public function budgets(): HasMany
+    {
+        return $this->hasMany(Budget::class);
+    }
+
+    /**
      * @return HasMany<Wallet, $this>
      */
     public function wallets(): HasMany
