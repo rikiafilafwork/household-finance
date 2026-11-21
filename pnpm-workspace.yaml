@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Metro (Expo) bermasalah dengan symlink pnpm; pakai layout node_modules datar.
+# Diset juga di .npmrc sesuai Architecture.md.
+nodeLinker: hoisted
