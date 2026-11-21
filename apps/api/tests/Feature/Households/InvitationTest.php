@@ -154,3 +154,137 @@ describe('managing', function () {
         actingAs($member)->deleteJson(inviteUrl($household)."/{$invitation->id}")->assertForbidden();
     });
 });
+
+describe('accepting', function () {
+    /**
+     * @return array{0: Household, 1: HouseholdInvitation}
+     */
+    function pendingInvitation(string $token, string $email = 'pasangan@example.com', HouseholdRole $role = HouseholdRole::Member): array
+    {
+        [$owner, $household] = ownedHousehold();
+        $invitation = HouseholdInvitation::factory()->for($household)->withToken($token)
+            ->create(['email' => $email, 'role' => $role, 'invited_by' => $owner->id]);
+
+        return [$household, $invitation];
+    }
+
+    it('joins the household with the invited role', function (HouseholdRole $role) {
+        [$household, $invitation] = pendingInvitation('token-rahasia', role: $role);
+        $user = User::factory()->create(['email' => 'pasangan@example.com']);
+
+        actingAs($user)->postJson('/api/invitations/token-rahasia/accept')
+            ->assertOk()
+            ->assertJsonPath('data.id', $household->id)
+            ->assertJsonPath('data.role', $role->value);
+
+        expect($household->roleOf($user))->toBe($role)
+            ->and($invitation->fresh()?->accepted_at)->not->toBeNull();
+    })->with([HouseholdRole::Member, HouseholdRole::Owner]);
+
+    it('cannot use the same token twice', function () {
+        [$household] = pendingInvitation('sekali-pakai');
+        $user = User::factory()->create(['email' => 'pasangan@example.com']);
+
+        actingAs($user)->postJson('/api/invitations/sekali-pakai/accept')->assertOk();
+        actingAs($user)->postJson('/api/invitations/sekali-pakai/accept')
+            ->assertStatus(410)
+            ->assertJsonPath('message', 'Undangan ini sudah dipakai.');
+
+        // Orang lain yang mendapat link bekas juga tidak bisa masuk.
+        actingAs(User::factory()->create(['email' => 'penemu-link@example.com']))
+            ->postJson('/api/invitations/sekali-pakai/accept')->assertStatus(410);
+
+        expect($household->members()->count())->toBe(2);
+    });
+
+    it('requires the invited email (case-insensitive)', function () {
+        [$household] = pendingInvitation('untuk-pasangan');
+
+        actingAs(User::factory()->create(['email' => 'orang-lain@example.com']))
+            ->postJson('/api/invitations/untuk-pasangan/accept')
+            ->assertForbidden();
+
+        $invited = User::factory()->create(['email' => 'Pasangan@Example.com']);
+        actingAs($invited)->postJson('/api/invitations/untuk-pasangan/accept')->assertOk();
+
+        expect($household->hasMember($invited))->toBeTrue();
+    });
+
+    it('rejects expired and revoked invitations', function (string $state, string $message) {
+        [, $household] = ownedHousehold();
+        HouseholdInvitation::factory()->for($household)->withToken('tok')->{$state}()->create(['email' => 'pasangan@example.com']);
+        $user = User::factory()->create(['email' => 'pasangan@example.com']);
+
+        actingAs($user)->postJson('/api/invitations/tok/accept')
+            ->assertStatus(410)
+            ->assertJsonPath('message', $message);
+
+        expect($household->hasMember($user))->toBeFalse();
+    })->with([
+        'expired' => ['expired', 'Undangan ini sudah kedaluwarsa. Minta owner mengirim ulang.'],
+        'revoked' => ['revoked', 'Undangan ini sudah dicabut.'],
+    ]);
+
+    it('returns 404 for an unknown token', function () {
+        actingAs(User::factory()->create())->postJson('/api/invitations/tidak-ada/accept')->assertNotFound();
+    });
+
+    it('requires authentication to accept', function () {
+        pendingInvitation('tok');
+
+        \Pest\Laravel\postJson('/api/invitations/tok/accept')->assertUnauthorized();
+    });
+
+    it('does not duplicate membership for an existing member', function () {
+        [$household, $invitation] = pendingInvitation('tok');
+        $user = User::factory()->create(['email' => 'pasangan@example.com']);
+        $household->members()->attach($user, ['role' => HouseholdRole::Member, 'joined_at' => now()]);
+
+        actingAs($user)->postJson('/api/invitations/tok/accept')->assertOk();
+
+        expect($household->members()->count())->toBe(2)
+            ->and($invitation->fresh()?->accepted_at)->not->toBeNull();
+    });
+
+    it('previews a pending invitation without login', function () {
+        pendingInvitation('pratinjau');
+
+        \Pest\Laravel\getJson('/api/invitations/pratinjau')
+            ->assertOk()
+            ->assertJsonPath('data.household.name', 'Keluarga Riki')
+            ->assertJsonPath('data.invited_by.name', 'Riki')
+            ->assertJsonPath('data.email', 'pasangan@example.com')
+            ->assertJsonMissingPath('data.token_hash');
+    });
+
+    it('does not preview used invitations', function () {
+        [, $invitation] = pendingInvitation('bekas');
+        $invitation->update(['accepted_at' => now()]);
+
+        \Pest\Laravel\getJson('/api/invitations/bekas')->assertStatus(410);
+        \Pest\Laravel\getJson('/api/invitations/tidak-ada')->assertNotFound();
+    });
+
+    it('completes the full flow: owner invites, invitee registers and accepts', function () {
+        [$owner, $household] = ownedHousehold();
+        actingAs($owner)->postJson(inviteUrl($household), ['email' => 'pasangan@example.com'])->assertCreated();
+
+        $token = null;
+        Notification::assertSentOnDemand(InvitationSent::class, function (InvitationSent $n) use (&$token) {
+            $token = $n->token;
+
+            return true;
+        });
+
+        $browser = spa()->csrf();
+        $browser->post('/api/auth/register', [
+            'name' => 'Pasangan',
+            'email' => 'pasangan@example.com',
+            'password' => 'rahasia-panjang',
+            'password_confirmation' => 'rahasia-panjang',
+        ])->assertCreated();
+
+        $browser->post("/api/invitations/{$token}/accept")->assertOk()->assertJsonPath('data.role', 'member');
+        $browser->get('/api/households')->assertOk()->assertJsonCount(2, 'data'); // household sendiri + yang diundang
+    });
+});

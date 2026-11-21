@@ -33,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('register', fn (Request $request) => Limit::perHour(10)->by($request->ip()));
 
+        // Token undangan tidak bisa ditebak (48 char), limiter ini hanya pagar tambahan.
+        RateLimiter::for('invitation-token', fn (Request $request) => Limit::perMinute(30)->by($request->ip()));
+
         // Mencegah household dipakai untuk spam email.
         RateLimiter::for('invitations', fn (Request $request) => Limit::perHour(20)->by((string) $request->user()?->getAuthIdentifier()));
     }
