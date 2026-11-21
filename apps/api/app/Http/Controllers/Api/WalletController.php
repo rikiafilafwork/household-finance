@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Wallets\AdjustBalance;
 use App\Actions\Wallets\ArchiveWallet;
 use App\Actions\Wallets\CreateWallet;
 use App\Actions\Wallets\UpdateWallet;
 use App\Enums\WalletType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Wallets\AdjustBalanceRequest;
 use App\Http\Requests\Wallets\StoreWalletRequest;
 use App\Http\Requests\Wallets\UpdateWalletRequest;
+use App\Http\Resources\TransactionResource;
 use App\Http\Resources\WalletResource;
 use App\Models\Household;
 use App\Models\User;
@@ -98,5 +101,32 @@ class WalletController extends Controller
         Gate::authorize('manage', $wallet);
 
         return new WalletResource($archiveWallet->unarchive($wallet));
+    }
+
+    /**
+     * Sesuaikan saldo ke angka riil → transaksi adjustment sebesar selisih (atau tidak ada kalau 0).
+     */
+    public function adjust(AdjustBalanceRequest $request, Household $household, Wallet $wallet, AdjustBalance $adjustBalance): JsonResponse
+    {
+        Gate::authorize('view', $wallet);
+        Gate::authorize('manage', $wallet);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        [$wallet, $transaction] = $adjustBalance->handle(
+            $user,
+            $wallet,
+            $request->integer('actual_balance'),
+            $request->string('occurred_on')->toString(),
+            $request->filled('note') ? $request->string('note')->toString() : null,
+        );
+
+        return response()->json([
+            'data' => [
+                'wallet' => new WalletResource($wallet),
+                'adjustment' => $transaction ? new TransactionResource($transaction) : null,
+            ],
+        ], $transaction ? 201 : 200);
     }
 }

@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('wallets', WalletController::class);
         Route::post('wallets/{wallet}/archive', [WalletController::class, 'archive']);
         Route::post('wallets/{wallet}/unarchive', [WalletController::class, 'unarchive']);
+        Route::post('wallets/{wallet}/adjust', [WalletController::class, 'adjust']);
 
         // index (filter + cursor pagination) di #20
         Route::apiResource('transactions', TransactionController::class)->except('index');

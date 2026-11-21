@@ -31,6 +31,15 @@ class Transaction extends Model
     use HasFactory, SoftDeletes;
 
     /**
+     * Samakan dengan default kolom DB supaya model yang baru dibuat langsung tahu statusnya.
+     *
+     * @var array<string, string>
+     */
+    protected $attributes = [
+        'status' => 'posted',
+    ];
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
