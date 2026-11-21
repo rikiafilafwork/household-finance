@@ -32,7 +32,8 @@ export const transactionsApi = {
 };
 
 export const transfersApi = {
-  get: (h: Id, groupId: string) => unwrap(api.get<{ data: Transfer }>(`${base(h)}/transfers/${groupId}`)),
+  /** silent: 403 (melibatkan wallet pribadi orang lain) ditangani dialog, tanpa toast. */
+  get: (h: Id, groupId: string) => unwrap(api.get<{ data: Transfer }>(`${base(h)}/transfers/${groupId}`, { silent: true })),
   create: (h: Id, body: CreateTransferInput) => unwrap(api.post<{ data: Transfer }>(`${base(h)}/transfers`, body)),
   update: (h: Id, groupId: string, body: UpdateTransferInput) => unwrap(api.patch<{ data: Transfer }>(`${base(h)}/transfers/${groupId}`, body)),
   remove: (h: Id, groupId: string) => api.delete(`${base(h)}/transfers/${groupId}`),

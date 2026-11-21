@@ -12,6 +12,7 @@ import { ComingSoon } from '@/pages/ComingSoon';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { HomeRedirect } from '@/pages/HomeRedirect';
 import { OnboardingPage } from '@/pages/OnboardingPage';
+import { TransactionsPage } from '@/pages/TransactionsPage';
 
 export const router = createBrowserRouter([
   {
@@ -32,7 +33,7 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <DashboardPage /> },
-          { path: 'transactions', element: <ComingSoon title="Transaksi" issue={37} /> },
+          { path: 'transactions', element: <TransactionsPage /> },
           { path: 'wallets', element: <ComingSoon title="Wallet" issue={38} /> },
           { path: 'categories', element: <ComingSoon title="Kategori" issue={38} /> },
           { path: 'budgets', element: <ComingSoon title="Budget" issue={39} /> },
