@@ -99,6 +99,19 @@ it('notifies only the owners of the affected household', function () {
     Notification::assertNotSentTo($otherOwner, ReconcileMismatch::class);
 });
 
+it('never reveals a private wallet mismatch to the household owner, only to the wallet owner', function () {
+    [$household, $owner, $member, $bca] = reconcileSetup();
+    $private = Wallet::factory()->for($household)->privateTo($member)->opening(10_000)->create(['name' => 'Tabungan Rahasia']);
+    DB::table('wallets')->whereIn('id', [$bca->id, $private->id])->update(['balance' => 1]);
+
+    artisan('wallets:reconcile')->assertFailed();
+
+    Notification::assertSentTo($owner, ReconcileMismatch::class, fn (ReconcileMismatch $n) => array_column($n->mismatches, 'wallet_id') === [$bca->id]
+        && ! str_contains($n->toMail($owner)->render()->toHtml(), 'Tabungan Rahasia'));
+    Notification::assertSentTo($member, ReconcileMismatch::class, fn (ReconcileMismatch $n) => array_column($n->mismatches, 'wallet_id') === [$private->id]);
+    Notification::assertSentTimes(ReconcileMismatch::class, 2);
+});
+
 it('limits the check to one household with --household', function () {
     [$householdA, , , $bcaA] = reconcileSetup();
     [$householdB, , , $bcaB] = reconcileSetup();

@@ -6,6 +6,7 @@ use App\Enums\CategoryKind;
 use App\Enums\TransactionType;
 use App\Models\Category;
 use App\Models\Household;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Reports\VisibleWallets;
@@ -17,6 +18,34 @@ use Illuminate\Validation\ValidationException;
  */
 trait ValidatesTransactionTarget
 {
+    /**
+     * Baris lama ber-client_id sama (replay idempoten, Keputusan #11). Replay hanya boleh
+     * mengembalikan transaksi yang terlihat oleh pengirim: client_id milik transaksi di wallet
+     * privat orang lain tidak boleh jadi jalan pintas melewati VisibleWallets.
+     */
+    protected function existingByClientId(Household $household, User $actor, ?string $clientId): ?Transaction
+    {
+        if ($clientId === null) {
+            return null;
+        }
+
+        $existing = Transaction::query()
+            ->where('household_id', $household->getKey())
+            ->where('client_id', $clientId)
+            ->first();
+
+        if ($existing !== null && ! VisibleWallets::canSee($actor, $existing->wallet)) {
+            throw self::clientIdTaken();
+        }
+
+        return $existing;
+    }
+
+    protected static function clientIdTaken(): ValidationException
+    {
+        return ValidationException::withMessages(['client_id' => 'client_id sudah dipakai. Buat client_id baru.']);
+    }
+
     protected function assertWalletWritable(Wallet $wallet, Household $household, User $actor, string $field = 'wallet_id'): void
     {
         if ($wallet->household_id !== $household->getKey() || ! VisibleWallets::canSee($actor, $wallet)) {
