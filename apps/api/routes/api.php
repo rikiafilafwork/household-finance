@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\TransferController;
 use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +53,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // index (filter + cursor pagination) di #20
         Route::apiResource('transactions', TransactionController::class)->except('index');
+
+        // {transfer} = transfer_group_id (UUID); dua baris berpasangan (Keputusan #4)
+        Route::post('transfers', [TransferController::class, 'store']);
+        Route::get('transfers/{transfer}', [TransferController::class, 'show'])->whereUuid('transfer');
+        Route::patch('transfers/{transfer}', [TransferController::class, 'update'])->whereUuid('transfer');
+        Route::delete('transfers/{transfer}', [TransferController::class, 'destroy'])->whereUuid('transfer');
 
         Route::get('invitations', [InvitationController::class, 'index']);
         Route::post('invitations', [InvitationController::class, 'store'])->middleware('throttle:invitations');
