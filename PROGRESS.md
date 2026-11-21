@@ -7,14 +7,14 @@ Roadmap 9 minggu (~10–12 jam/minggu), mulai 23 Nov 2026. Detail task ada di [`
 Tabel di bawah diperbarui oleh `python3 scripts/sync-progress.py` (jangan diedit manual).
 
 <!-- auto:progress:start -->
-**Total: 13/75 issue selesai (17%)** `█████░░░░░░░░░░░░░░░░░░░░░░░░░`
+**Total: 23/75 issue selesai (31%)** `█████████░░░░░░░░░░░░░░░░░░░░░`
 
 _Terakhir disinkronkan: 2026-11-21_
 
 | Minggu | Target selesai | Progres | % | Status |
 | --- | --- | --- | --- | --- |
 | [Minggu 1 — Fondasi](https://github.com/rikiafilafwork/household-finance/milestone/1) | 2026-11-29 | `████████████` 13/13 | 100% | ✅ Selesai |
-| [Minggu 2 — Wallet, Transaksi, Saldo](https://github.com/rikiafilafwork/household-finance/milestone/2) | 2026-12-06 | `░░░░░░░░░░░░` 0/10 | 0% | ⚪ Belum mulai |
+| [Minggu 2 — Wallet, Transaksi, Saldo](https://github.com/rikiafilafwork/household-finance/milestone/2) | 2026-12-06 | `████████████` 10/10 | 100% | ✅ Selesai |
 | [Minggu 3 — Kategori, Budget, Policy](https://github.com/rikiafilafwork/household-finance/milestone/3) | 2026-12-13 | `░░░░░░░░░░░░` 0/7 | 0% | ⚪ Belum mulai |
 | [Minggu 4 — Web Inti + Dogfooding](https://github.com/rikiafilafwork/household-finance/milestone/4) | 2026-12-20 | `░░░░░░░░░░░░` 0/12 | 0% | ⚪ Belum mulai |
 | [Minggu 5 — Transaksi Berulang](https://github.com/rikiafilafwork/household-finance/milestone/5) | 2026-12-27 | `░░░░░░░░░░░░` 0/7 | 0% | ⚪ Belum mulai |
