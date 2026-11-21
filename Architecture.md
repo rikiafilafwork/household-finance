@@ -1,288 +1,466 @@
-# Keuangan Rumah Tangga — Roadmap 9 Minggu (FINAL)
+# Keuangan Pribadi + Budget Planner — Roadmap 9 Minggu
 
-Status: **final** setelah review stack dan scope (21 Nov 2026).
+Aplikasi pencatatan keuangan pribadi dengan rencana bulanan (template, checklist, amplop), perbandingan rencana vs aktual, dan dashboard di web dan mobile.
 
-Asumsi: ~10–12 jam/minggu (kerja + freelance + kuliah jalan terus). Minggu 1–2 itu wilayah Laravel yang sudah kamu kuasai, jadi kalau lebih longgar bisa digabung.
+Asumsi: ~10–12 jam/minggu (kerja + freelance + kuliah jalan terus). Kalau waktu ketat, import CSV (minggu 6) dijadikan stretch dan total jadi 8 minggu.
 
 Stack: Laravel 13, MySQL 8, Pest, Sanctum (cookie web + token mobile), queue & cache driver `database`, React + Vite + TanStack Query + shadcn/ui + Recharts, React Native (Expo), Docker Compose.
 
-Tujuan portofolio: project "teknologi biasa tapi rapi" yang **kamu pakai sendiri**. Nilai jualnya bukan arsitektur terdistribusi, tapi: uang dimodelkan benar, saldo tidak pernah meleset (dan ada buktinya), laporan cepat tanpa trik, dan mobile offline yang tidak bikin data dobel. Ditambah cerita nyata di README: "dipakai keluarga sendiri sejak minggu ke-4, N transaksi, bug nyata yang ketemu".
+Tujuan portofolio: project "teknologi biasa tapi rapi" yang **dipakai sendiri**. Nilai jualnya: uang dimodelkan benar, saldo tidak pernah meleset (ada buktinya), rencana vs aktual konsisten di semua layar, laporan dan dashboard cepat tanpa trik, dan mobile offline yang tidak bikin data dobel. Ditambah cerita nyata di README: "dipakai sendiri sejak minggu ke-4, N transaksi, bug nyata yang ketemu".
 
 ---
 
-## Hasil Review Stack
+## Fitur Utama
 
-Pertanyaannya: apakah tiap komponen dibutuhkan oleh requirement, atau cuma kelihatan keren? Kesimpulan: **stack sesuai dan tidak overkill**. Semua komponen punya alasan yang bisa ditunjuk ke requirement, dan semua yang berat sengaja tidak dipakai.
+1. **Akun** tiga tipe, masing-masing boleh banyak: Rekening (bank), E-wallet, Dompet (tunai).
+2. **Transaksi** pemasukan, pengeluaran, transfer (tarik tunai, top up e-wallet, pindah rekening), dan penyesuaian saldo.
+3. **Rencana bulanan** berisi item pemasukan dan pengeluaran:
+   - **Checklist**: item satu kali per bulan (gaji, cicilan, listrik). Dicentang → masuk sebagai transaksi, item tercoret.
+   - **Amplop**: target bulanan untuk pengeluaran variabel (makan, transport). Aktual dihitung dari transaksi manual di kategori itu.
+   - Bisa tambah item manual, lewati item, dan bandingkan rencana vs aktual.
+4. **Template bulanan** supaya rencana terisi sendiri tiap awal bulan, opsional auto-post untuk autodebet atau gaji.
+5. **Dashboard** (web dan mobile): pemasukan, pengeluaran, sisa anggaran, rencana vs aktual per kategori, tren, item yang perlu dicentang.
+6. **Alert amplop** di 80% dan 100%.
+7. **Import CSV** mutasi rekening dengan deteksi duplikat.
+8. **Laporan** dan export CSV.
+9. **Mobile** dengan catat cepat dan centang offline.
 
-| Komponen                                                       | Verdict                           | Alasan                                                                                                                                                                                                                                                             | Kapan keputusan ini dibalik                                                                   |
-| -------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| Laravel 13 + MySQL 8 + Pest                                    | Pas                               | Data relasional, saldo butuh transaksi ACID + `lockForUpdate`. MySQL 8 sudah punya CHECK constraint, window function, index komposit: semua yang dipakai di dokumen ini. MongoDB/NoSQL tidak cocok untuk data uang                                                 | Tidak ada alasan dalam skala rumah tangga                                                     |
-| Queue, cache, session: driver `database`                       | Pas                               | Beban satu keluarga. Job-nya cuma email undangan, cek budget, parse import. Satu worker + satu scheduler cukup                                                                                                                                                     | Kalau job menunggu > beberapa detik di antrean, atau lock cache jadi bottleneck (ukur dulu)   |
-| Sanctum (cookie web + token mobile)                            | Pas                               | Dua jenis klien butuh dua mode auth, dan Sanctum menyediakan keduanya. Passport/OAuth2 overkill, JWT buatan sendiri tidak perlu                                                                                                                                    | Kalau ada klien pihak ketiga (tidak ada di scope)                                             |
-| React + Vite + TanStack Query + shadcn/ui + Recharts           | Pas                               | React dipilih (bukan Vue) supaya `packages/shared` (zod schema + `money.ts`) bisa dipakai web **dan** React Native. TanStack Query memang dibutuhkan: invalidasi saldo/budget setelah tiap transaksi. Tidak perlu Redux/Zustand karena state server dikelola Query | Tidak ada                                                                                     |
-| React Native (Expo) + `expo-sqlite`                            | Pas, satu-satunya yang agak berat | Mobile offline itu requirement. Antrean harus tahan crash dan berurutan, jadi SQLite lebih tepat daripada array JSON di AsyncStorage/MMKV (tidak atomik). Scope mobile tetap kecil: 4 layar, create-only                                                           | Kalau antrean ternyata cuma butuh < 20 item dan tidak perlu cache wallet/kategori, MMKV cukup |
-| Docker Compose: `app`, `worker`, `scheduler`, `nginx`, `mysql` | Pas                               | 5 container ringan. `worker` dan `scheduler` wajib karena queue `database` butuh proses `queue:work`, dan jadwal butuh `schedule:work`. Mailpit hanya di profil dev                                                                                                | Tidak ada                                                                                     |
-| pnpm monorepo (`api`, `web`, `mobile`, `shared`)               | Pas, ada catatan                  | Satu repo untuk satu cerita portofolio, dan `packages/shared` dipakai dua klien. Catatan: Metro (Expo) sering bermasalah dengan symlink pnpm, set `node-linker=hoisted` di `.npmrc` dan atur `metro.config.js` untuk `watchFolders`                                | Kalau bundling mobile terus rewel, pindahkan `shared` jadi salinan yang di-sync skrip         |
+## Flow Utama
 
-**Sengaja tidak dipakai:** Redis, tabel rollup laporan, Octane/Horizon, RabbitMQ, event sourcing/CQRS, microservice, Passport, state manager global di frontend. Tiap keputusan "tidak" ini punya ADR dan syarat kapan dibalik, itu bagian dari cerita portofolionya.
+```
+Register → buat akun (Rekening / E-wallet / Dompet + saldo awal)
+        → buat template bulanan (gaji, cicilan, listrik, amplop makan, ...)
+Awal bulan → rencana bulan itu terisi dari template (atau "Salin dari bulan lalu")
+Sepanjang bulan:
+   • bayar tagihan / terima gaji → centang item → transaksi tercatat, saldo berubah, item tercoret
+   • belanja harian → catat transaksi → masuk amplop kategorinya (atau "di luar rencana")
+   • transfer (tarik tunai, top up) → tidak dihitung sebagai pemasukan/pengeluaran
+   • amplop ≥ 80% / 100% → notifikasi
+Kapan saja → dashboard: rencana vs aktual, sisa anggaran, yang belum dibayar
+Akhir bulan → laporan, export CSV
+Opsional → import mutasi rekening CSV → preview → commit
+```
 
-### Pemangkasan scope hasil review
+---
 
-Bukan di level stack, tapi di level dokumen. Beberapa bagian draft sebelumnya lebih berat dari kebutuhan:
+## Pilihan Stack
 
-| Draft sebelumnya                                                                                     | Sekarang                                                                                                                                                   | Kenapa                                                                                                                                                                                         |
-| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tabel `idempotency_keys` + middleware + response disimpan + prune 30 hari + `409` kalau payload beda | Kolom `transactions.client_id` (UUID dari klien) dengan `UNIQUE (household_id, client_id)`. Retry dengan `client_id` sama → balas transaksi yang sudah ada | Hasil akhirnya sama (retry tidak bikin dobel), tapi tanpa tabel, middleware, dan job tambahan. Yang hilang cuma deteksi payload beda, dan itu tidak relevan karena `client_id` dibuat per item |
-| Parser BCA + Mandiri + Generic                                                                       | Generic (pemetaan kolom) + **satu parser bank yang benar-benar kamu pakai**                                                                                | Format CSV bank hanya bisa diuji dengan data asli. Parser bank yang tidak kamu pakai tidak bisa diverifikasi                                                                                   |
-| `category_rules` (kata kunci → kategori) sebagai bagian wajib import                                 | Stretch goal di minggu 6                                                                                                                                   | Import sudah utuh tanpa ini; baru dikerjakan kalau waktu sisa                                                                                                                                  |
-| Playwright e2e beberapa alur                                                                         | Satu alur: catat → budget naik → laporan berubah                                                                                                           | Cukup sebagai bukti, sisanya sudah ditutup test Pest                                                                                                                                           |
+| Komponen                                                       | Alasan                                                                                                                                                                                                                              | Kapan dibalik                                                                               |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Laravel 13 + MySQL 8 + Pest                                    | Data relasional, saldo butuh transaksi ACID + `lockForUpdate`. MySQL 8 sudah punya CHECK constraint, CTE, window function, generated column, index komposit: semua dipakai. MongoDB/NoSQL tidak cocok untuk data uang               | Tidak ada alasan di skala personal                                                          |
+| Queue, cache, session: driver `database`                       | Beban ringan. Job-nya cuma cek alert, parse import, generate plan. Satu worker + satu scheduler cukup                                                                                                                               | Kalau job menunggu > beberapa detik di antrean, atau lock cache jadi bottleneck (ukur dulu) |
+| Sanctum (cookie web + token mobile)                            | Dua jenis klien butuh dua mode auth, Sanctum menyediakan keduanya. Passport/OAuth2 overkill                                                                                                                                         | Kalau ada klien pihak ketiga                                                                |
+| React + Vite + TanStack Query + shadcn/ui + Recharts           | React (bukan Vue) supaya `packages/shared` (zod schema + `money.ts`) bisa dipakai web **dan** React Native. TanStack Query dibutuhkan untuk invalidasi saldo, plan, dan dashboard setelah tiap transaksi. Tidak perlu Redux/Zustand | Tidak ada                                                                                   |
+| React Native (Expo) + `expo-sqlite`                            | Mobile offline itu requirement; antrean harus tahan crash dan berurutan, jadi SQLite lebih tepat daripada array JSON. Dashboard mobile tanpa library chart (progress bar dari `View`)                                               | Kalau antrean ternyata < 20 item, MMKV cukup                                                |
+| Docker Compose: `app`, `worker`, `scheduler`, `nginx`, `mysql` | 5 container ringan. `worker` dan `scheduler` wajib karena queue `database` butuh `queue:work` dan jadwal butuh `schedule:work`                                                                                                      | Tidak ada                                                                                   |
+| pnpm monorepo (`api`, `web`, `mobile`, `shared`)               | Satu repo untuk satu cerita portofolio. Catatan: Metro (Expo) sering bermasalah dengan symlink pnpm; set `node-linker=hoisted` dan atur `watchFolders`                                                                              | Kalau bundling mobile terus rewel, `shared` jadi salinan yang di-sync skrip                 |
+
+**Sengaja tidak dipakai:** Redis, tabel rollup laporan, Octane/Horizon, RabbitMQ, event sourcing/CQRS, microservice, Passport, email transaksional, state manager global, library chart di mobile. Tiap keputusan "tidak" ini punya ADR dan syarat kapan dibalik.
 
 ---
 
 ## Ringkasan Timeline
 
-| Minggu | Fokus                                                             | Output utama                                             |
-| ------ | ----------------------------------------------------------------- | -------------------------------------------------------- |
-| 1      | Fondasi: Docker, auth ganda, household, undangan, `Money`         | Register → household → undang anggota jalan              |
-| 2      | Wallet, transaksi, transfer, saldo atomik, reconcile, `client_id` | Saldo selalu = saldo awal + SUM transaksi, terbukti test |
-| 3      | Kategori, budget, alert 80% / 100%, Policy wallet privat          | Alert sekali per ambang, wallet privat tidak bocor       |
-| 4      | Web inti (React + shadcn/ui) → **mulai dogfooding**               | Keluarga mulai mencatat transaksi asli                   |
-| 5      | Transaksi berulang + scheduler idempoten                          | Gaji/cicilan/listrik ter-generate, scheduler 2x tetap 1  |
-| 6      | Import CSV mutasi bank + dedupe hash                              | Import file yang sama 2x → 0 baris baru                  |
-| 7      | Laporan + export CSV + seed 200 ribu + `EXPLAIN`                  | Laporan < 100 ms tanpa rollup/cache, ada angkanya        |
-| 8      | Mobile Expo: quick-add, daftar, antrean offline                   | Offline → online, retry tidak bikin duplikat             |
-| 9      | Hardening, test, docs, ADR, README                                | README dengan cerita nyata, angka, screenshot            |
+| Minggu | Fokus                                                                         | Output utama                                                        |
+| ------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| 1      | Fondasi: Docker, auth ganda, `Money`, isolasi data per akun, smoke test Metro | Register/login jalan, data satu akun tidak bisa dibaca akun lain    |
+| 2      | Akun, transaksi, transfer, saldo atomik, reconcile, `client_id`               | Saldo selalu = saldo awal + SUM transaksi, terbukti test            |
+| 3      | Plan: checklist + amplop, centang → transaksi, rencana vs aktual, alert       | Centang/batal centang konsisten, aktual tidak dobel hitung          |
+| 4      | Web inti (Akun, Transaksi, Rencana) → **mulai dogfooding**                    | Kamu mencatat transaksi dan plan asli                               |
+| 5      | Template bulanan + auto-post, **dashboard (API + web)**                       | Plan bulan baru terisi sendiri, dashboard rencana vs aktual         |
+| 6      | Import CSV mutasi rekening + dedupe hash                                      | Import file yang sama 2x → 0 baris baru                             |
+| 7      | Laporan + export CSV + seed 200 ribu + `EXPLAIN`                              | Laporan dan dashboard < 100–150 ms tanpa rollup/cache, ada angkanya |
+| 8      | Mobile Expo: Beranda, Rencana, Catat, Transaksi, Akun, offline                | Offline → online, retry tidak bikin duplikat                        |
+| 9      | Hardening, test, docs, ADR, README                                            | README dengan cerita nyata, angka, screenshot                       |
 
 ---
 
-## Keputusan Desain Inti (baca dulu sebelum mulai)
+## Keputusan Desain Inti
 
 **1. Uang = integer rupiah, lewat satu helper.**
 
-- Kolom `BIGINT` signed, satuan rupiah (IDR tidak punya sen dalam praktik).
+- Kolom `BIGINT` signed, satuan rupiah.
 - `App\Support\Money` satu-satunya pintu: `Money::parse('Rp1.250.000')` → `1250000`, `Money::format(1250000)` → `Rp1.250.000`, `Money::percentOf()` dengan integer.
-- Parsing input pakai string (hapus pemisah ribuan `.`), **tidak pernah** `floatval` / `parseFloat`. Ingat format Indonesia: titik = ribuan, koma = desimal. `1.250` itu seribu dua ratus lima puluh, bukan 1,25. Input `,00` boleh (dibuang), `,50` ditolak.
+- Parsing input pakai string (hapus pemisah ribuan `.`), **tidak pernah** `floatval` / `parseFloat`. Format Indonesia: titik = ribuan, koma = desimal. `1.250` itu seribu dua ratus lima puluh, bukan 1,25. Input `,00` boleh (dibuang), `,50` ditolak.
 - Perbandingan persen tanpa pembagian: `spent * 100 >= limit * 80`.
-- API mengirim angka sebagai integer JSON (aman di JS sampai 9 kuadriliun). Format tampilan di klien lewat `packages/shared/money.ts`, dipakai web dan mobile.
+- API mengirim angka sebagai integer JSON. Format tampilan lewat `packages/shared/money.ts`, dipakai web dan mobile.
 
-**2. Tanda (sign) amount mengikuti sudut pandang wallet.**
+**2. Tanda (sign) amount mengikuti sudut pandang akun.**
 
 - `income` → positif, `expense` → negatif, `transfer` → keluar negatif / masuk positif, `adjustment` → bebas.
-- Dengan begitu invariant saldo cukup satu rumus: `balance = opening_balance + SUM(amount) WHERE status = 'posted' AND deleted_at IS NULL`.
-- `CHECK` constraint di DB menegakkan tanda per tipe (MySQL 8.0.16+ sudah menegakkan CHECK).
+- Invariant: `balance = opening_balance + SUM(amount) WHERE deleted_at IS NULL`.
+- `CHECK` constraint di DB menegakkan tanda per tipe (MySQL 8.0.16+).
 
 **3. Saldo = kolom denormalisasi + reconcile.**
 
-- `wallets.balance` diubah di **transaksi DB yang sama** dengan insert/update/delete transaksi, setelah `lockForUpdate()` pada wallet.
-- Transfer mengunci dua wallet **berurutan berdasarkan id** supaya dua transfer berlawanan arah tidak deadlock.
-- Update transaksi = balikkan efek lama, terapkan efek baru (bisa pindah wallet → kunci dua wallet).
-- Delete = soft delete + balikkan efek.
-- `wallets:reconcile` membandingkan `balance` dengan rumus di #2, laporkan selisih, `--fix` untuk membetulkan. Dijadwalkan harian; selisih ≠ 0 = bug, kirim notifikasi ke owner.
-- ADR-002: kenapa tidak hitung saldo on-the-fly (list wallet dipanggil di setiap layar, mobile butuh angka cepat) dan kenapa tetap butuh reconcile (bukti, bukan harapan).
+- `accounts.balance` diubah di **transaksi DB yang sama** dengan insert/update/delete transaksi, setelah `lockForUpdate()` pada akun.
+- Transfer mengunci dua akun **berurutan berdasarkan id**.
+- Update transaksi = balikkan efek lama, terapkan efek baru (bisa pindah akun → kunci dua akun). Delete = soft delete + balikkan efek.
+- `accounts:reconcile` membandingkan `balance` dengan rumus #2, laporkan selisih, `--fix` untuk membetulkan. Dijadwalkan harian; selisih ≠ 0 = bug, muncul sebagai banner di dashboard.
+- Saldo negatif **tidak diblokir** (uang tunai sering lupa dicatat), hanya diberi peringatan di UI.
+- ADR-002: kenapa tidak hitung saldo on-the-fly (list akun dipanggil di setiap layar, mobile butuh angka cepat) dan kenapa tetap butuh reconcile.
 
 **4. Transfer = 2 baris berpasangan.**
 
-- Satu `transfer_group_id` (UUID), baris keluar di wallet asal (negatif), baris masuk di wallet tujuan (positif), `category_id` NULL.
+- Satu `transfer_group_id` (UUID), baris keluar di akun asal (negatif), baris masuk di akun tujuan (positif), `category_id` NULL.
 - Edit/hapus transfer selalu menyentuh kedua baris dalam satu transaksi DB.
-- Laporan pemasukan/pengeluaran memfilter `type IN ('income','expense')`, jadi transfer dan adjustment otomatis keluar dari laporan.
+- Pemakaian nyata: tarik tunai (rekening → dompet), top up e-wallet (rekening → e-wallet), pindah antar rekening. Biaya admin dicatat sebagai pengeluaran terpisah.
+- Laporan memfilter `type IN ('income','expense')`, jadi transfer dan adjustment otomatis keluar dari perbandingan rencana vs aktual.
 
-**5. Household, peran, dan wallet privat.**
+**5. Data per akun pengguna terisolasi.**
 
-- User bisa anggota beberapa household (pivot `household_members`, peran `owner` / `member`). Semua route di bawah `/api/households/{household}/...` dengan scoped binding.
-- Wallet `shared` terlihat semua anggota; wallet `private` hanya terlihat pemiliknya, **termasuk** dari owner household. Ini keputusan privasi, tulis di ADR-005.
-- Laporan, export, pencarian, dan budget memakai satu sumber kebenaran: `VisibleWallets::for($user, $household)` → daftar id wallet. Semua query transaksi wajib lewat ini. Ini tempat paling gampang bocor; ada test khusus di setiap endpoint.
-- Budget household hanya menghitung transaksi dari wallet `shared` (budget itu milik bersama). Wallet privat tidak masuk budget.
+- Setiap tabel data punya `user_id`. Trait `BelongsToUser` memasang global scope + mengisi `user_id` otomatis, dan semua route memakai route model binding yang ter-scope.
+- Registrasi dikontrol env `REGISTRATION_ENABLED` (matikan setelah akun dibuat kalau di-deploy publik). Lupa password: command `user:reset-password`, tanpa email.
+- Test wajib: satu akun tidak bisa membaca atau mengubah akun, transaksi, plan, dan laporan akun lain (IDOR) di **setiap** endpoint.
 
-| Aksi                                               | Owner | Member              |
-| -------------------------------------------------- | ----- | ------------------- |
-| Undang / keluarkan anggota, ubah peran             | ✅    | ❌                  |
-| Buat / arsip wallet shared                         | ✅    | ❌                  |
-| Buat wallet private milik sendiri                  | ✅    | ✅                  |
-| Catat transaksi di wallet shared                   | ✅    | ✅                  |
-| Edit / hapus transaksi orang lain di wallet shared | ✅    | ❌ (hanya miliknya) |
-| Kelola kategori, budget, transaksi berulang shared | ✅    | ❌ (lihat saja)     |
-| Lihat wallet private orang lain                    | ❌    | ❌                  |
+**6. Akun: tiga tipe, bebas banyak.**
 
-**6. Transaksi berulang idempoten lewat tabel occurrence.**
+- `accounts.type`: `bank` (rekening, transaksi via transfer), `ewallet`, `cash` (dompet, tunai). Contoh: BCA, Bank Jago, GoPay, Dompet.
+- Hanya akun `bank` yang punya import CSV mutasi.
+- Laporan bonus: pengeluaran tunai vs non-tunai (dari tipe akun transaksi), tanpa tabel tambahan.
+- Dompet tunai hampir selalu meleset dari kenyataan. "Sesuaikan saldo" membuat transaksi `adjustment`; selisih kumulatif per bulan ditampilkan sebagai "tak tercatat".
 
-- Kunci idempotensinya `UNIQUE (rule_id, due_on)` di tabel `recurring_occurrences`, bukan di `transactions`. Alasannya: rule bertipe transfer menghasilkan 2 baris transaksi untuk satu jatuh tempo, jadi unique di `transactions` akan bentrok.
-- Alur per jatuh tempo, dalam satu transaksi DB: insert occurrence (konflik → sudah diproses, skip) → buat transaksi → update saldo → majukan `next_due_on`.
-- Catch-up: kalau scheduler mati 3 hari, command memproses semua jatuh tempo yang tertinggal (batas aman 31 iterasi per rule).
-- Tanggal dihitung dari **anchor** (`day_of_month`), bukan dari tanggal sebelumnya. Rule tanggal 31: Jan 31 → Feb 28/29 → **Mar 31** (bukan Mar 28). Bug drift ini klasik, wajib di-test.
-- Tagihan yang nominalnya berubah (listrik, air) pakai `requires_confirmation = true` → transaksi dibuat `status = pending`, tidak memengaruhi saldo, laporan, maupun budget sampai dikonfirmasi (dan nominalnya boleh diubah saat konfirmasi).
-- Scheduler: `dailyAt('00:10')`, timezone household (default `Asia/Jakarta`), `withoutOverlapping()->onOneServer()` (lock lewat cache `database`). Lock itu untuk efisiensi; jaminan sebenarnya tetap unique constraint.
+**7. Rencana bulanan: dua mode item.**
 
-**7. Tanggal transaksi = `DATE` lokal, bukan timestamp.**
-`occurred_on` bertipe `DATE` dalam timezone household. Belanja jam 23.30 WIB itu transaksi hari itu, bukan besok (yang terjadi kalau disimpan UTC lalu dipotong tanggalnya). `created_at` tetap timestamp UTC untuk audit.
+| Mode        | Untuk                                                                        | Aktual dihitung dari                                                                                |
+| ----------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `checklist` | Item satu kali per bulan: gaji, cicilan, listrik, internet                   | **Satu transaksi** yang terhubung ke item (`transactions.plan_item_id`). Belum dicentang = aktual 0 |
+| `envelope`  | Pengeluaran variabel: makan, transport, hiburan (atau pemasukan lepas-lepas) | **Jumlah transaksi** di kategori itu pada bulan itu yang **tidak** terhubung ke item checklist      |
 
-**8. Budget dan alert.**
+Definisi angka (satu sumber kebenaran, dipakai Rencana, Dashboard, dan Laporan lewat `PlanComparisonQuery`):
 
-- Budget per kategori per bulan (`month` = tanggal 1). Tombol "salin dari bulan lalu".
-- Terpakai dihitung langsung dari transaksi (query kecil, ber-index), tidak disimpan.
-- Setelah transaksi expense commit (`afterCommit`), job `CheckBudgetThresholds` menghitung ulang kategori + bulan transaksi itu (termasuk transaksi yang di-backdate ke bulan lalu).
-- Ambang 80 dan 100: insert `budget_alerts` dengan `UNIQUE (budget_id, threshold)`. Konflik = sudah pernah alert, jangan kirim lagi. Hasilnya tidak ada spam notifikasi.
-- Notifikasi: `database` (lonceng di web) + email (Mailpit di dev).
+- **Rencana** = `SUM(planned_amount)` item bulan itu yang tidak di-skip.
+- **Aktual** = `SUM(amount)` **semua** transaksi `income`/`expense` bulan itu (termasuk yang di luar rencana).
+- **Di luar rencana** = transaksi yang tidak terhubung ke checklist **dan** kategorinya tidak punya amplop bulan itu.
+- Aktual = aktual checklist + aktual amplop + di luar rencana. Transaksi yang sudah dicentang dari checklist tidak ikut masuk amplop kategorinya (mencegah dobel hitung).
+- **Sisa anggaran** = rencana pengeluaran − aktual pengeluaran. Sub-angka "belum dibayar" = jumlah rencana item checklist pengeluaran yang belum dicentang.
+- Satu bulan hanya boleh punya **satu amplop per kategori** (dijaga unique index lewat generated column).
+- Item bisa di-skip (`skipped_at`), mis. tagihan yang tidak ada bulan ini. Item yang di-skip tidak masuk rencana.
+- Plan dibuat lewat: (a) template (#9), (b) "Salin dari bulan lalu", atau (c) tambah manual. Salin hanya menyalin item yang belum ada dari template di bulan itu.
 
-**9. Import CSV dengan dedupe berbasis hash.**
+**8. Centang = membuat transaksi (satu transaksi DB).**
 
-- Upload → `imports` + file → job parse → baris di `import_rows` (staging) → preview di web → user petakan kategori → commit.
-- Parser di belakang interface `StatementParser`: `GenericCsvParser` (pemetaan kolom, preset disimpan) + **satu parser untuk bank yang kamu pakai**. Format CSV bank hanya bisa diuji dengan data asli, jadi parser bank lain masuk "next steps". Hati-hati format bank: suffix `DB`/`CR`, pemisah ribuan, tanggal tanpa tahun, encoding bukan UTF-8.
-- `fingerprint = sha256(wallet_id | tanggal | amount | deskripsi_dinormalisasi | occurrence_index)`.
-  - `occurrence_index` = urutan kemunculan baris identik (tanggal + amount + deskripsi sama) di file itu. Tanpa ini, dua kali beli kopi Rp25.000 di hari yang sama dianggap duplikat dan salah satunya hilang.
-  - Deskripsi dinormalisasi: huruf kecil, spasi rapat, buang nomor referensi yang berubah-ubah.
-- `transactions.import_hash` dengan `UNIQUE (wallet_id, import_hash)`. Import ulang file yang sama atau file yang periodenya tumpang tindih → baris lama ditandai `duplicate`, tidak di-insert.
-- Batasan jujur (ADR-006): dedupe akurat kalau file memuat hari yang **utuh**. Transaksi yang dicatat manual lalu muncul lagi di CSV tidak otomatis terdeteksi; preview menandai kandidat (tanggal ±1 hari + amount sama) supaya user memilih.
+```php
+DB::transaction(function () use ($data) {
+    // urutan kunci tetap: plan item → akun (hindari deadlock)
+    $item    = PlanItem::whereKey($data->planItemId)->lockForUpdate()->firstOrFail();
+    $account = Account::whereKey($data->accountId)->lockForUpdate()->firstOrFail();
 
-**10. Laporan tanpa rollup, dibuktikan dengan angka.**
+    // idempotensi (#15): setelah terkunci, retry paralel jadi serial
+    if ($existing = Transaction::where('client_id', $data->clientId)->first()) {
+        return [$existing, false];                     // controller balas 200
+    }
+    if ($item->mode !== 'checklist')  throw new UnprocessableException();       // 422
+    if ($item->skipped_at || Transaction::where('plan_item_id', $item->id)->exists()) {
+        throw new PlanItemAlreadyDoneException();                               // 409
+    }
 
-- Semua laporan dihitung langsung dari `transactions` dengan index `(household_id, occurred_on)`.
-- Daftar wallet terlihat diambil dulu (jumlahnya kecil), lalu masuk sebagai `wallet_id IN (...)`, jadi tidak perlu join.
-- Bukti di minggu 7: seed 200 ribu transaksi untuk household demo **plus ~1 juta transaksi noise di ratusan household lain**. Tanpa noise, index `household_id` tidak diuji sama sekali dan angkanya menipu.
-- Ukur: `EXPLAIN` / `EXPLAIN ANALYZE` sebelum vs sesudah index, waktu tiap query (p50/p95 dari N run). Eksperimen tambahan (opsional): covering index `(household_id, occurred_on, type, wallet_id, category_id, amount)`. Pakai hanya kalau angkanya membenarkan, dan tulis hasilnya apa pun itu.
-- Kalau suatu saat lambat, urutan solusinya tercatat di ADR-007: index → covering index → summary table bulanan → cache. Redis paling akhir.
+    $tx = Transaction::create([
+        'account_id' => $account->id, 'category_id' => $item->category_id,
+        'type' => $item->type, 'amount' => $item->signedAmount($data->actualAmount),
+        'occurred_on' => $data->occurredOn, 'plan_item_id' => $item->id,
+        'client_id' => $data->clientId, 'note' => $item->name,
+    ]);
+    $account->increment('balance', $tx->amount);
+    return [$tx, true];
+});
+```
 
-**11. Idempotensi tulis lewat `client_id`.**
+- Nominal aktual default sama dengan rencana, boleh diubah saat centang. Akun default diambil dari `plan_items.account_id`, boleh diganti.
+- **Batal centang** (`UncheckPlanItem`), atau menghapus transaksi yang terhubung dari halaman Transaksi: soft delete transaksi, **`plan_item_id` diset NULL**, saldo dikoreksi, semua dalam satu transaksi DB. NULL penting karena `UNIQUE (plan_item_id)` tetap menghitung baris soft-deleted; tanpa itu item tidak bisa dicentang ulang.
+- Mengubah nominal/tanggal/akun transaksi yang terhubung lewat edit transaksi biasa; plan otomatis menampilkan aktual terbaru.
+- Item yang sudah dicentang tidak bisa dihapus; batalkan centang dulu. Batal centang boleh kapan saja (reconcile menjaga saldo); mengunci setelah akhir bulan bisa ditambah nanti.
 
-- Klien (web dan mobile) membuat UUID `client_id` **per item yang akan dikirim** dan menyertakannya di body `POST` transaksi dan transfer. Web membuatnya per submit form (double click aman), mobile membuatnya saat item masuk antrean dan menyimpannya bersama item.
-- Server: `transactions.client_id` dengan `UNIQUE (household_id, client_id)`. Di dalam Action, **setelah** wallet dikunci (`lockForUpdate`), cek dulu apakah `client_id` itu sudah ada. Kalau sudah, balas transaksi yang ada (status `200`, bukan `201`) tanpa efek apa pun. Karena wallet sudah dikunci, dua retry bersamaan tersusun serial: yang kedua pasti melihat hasil yang pertama. Unique index tetap jadi jaring terakhir.
-- Transfer: `client_id` dipasang di baris **keluar**, baris masuk NULL (MySQL mengizinkan banyak NULL di unique index).
-- Transaksi dari scheduler dan import tidak punya `client_id` (NULL); idempotensi mereka lewat `recurring_occurrences` dan `import_hash`.
-- Batasan jujur (ADR-010): retry dengan `client_id` sama tapi isi berbeda dibalas transaksi lama tanpa peringatan. Tidak masalah karena `client_id` dibuat per item, dan ini menghemat tabel, middleware, dan job prune.
+**9. Template bulanan.**
 
-**12. Mobile offline: create-only.**
+- `plan_templates`: item yang berulang tiap bulan (gaji tgl 25, cicilan tgl 5) atau tiap tahun (asuransi, pajak). Hanya `monthly` dan `yearly`, karena budget itu bulanan.
+- `due_on` dihitung **per bulan dari `day_of_month`** (dibatasi hari terakhir bulan itu), bukan bergulir dari tanggal sebelumnya. Tidak ada drift: template tanggal 31 menghasilkan 31 Jan, 28 Feb, 31 Mar.
+- Idempotensi: `UNIQUE (template_id, month)` di `plan_items`. Command `plan:generate` jalan berapa kali pun hasilnya sama. Dijadwalkan tanggal 1 pukul 00:10 (timezone user) untuk bulan berjalan, plus tombol "Buat dari template" untuk bulan lain.
+- `auto_post` (opsional, hanya checklist): item otomatis dicentang saat jatuh tempo (autodebet, gaji transfer). Command `plan:auto-post` harian memakai Action `CheckPlanItem` yang sama, jadi kebal dijalankan dua kali (item sudah punya transaksi → dilewati).
+- Mengubah template tidak mengubah item bulan yang sudah ada.
 
-- Offline yang didukung hanya **membuat** transaksi (quick-add). Edit dan hapus wajib online. Ini menghindari konflik edit tanpa perlu sync engine dua arah. ADR-008.
+**10. Alert amplop.**
+
+- Setelah transaksi expense commit (`afterCommit`), job `CheckEnvelopeThresholds` menghitung ulang amplop kategori + bulan transaksi itu (termasuk yang di-backdate).
+- Ambang 80 dan 100: insert `budget_alerts` dengan `UNIQUE (plan_item_id, threshold)`. Konflik = sudah pernah alert, tidak ada spam.
+- Notifikasi in-app (`database`, lonceng di web dan mobile), tanpa email.
+- Hanya amplop yang punya alert; item checklist tidak (nominalnya tetap).
+
+**11. Dashboard: satu endpoint, satu query class, angka sama dengan halaman Rencana.**
+
+- `GET /api/dashboard?month=YYYY-MM` memanggil `DashboardQuery`, yang memakai `PlanComparisonQuery` yang sama dengan halaman Rencana dan Laporan. Tidak ada dua versi perhitungan.
+- Isi response:
+
+```json
+{
+  "month": "2026-11",
+  "balances": { "bank": 0, "ewallet": 0, "cash": 0, "total": 0 },
+  "income": { "planned": 9500000, "actual": 8000000 },
+  "expense": {
+    "planned": 5100000,
+    "actual": 4075000,
+    "unplanned": 180000,
+    "unpaid": 500000
+  },
+  "remaining_budget": 1025000,
+  "categories": [
+    { "id": 1, "name": "Makan", "planned": 2000000, "actual": 1350000 }
+  ],
+  "income_sources": [
+    { "name": "Gaji", "planned": 8000000, "actual": 8000000, "done": true }
+  ],
+  "due_items": [
+    {
+      "id": 12,
+      "name": "Listrik",
+      "due_on": "2026-11-20",
+      "planned": 500000,
+      "overdue": true
+    }
+  ],
+  "envelopes_warning": [
+    {
+      "id": 20,
+      "name": "Transport",
+      "planned": 600000,
+      "actual": 510000,
+      "percent": 85
+    }
+  ],
+  "trend": [
+    {
+      "month": "2026-06",
+      "income_actual": 0,
+      "expense_actual": 0,
+      "expense_planned": 0
+    }
+  ],
+  "recent": [],
+  "reconcile_ok": true
+}
+```
+
+- **Contoh angka (jadikan fixture test):** checklist pengeluaran aktual 1.715.000 (cicilan 1.200.000 + internet 350.000 + pulsa 165.000) + amplop aktual 2.180.000 (makan 1.350.000 + transport 510.000 + hiburan 320.000) + di luar rencana 180.000 = **4.075.000**. Rencana pengeluaran 5.100.000, sisa anggaran **1.025.000**, dengan 500.000 di antaranya belum dibayar (listrik).
+- Tidak ada cache. Beberapa query kecil ber-index; bukti ukurannya di minggu 7.
+
+**12. Tanggal transaksi = `DATE` lokal, bukan timestamp.**
+`occurred_on` bertipe `DATE` dalam timezone user (`users.timezone`, default `Asia/Jakarta`). Belanja jam 23.30 WIB itu transaksi hari itu, bukan besok. `plan_items.month` = tanggal 1 bulan itu. `created_at` tetap timestamp UTC untuk audit.
+
+**13. Import CSV dengan dedupe berbasis hash.**
+
+- Hanya untuk akun `bank`. Upload → `imports` + file → job parse → baris di `import_rows` (staging) → preview di web → user petakan kategori → commit.
+- Parser di belakang interface `StatementParser`: `GenericCsvParser` (pemetaan kolom, preset disimpan) + **satu parser untuk bank yang kamu pakai**. Format CSV bank hanya bisa diuji dengan data asli. Hati-hati: suffix `DB`/`CR`, pemisah ribuan, tanggal tanpa tahun, encoding bukan UTF-8.
+- `fingerprint = sha256(account_id | tanggal | amount | deskripsi_dinormalisasi | occurrence_index)`. `occurrence_index` = urutan kemunculan baris identik di file itu, supaya dua kali beli kopi Rp25.000 di hari yang sama tidak dianggap duplikat.
+- `transactions.import_hash` dengan `UNIQUE (account_id, import_hash)`. Import ulang atau file tumpang tindih → baris lama ditandai `duplicate`.
+- Batasan jujur (ADR-006): dedupe akurat kalau file memuat hari yang **utuh**. Transaksi yang dicatat manual lalu muncul lagi di CSV tidak otomatis terdeteksi; preview menandai kandidat (tanggal ±1 hari + amount sama).
+- Transaksi hasil import tidak terhubung ke item plan (masuk amplop kategori, atau "di luar rencana").
+
+**14. Laporan dan dashboard tanpa rollup, dibuktikan dengan angka.**
+
+- Semua dihitung langsung dari `transactions` dan `plan_items` dengan index `(user_id, occurred_on)`, `(user_id, category_id, occurred_on)`, dan `(user_id, month)`.
+- Bukti di minggu 7: seed 200 ribu transaksi untuk akun demo **plus ~1 juta transaksi noise di ratusan akun lain**. Tanpa noise, index `user_id` tidak diuji dan angkanya menipu.
+- Ukur: `EXPLAIN ANALYZE` sebelum vs sesudah index, p50/p95 dari N run, untuk setiap query laporan **dan** endpoint dashboard.
+- Kalau suatu saat lambat, urutan solusinya (ADR-007): index → covering index → summary table bulanan → cache. Redis paling akhir.
+
+**15. Idempotensi tulis lewat `client_id`.**
+
+- Klien (web dan mobile) membuat UUID `client_id` **per item yang akan dikirim** dan menyertakannya di body `POST` transaksi, transfer, dan centang plan. Web membuatnya per submit form; mobile membuatnya saat item masuk antrean dan menyimpannya bersama item.
+- `transactions.client_id` dengan `UNIQUE (user_id, client_id)`. Di dalam Action, **setelah** baris terkunci, cek dulu apakah `client_id` sudah ada. Kalau ya, balas transaksi yang ada (status `200`, bukan `201`) tanpa efek apa pun. Unique index jadi jaring terakhir.
+- Transfer: `client_id` dipasang di baris **keluar**, baris masuk NULL.
+- Transaksi dari `plan:auto-post` dan import tidak punya `client_id`; idempotensi mereka lewat `plan_item_id` unik dan `import_hash`.
+- Batasan jujur (ADR-010): retry dengan `client_id` sama tapi isi berbeda dibalas transaksi lama tanpa peringatan. Tidak masalah karena `client_id` dibuat per item.
+
+**16. Mobile offline: create-only (termasuk centang).**
+
+- Offline yang didukung: **catat transaksi** dan **centang item plan**. Edit, hapus, dan batal centang wajib online. Tidak ada sync engine dua arah. ADR-008.
 - `occurred_on` diambil saat user mencatat, bukan saat sync.
 - Antrean di `expo-sqlite`, dikirim berurutan saat online, retry dengan backoff memakai `client_id` yang sama.
+- Centang item yang ternyata sudah dicentang dari perangkat lain → server balas `409` → item antrean `failed` dengan pesan jelas, dibereskan manual dari layar sinkronisasi.
+- Beranda dan data referensi (akun, kategori, plan) disimpan sebagai snapshot terakhir untuk tampilan offline, dengan label "diperbarui HH.MM".
 
-**13. Tanpa Redis.** Queue `database`, cache `database`, session `database`. Satu worker dan satu scheduler cukup untuk beban rumah tangga. Redis baru dipertimbangkan kalau ada angka (antrean job menumpuk, query cache lock lambat). ADR-009.
+**17. Tanpa Redis.** Queue, cache, dan session memakai `database`. Satu worker dan satu scheduler cukup. Redis baru dipertimbangkan kalau ada angka yang membuktikan perlu. ADR-009.
+
+---
+
+## Tampilan dan Fitur per Platform
+
+Gaya: shadcn/ui default (bersih, abu-abu netral), hijau untuk selesai, kuning untuk ≥ 80%, merah untuk melewati batas. Label bahasa Indonesia, format `Rp1.250.000`.
+
+### Web (lengkap: perencanaan dan analisis)
+
+| Halaman                 | Isi                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Beranda (dashboard)** | Lihat bagian "Dashboard web" di bawah                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Rencana**             | Layar utama. Pemilih bulan, tombol "Buat dari template" / "Salin dari bulan lalu". Tiga ringkasan (pemasukan, pengeluaran, sisa anggaran). Bagian **Pemasukan** dan **Pengeluaran tetap** berupa checklist dengan kolom Rencana / Aktual / Selisih (item selesai tercoret, selisih > 0 merah). Bagian **Amplop** dengan progress bar (biru → kuning ≥ 80% → merah > 100%). Baris "di luar rencana" dan "+ Tambah item". Centang membuka form kecil: nominal aktual, akun, tanggal |
+| **Transaksi**           | Tabel + filter (akun, kategori, tipe, tanggal, cari catatan), tambah/edit/hapus, transfer. Badge pada transaksi yang terhubung ke item plan                                                                                                                                                                                                                                                                                                                                       |
+| **Akun**                | Kartu per tipe (Rekening, E-wallet, Dompet), saldo, "sesuaikan saldo", arsipkan                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Laporan**             | Rencana vs aktual per kategori, tren 6 bulan, cash flow harian, tunai vs non-tunai, export CSV                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Impor**               | Wizard upload → preview → commit (akun rekening)                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Pengaturan**          | Kategori, template bulanan, zona waktu, ganti password                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+### Dashboard web (Beranda)
+
+1. **Pemilih bulan** + banner kalau `reconcile_ok = false`.
+2. **Empat kartu KPI:** Total saldo (pecahan Rekening / E-wallet / Dompet); **Pemasukan** aktual dari rencana + progress bar; **Pengeluaran** aktual dari rencana + progress bar + chip "di luar rencana"; **Sisa anggaran** dengan sub-teks "N belum dibayar".
+3. **Chart rencana vs aktual per kategori** (bar horizontal berpasangan; warna aktual kuning/merah mengikuti persen).
+4. **Pemasukan:** daftar per sumber (Gaji, Freelance, ...) rencana vs aktual dengan status diterima/belum, dan **tren 6 bulan** (bar pemasukan vs pengeluaran, garis rencana pengeluaran).
+5. **Perlu dicentang:** item jatuh tempo ≤ 7 hari atau terlambat, dengan tombol centang cepat.
+6. **Amplop hampir habis** (≥ 80%).
+7. **Saldo per akun** dan **transaksi terbaru** (5 baris).
+
+### Mobile (cepat, harian)
+
+Lima tab: **Beranda, Rencana, Catat (tengah), Transaksi, Akun.**
+
+| Layar                   | Isi                                                                                                                                                                                                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Beranda (dashboard)** | Scroll satu kolom, pull-to-refresh: total saldo + chip 3 tipe; kartu Pemasukan dan Pengeluaran (angka + progress bar, chip "di luar rencana"); "Perlu dicentang (N)" dengan tombol centang; 3 amplop teratas; 5 transaksi terbaru. Tanpa library chart. Offline: snapshot terakhir + "diperbarui HH.MM" |
+| **Rencana**             | Checklist bulan ini + progres amplop. Centang → sheet konfirmasi singkat (nominal, akun). Badge "N menunggu sinkron"                                                                                                                                                                                    |
+| **Catat**               | Keluar / Masuk / Transfer, keypad besar, chip kategori dan akun, simpan. Target < 5 detik. Kategori yang punya amplop otomatis masuk amplop itu                                                                                                                                                         |
+| **Transaksi**           | Daftar per tanggal, item antrean ditandai "belum terkirim"                                                                                                                                                                                                                                              |
+| **Akun**                | Saldo per akun (penanda "estimasi" saat offline)                                                                                                                                                                                                                                                        |
+
+Sengaja hanya di web: laporan lengkap, import CSV, kelola kategori dan template, edit/hapus transaksi lama, batal centang.
 
 ---
 
 ## Minggu 1 — Fondasi
 
-- Monorepo pnpm: `apps/api` (Laravel), `apps/web`, `apps/mobile`, `packages/shared`. Sejak awal tambahkan `.npmrc` dengan `node-linker=hoisted` supaya Metro (Expo) tidak bermasalah dengan symlink pnpm.
-- `docker-compose.yml`: `app` (php-fpm), `nginx`, `mysql`, plus `worker` (`queue:work`) dan `scheduler` (`schedule:work`) dari image yang sama. `mailpit` hanya di profil dev.
-- Nginx satu origin: `/` → build web statis, `/api` dan `/sanctum` → Laravel. Cookie Sanctum jadi tidak ribet.
-- Laravel 13 + Pest + Larastan + Pint. Migration default (`users`, `sessions`, `cache`, `jobs`, `notifications`, `personal_access_tokens`).
-- Auth:
-  - Web: Sanctum SPA (`/sanctum/csrf-cookie`, `POST /api/auth/login`, `/logout`, `/register`).
-  - Mobile: `POST /api/auth/token` (email, password, `device_name`) → personal access token; `DELETE /api/auth/token` revoke.
-  - Rate limit login.
-- Household:
-  - Register → otomatis buat household pertama + user jadi `owner` (satu transaksi DB) + seed kategori default (Makan, Transport, Listrik, Gaji, ...).
-  - `POST /households/{h}/invitations` (owner): token acak, disimpan **hash**-nya, kedaluwarsa 7 hari, terikat email. Email lewat queue.
-  - `POST /invitations/{token}/accept`: wajib login dengan email yang sama, token belum dipakai/expired/dicabut.
-  - Keluarkan anggota, ubah peran (owner terakhir tidak boleh turun peran).
-- `Money` + unit test lengkap (parse berbagai format, tolak desimal non-nol, format, persen).
-- Enum PHP: `HouseholdRole`, `WalletType`, `WalletVisibility`, `TransactionType`, `TransactionStatus`, `Frequency`.
+- Monorepo pnpm: `apps/api` (Laravel), `apps/web`, `apps/mobile`, `packages/shared`. `.npmrc` dengan `node-linker=hoisted`. **Smoke test:** app Expo kosong yang meng-import `packages/shared/money.ts` harus bisa di-bundle sekarang, bukan di minggu 8.
+- `docker-compose.yml`: `app` (php-fpm), `nginx`, `mysql`, `worker` (`queue:work`), `scheduler` (`schedule:work`), image PHP yang sama. Nginx satu origin: `/` → build web, `/api` dan `/sanctum` → Laravel.
+- Laravel 13 + Pest + Larastan + Pint. Migration default (`users`, `sessions`, `cache`, `jobs`, `notifications`, `personal_access_tokens`) + `users.timezone`.
+- Auth: Sanctum SPA (`/sanctum/csrf-cookie`, `POST /api/auth/login`, `/logout`, `/register` dengan `REGISTRATION_ENABLED`), mobile `POST /api/auth/token` (email, password, `device_name`) dan `DELETE /api/auth/token`. Rate limit login. Command `user:reset-password`.
+- Register → seed kategori default (Makan, Transport, Tagihan, Hiburan, Belanja, Kesehatan, Pendidikan, Lainnya; Gaji, Freelance, Lainnya).
+- Trait `BelongsToUser` (global scope + auto `user_id`) + test isolasi antar akun.
+- `Money` + unit test lengkap (parse berbagai format, tolak desimal non-nol, format, persen). Enum PHP: `AccountType`, `TransactionType`, `PlanMode`, `PlanItemType`, `Frequency`.
 
-**Done kalau:** register → household + kategori default terbentuk; undang email kedua → accept → jadi member; token yang sama tidak bisa dipakai dua kali; login token dari curl bisa memanggil `GET /api/households`.
+**Done kalau:** register → login (cookie dan token) → kategori default muncul; akun lain tidak bisa membaca kategori itu di semua endpoint; app Expo kosong ter-bundle dengan `packages/shared`.
 
-## Minggu 2 — Wallet, Transaksi, Saldo
+## Minggu 2 — Akun, Transaksi, Saldo
 
-- Wallet: CRUD, `opening_balance` saat dibuat, arsip (bukan hapus kalau sudah ada transaksi).
-- Actions (bukan logika di controller): `CreateTransaction`, `UpdateTransaction`, `DeleteTransaction`, `CreateTransfer`, `UpdateTransfer`, `DeleteTransfer`, `AdjustBalance`.
-
-  ```php
-  DB::transaction(function () use ($data) {
-      $wallet = Wallet::whereKey($data->walletId)->lockForUpdate()->firstOrFail();
-
-      // idempotensi (#11): setelah wallet terkunci, retry paralel jadi serial
-      if ($existing = Transaction::where('household_id', $data->householdId)
-              ->where('client_id', $data->clientId)->first()) {
-          return [$existing, false];            // controller balas 200, bukan 201
-      }
-
-      $tx = Transaction::create([...]);          // amount sudah ber-tanda
-      $wallet->increment('balance', $tx->amount); // di transaksi yang sama
-      return [$tx, true];
-  });
-
-  // transfer: kunci dua wallet berurutan id → tidak deadlock
-  $wallets = Wallet::whereKey([$fromId, $toId])->orderBy('id')->lockForUpdate()->get();
-  ```
-
+- Akun: CRUD (`bank` / `ewallet` / `cash`), `opening_balance` saat dibuat, arsip (bukan hapus kalau sudah ada transaksi).
+- Actions: `CreateTransaction`, `UpdateTransaction`, `DeleteTransaction` (menyetel `plan_item_id = NULL` bila ada), `CreateTransfer`, `UpdateTransfer`, `DeleteTransfer`, `AdjustBalance`. Pola kunci dan `client_id` seperti keputusan #3, #8, #15.
 - `AdjustBalance`: user memasukkan saldo riil → sistem membuat transaksi `adjustment` sebesar selisihnya. Tidak pernah mengubah `balance` langsung.
-- `client_id` wajib di body `POST` transaksi dan transfer (zod di `packages/shared`, Form Request di Laravel).
-- `GET /transactions`: filter wallet, kategori, tipe, rentang tanggal, pencarian catatan; **cursor pagination** (`occurred_on DESC, id DESC`).
-- Command `wallets:reconcile {--household=} {--fix}` + jadwal harian.
+- `GET /transactions`: filter akun, kategori, tipe, rentang tanggal, pencarian catatan; **cursor pagination** (`occurred_on DESC, id DESC`).
+- Command `accounts:reconcile {--fix}` + jadwal harian.
 - Test Pest:
-  - Create / update (ubah amount, ubah wallet) / delete / transfer / edit transfer / hapus transfer → `wallets:reconcile` selisih 0 di semua skenario.
-  - Rusak `balance` manual di DB → reconcile mendeteksi; `--fix` membetulkan.
+  - Create / update (ubah amount, ubah akun) / delete / transfer / edit transfer / hapus transfer → reconcile selisih 0.
+  - Rusak `balance` manual → reconcile mendeteksi; `--fix` membetulkan.
   - `client_id` sama 2x (berurutan dan paralel lewat `Process::pool`) → 1 transaksi, saldo berubah sekali, response kedua `200`.
-  - CHECK constraint menolak expense dengan amount positif (insert langsung lewat query builder).
-- `load-tests/concurrent-writes.js` (k6): 50 VU menulis ke wallet yang sama, sebagian dengan `client_id` duplikat. Setelah selesai, reconcile harus 0.
+  - CHECK constraint menolak expense dengan amount positif.
+- `load-tests/concurrent-writes.js` (k6): 50 VU menulis ke akun yang sama, sebagian dengan `client_id` duplikat. Setelah selesai, reconcile harus 0.
 
-**Done kalau:** semua test di atas hijau dan k6 + reconcile menunjukkan saldo tidak meleset walau ditulis paralel.
+**Done kalau:** semua test hijau dan k6 + reconcile menunjukkan saldo tidak meleset walau ditulis paralel.
 
-## Minggu 3 — Kategori, Budget, Policy
+## Minggu 3 — Plan: Checklist dan Amplop
 
-- Kategori: CRUD per household, `kind` income/expense, warna + ikon, arsip (transaksi lama tetap menunjuk kategori yang diarsip).
-- Policy: `HouseholdPolicy`, `WalletPolicy`, `TransactionPolicy`, `CategoryPolicy`, `BudgetPolicy` sesuai tabel di #5. `VisibleWallets` service dipakai semua query transaksi.
-- Budget: `PUT /budgets/{month}` (batch set limit per kategori), `POST /budgets/{month}/copy-from-previous`, `GET /budgets/{month}` → limit, terpakai, sisa, persen.
-- Job `CheckBudgetThresholds` (dispatch `afterCommit`) + `budget_alerts` unik + notifikasi `BudgetThresholdReached` (database + mail).
+- CRUD `plan_items` (checklist/envelope, income/expense, kategori, nominal rencana, akun default, `due_on`), skip/unskip, "Salin dari bulan lalu". Satu amplop per kategori per bulan (unique index).
+- Actions: `CheckPlanItem`, `UncheckPlanItem` (keputusan #8), `SkipPlanItem`, `CopyPlanFromPreviousMonth`.
+- `PlanComparisonQuery` (keputusan #7): rencana vs aktual per item dan per kategori, total, "di luar rencana", "belum dibayar", sisa anggaran. Class ini yang dipakai Rencana, Dashboard, dan Laporan.
+
+```sql
+-- rencana vs aktual per kategori (pengeluaran), satu bulan
+WITH plan AS (
+  SELECT category_id, SUM(planned_amount) AS planned
+    FROM plan_items
+   WHERE user_id = ? AND month = ? AND type = 'expense' AND skipped_at IS NULL
+   GROUP BY category_id
+), actual AS (
+  SELECT category_id, -SUM(amount) AS actual
+    FROM transactions
+   WHERE user_id = ? AND occurred_on >= ? AND occurred_on < ?
+     AND type = 'expense' AND deleted_at IS NULL
+   GROUP BY category_id
+)
+SELECT c.id, c.name, COALESCE(p.planned, 0) AS planned, COALESCE(a.actual, 0) AS actual
+  FROM categories c
+  LEFT JOIN plan   p ON p.category_id = c.id
+  LEFT JOIN actual a ON a.category_id = c.id
+ WHERE c.user_id = ? AND c.kind = 'expense' AND (p.planned IS NOT NULL OR a.actual IS NOT NULL);
+
+-- aktual amplop: transaksi kategori itu yang TIDAK terhubung ke item checklist
+SELECT pi.id, pi.planned_amount, COALESCE(SUM(ABS(t.amount)), 0) AS actual
+  FROM plan_items pi
+  LEFT JOIN transactions t
+         ON t.user_id = pi.user_id AND t.category_id = pi.category_id
+        AND t.type = pi.type AND t.plan_item_id IS NULL AND t.deleted_at IS NULL
+        AND t.occurred_on >= pi.month AND t.occurred_on < pi.month + INTERVAL 1 MONTH
+ WHERE pi.user_id = ? AND pi.month = ? AND pi.mode = 'envelope' AND pi.skipped_at IS NULL
+ GROUP BY pi.id, pi.planned_amount;
+```
+
+- Job `CheckEnvelopeThresholds` (`afterCommit`) + `budget_alerts` unik + notifikasi in-app.
 - Test:
-  - 79% → tidak ada alert; tembus 80% → 1 alert; transaksi berikutnya masih di 80–99% → tetap 1 alert; tembus 100% → alert kedua.
-  - Transaksi di wallet privat tidak menggerakkan budget.
-  - Member B tidak melihat wallet privat A di: daftar wallet, daftar transaksi, detail transaksi (403), pencarian.
-  - Member tidak bisa mengubah budget; owner bisa.
+  - Centang → 1 transaksi, saldo benar, `plan_item_id` terisi, aktual item = nominal aktual (termasuk selisih dari rencana).
+  - Centang 2x (berurutan, paralel, `client_id` sama dan beda) → tetap 1 transaksi; yang kedua dengan `client_id` beda → `409`.
+  - Batal centang → transaksi soft-deleted, saldo kembali, item bisa dicentang lagi; reconcile 0.
+  - Hapus transaksi terhubung dari endpoint transaksi → item kembali belum dicentang.
+  - Transaksi checklist **tidak** ikut dihitung di amplop kategori yang sama; transaksi manual ikut.
+  - "Di luar rencana" dan fixture angka dashboard (keputusan #11) menghasilkan 4.075.000 / 1.025.000.
+  - Alert: 79% tidak ada; tembus 80% → 1; masih 80–99% → tetap 1; tembus 100% → alert kedua.
+  - Item di-skip keluar dari rencana; item yang sudah dicentang tidak bisa dihapus.
+  - Dua amplop untuk kategori yang sama di bulan yang sama ditolak DB.
 
-**Done kalau:** test alert dan test privasi hijau.
+**Done kalau:** semua test di atas hijau dan reconcile 0 setelah rangkaian centang/batal/hapus acak (test properti sederhana).
 
 ## Minggu 4 — Web Inti + Mulai Dogfooding
 
-Tujuannya bukan web yang lengkap, tapi cukup untuk **dipakai keluarga mulai minggu ini**. Semakin awal dipakai, semakin banyak cerita nyata untuk README.
+Tujuannya bukan web yang lengkap, tapi cukup untuk **dipakai sendiri mulai minggu ini**. Semakin awal dipakai, semakin banyak cerita nyata untuk README.
 
-- Stack: React + Vite + TypeScript, React Router, TanStack Query, shadcn/ui, `react-hook-form` + `zod` (schema dari `packages/shared`), Recharts (minggu 7).
-- `api/client.ts`: axios dengan `withCredentials`, ambil CSRF cookie sekali, interceptor 401 → login, 403 → toast, 422 → pesan form. Form transaksi membuat `client_id` baru **per submit** (via `newClientId()` dari `packages/shared`), bukan per klik, jadi double click aman.
-- `MoneyInput`: tampil `1.250.000` saat diketik, nilai form tetap integer. Tidak ada `parseFloat` di seluruh codebase (pasang aturan lint).
-- Halaman: login/register, onboarding household, pemilih household, dashboard (total saldo per wallet, progres budget bulan ini), transaksi (tabel + filter + dialog tambah/edit, transfer), wallet (tambah, sesuaikan saldo, arsip), kategori, budget bulanan, anggota & undangan, lonceng notifikasi.
-- Setelah bayar/transfer: invalidasi query `wallets`, `transactions`, `budgets`.
-- Deploy minimal ke VPS (atau jalan di laptop yang bisa diakses keluarga di LAN) supaya bisa dipakai beneran. Backup MySQL harian (`mysqldump` via cron) sejak hari pertama data asli masuk.
+- Stack: React + Vite + TypeScript, React Router, TanStack Query, shadcn/ui, `react-hook-form` + `zod` (schema dari `packages/shared`).
+- `api/client.ts`: axios dengan `withCredentials`, CSRF cookie sekali, interceptor 401 → login, 403/409 → toast, 422 → pesan form. Setiap form transaksi/centang membuat `client_id` baru **per submit**, bukan per klik.
+- `MoneyInput`: tampil `1.250.000` saat diketik, nilai form tetap integer. Tidak ada `parseFloat` di seluruh codebase (aturan lint).
+- Halaman: login/register, **Akun**, **Transaksi** (+ transfer), **Rencana** (checklist + amplop + form centang), **Beranda sederhana** (total saldo + ringkasan), kategori, lonceng notifikasi.
+- Setelah centang/transaksi: invalidasi query `accounts`, `transactions`, `plan`, `dashboard`.
+- Deploy minimal ke VPS (atau laptop di LAN). Backup MySQL harian (`mysqldump` via cron) sejak data asli masuk.
 - Buat `docs/dogfooding-log.md`: catat setiap hal yang mengganggu saat dipakai. Ini bahan README dan prioritas minggu berikutnya.
 
-**Done kalau:** kamu dan pasangan mencatat pengeluaran asli selama seminggu lewat web, dan reconcile harian tetap 0.
+**Done kalau:** kamu mencatat plan dan transaksi asli selama seminggu lewat web, dan reconcile harian tetap 0.
 
-## Minggu 5 — Transaksi Berulang
+## Minggu 5 — Template Bulanan + Dashboard
 
-- `recurring_rules` CRUD: tipe income/expense/transfer, frekuensi weekly/monthly/yearly, `interval_count`, `day_of_month`, `start_on`, `end_on`, `requires_confirmation`.
-- `RecurrenceCalculator` murni (tanpa DB) + unit test: akhir bulan (31 → Feb → Mar 31), tahun kabisat, interval 2 bulan, weekly, `end_on`.
-- Command `recurring:post-due` (#6), dijadwalkan harian. Opsi `--date=` untuk test dan backfill.
-- Transaksi `pending`: daftar "perlu konfirmasi" di dashboard, aksi konfirmasi (boleh ubah amount) → `status = posted` + update saldo + cek budget, atau lewati.
+**Template:**
+
+- `plan_templates` CRUD (monthly/yearly, `day_of_month`, `auto_post`). Command `plan:generate {--month=}` (tanggal 1, 00:10 zona waktu user) dan tombol "Buat dari template". Command `plan:auto-post` harian.
 - Test:
-  - Command jalan 2x (berurutan dan paralel lewat `Process::pool`) → 1 occurrence, 1 transaksi (atau 2 baris untuk transfer), saldo benar.
-  - Scheduler mati 3 hari → command berikutnya membuat 3 jatuh tempo yang tertinggal.
-  - Rule `requires_confirmation` → pending tidak mengubah saldo, budget, maupun laporan sampai dikonfirmasi.
-  - Rule diubah/dinonaktifkan → occurrence lama tidak ikut berubah.
-- Pakai untuk data asli: gaji, cicilan, listrik (pending), tabungan bulanan (transfer).
+  - `plan:generate` 2x (berurutan dan paralel) → item tidak dobel (`UNIQUE (template_id, month)`).
+  - Template tanggal 31 → 31 Jan, 28 Feb (29 di kabisat), 31 Mar.
+  - Template yearly hanya muncul di bulannya.
+  - `plan:auto-post` 2x → 1 transaksi, saldo benar. Item yang sudah dicentang manual dilewati.
+  - Mengubah template tidak mengubah item bulan yang sudah ada.
+- Pakai untuk data asli: gaji, cicilan, internet, listrik.
 
-**Done kalau:** test hijau, dan di awal bulan transaksi berulang keluargamu muncul sendiri.
+**Dashboard (API + web):**
 
-## Minggu 6 — Import CSV Mutasi Bank
+- `DashboardQuery` + `GET /api/dashboard?month=` (keputusan #11), memakai `PlanComparisonQuery`.
+- Web Beranda lengkap sesuai bagian "Dashboard web": KPI, chart rencana vs aktual per kategori, pemasukan per sumber + tren 6 bulan, "perlu dicentang" dengan centang cepat, amplop hampir habis, saldo per akun, transaksi terbaru, banner reconcile.
+- Test: dashboard cocok dengan fixture hitungan manual; semua angka di Beranda sama dengan halaman Rencana untuk bulan yang sama; bulan tanpa plan tidak error (empty state + CTA "Buat dari template").
 
-- `POST /imports` (upload, pilih wallet + format) → job `ParseImport` → `import_rows` dengan status `new` / `duplicate` / `invalid`.
-- Parser: `GenericCsvParser` + parser untuk bank yang kamu pakai (#9). Deteksi encoding (`mb_detect_encoding` → konversi ke UTF-8), BOM, delimiter `,`/`;`.
-- `FingerprintCalculator` (#9) + `DescriptionNormalizer` + unit test.
-- `POST /imports/{id}/commit`: baris `new` yang dicentang → transaksi dalam batch (chunk 500 per transaksi DB), saldo diupdate sekali per batch dengan `lockForUpdate`. Insert pakai `insertOrIgnore` pada `UNIQUE (wallet_id, import_hash)` sebagai jaring kedua.
-- Web: wizard upload → preview (tabel, badge duplikat/kandidat duplikat manual, pilih kategori) → commit → ringkasan.
-- **Stretch goal:** `category_rules` sederhana (kata kunci di deskripsi → kategori, mis. "PLN" → Listrik), dibuat dari koreksi user ("ingat pilihan ini"). Kerjakan hanya kalau waktu sisa.
+**Done kalau:** di awal bulan plan terisi sendiri dari template, dan Beranda menampilkan angka rencana vs aktual yang sama persis dengan halaman Rencana.
+
+## Minggu 6 — Import CSV Mutasi Rekening
+
+- `POST /imports` (upload, pilih akun rekening + format) → job `ParseImport` → `import_rows` dengan status `new` / `duplicate` / `possible_duplicate` / `invalid`.
+- Parser: `GenericCsvParser` + parser untuk bank yang kamu pakai (#13). Deteksi encoding (`mb_detect_encoding` → UTF-8), BOM, delimiter `,`/`;`.
+- `FingerprintCalculator` + `DescriptionNormalizer` + unit test.
+- `POST /imports/{id}/commit`: baris `new` yang dicentang → transaksi dalam batch (chunk 500 per transaksi DB), saldo diupdate sekali per batch dengan `lockForUpdate`. `insertOrIgnore` pada `UNIQUE (account_id, import_hash)` sebagai jaring kedua.
+- Web: wizard upload → preview (tabel, badge duplikat/kandidat duplikat, pilih kategori) → commit → ringkasan.
+- **Stretch:** `category_rules` (kata kunci → kategori), dibuat dari koreksi user.
 - Fixture CSV anonim di `tests/Fixtures/statements/` (jangan commit mutasi asli).
-- Test: file sama 2x → impor kedua 0 baris baru; dua file tumpang tindih 10 hari → tidak ada dobel; dua baris identik sah di satu file → keduanya masuk; commit di-retry setelah gagal di tengah → tidak dobel; reconcile 0.
+- Test: file sama 2x → impor kedua 0 baris baru; dua file tumpang tindih → tidak ada dobel; dua baris identik sah di satu file → keduanya masuk; commit di-retry setelah gagal di tengah → tidak dobel; reconcile 0; akun non-rekening ditolak.
 
 **Done kalau:** mutasi rekening asli sebulan bisa diimpor, dan mengimpor ulang tidak menambah apa pun.
 
 ## Minggu 7 — Laporan, Export, Bukti Performa
 
-**API laporan** (semua lewat `VisibleWallets`, hanya `status = posted`, tanpa transfer/adjustment kecuali cash flow):
+**API laporan** (hanya `type IN ('income','expense')` kecuali cash flow):
 
-- `GET /reports/summary?month=` → pemasukan, pengeluaran, net, perbandingan bulan lalu.
-- `GET /reports/by-category?from&to&kind=expense` → total per kategori + persen.
-- `GET /reports/trend?months=6` → pemasukan vs pengeluaran per bulan.
-- `GET /reports/cash-flow?from&to&wallet=` → net harian + saldo berjalan (window function, dimulai dari saldo sebelum `from`).
-- `GET /reports/export.csv?from&to` → streaming (`streamDownload` + `lazyById`), UTF-8 dengan BOM supaya Excel benar, delimiter bisa dipilih (`;` untuk Excel locale Indonesia).
-
-Contoh query:
+- `GET /reports/summary?month=` → pemasukan, pengeluaran, net, rencana vs aktual, perbandingan bulan lalu.
+- `GET /reports/by-category?from&to&kind=` → total per kategori + persen + rencana.
+- `GET /reports/trend?months=6` → pemasukan vs pengeluaran (+ rencana) per bulan.
+- `GET /reports/cash-flow?from&to&account=` → net harian + saldo berjalan (window function, dimulai dari saldo sebelum `from`).
+- `GET /reports/cash-vs-noncash?month=` → pengeluaran per tipe akun.
+- `GET /reports/export.csv?from&to` → streaming (`streamDownload` + `lazyById`), UTF-8 dengan BOM, delimiter bisa dipilih (`;` untuk Excel locale Indonesia).
 
 ```sql
 -- tren 6 bulan
@@ -290,189 +468,205 @@ SELECT DATE_FORMAT(occurred_on, '%Y-%m') AS ym,
        SUM(CASE WHEN type = 'income'  THEN amount ELSE 0 END)  AS income,
       -SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END)  AS expense
   FROM transactions
- WHERE household_id = ?
-   AND occurred_on >= ? AND occurred_on < ?
-   AND wallet_id IN (/* VisibleWallets */)
-   AND type IN ('income', 'expense')
-   AND status = 'posted'
-   AND deleted_at IS NULL
- GROUP BY ym
- ORDER BY ym;
+ WHERE user_id = ? AND occurred_on >= ? AND occurred_on < ?
+   AND type IN ('income', 'expense') AND deleted_at IS NULL
+ GROUP BY ym ORDER BY ym;
 
 -- cash flow dengan saldo berjalan
-SELECT occurred_on,
-       SUM(amount) AS net,
-       ? + SUM(SUM(amount)) OVER (ORDER BY occurred_on) AS running_balance  -- ? = saldo sebelum `from`
+SELECT occurred_on, SUM(amount) AS net,
+       ? + SUM(SUM(amount)) OVER (ORDER BY occurred_on) AS running_balance   -- ? = saldo sebelum `from`
   FROM transactions
- WHERE household_id = ? AND occurred_on BETWEEN ? AND ?
-   AND wallet_id IN (...) AND status = 'posted' AND deleted_at IS NULL
+ WHERE user_id = ? AND occurred_on BETWEEN ? AND ? AND deleted_at IS NULL
  GROUP BY occurred_on;
 ```
 
 **Bukti performa:**
 
-- `php artisan demo:seed-large`: household demo 200 ribu transaksi (3 tahun, 6 wallet, distribusi realistis: banyak expense kecil, sedikit income besar) + ~1 juta transaksi di 500 household lain. Insert batch 5.000 baris per statement, bukan factory satu per satu.
-- `php artisan reports:benchmark`: jalankan tiap query laporan 50x, catat p50/p95, simpan ke `docs/benchmarks/reports.md` bersama `EXPLAIN ANALYZE`.
-- Tabel perbandingan: tanpa index (full scan) → `(household_id, occurred_on)` → covering index (opsional). Target hipotesis: semua laporan < 100 ms p95 di laptop. Sesuaikan dengan hasil ukur, tulis spesifikasi mesin dan versi MySQL.
+- `php artisan demo:seed-large`: akun demo 200 ribu transaksi (3 tahun, ~8 akun, distribusi realistis, plan 36 bulan) + ~1 juta transaksi di 500 akun lain. Insert batch 5.000 baris, bukan factory satu per satu.
+- `php artisan reports:benchmark`: tiap query laporan **dan** `GET /dashboard` dijalankan 50x, catat p50/p95 dan `EXPLAIN ANALYZE`, simpan ke `docs/benchmarks/reports.md`.
+- Tabel: tanpa index → `(user_id, occurred_on)` → covering index (opsional). Target hipotesis: laporan < 100 ms p95, dashboard < 150 ms p95 di laptop. Sesuaikan dengan hasil ukur; tulis spesifikasi mesin dan versi MySQL.
 
-**Web:** halaman laporan dengan tab Ringkasan, Kategori (donut), Tren (bar income vs expense), Cash flow (line saldo berjalan), tombol Export. Recharts default, tanpa polesan berlebihan.
+**Web:** halaman Laporan dengan tab Ringkasan, Kategori (rencana vs aktual), Tren, Cash flow, Tunai vs non-tunai, tombol Export.
 
-**Done kalau:** angka laporan cocok dengan fixture yang dihitung manual, member B tidak bisa melihat angka wallet privat A di laporan maupun export, dan `docs/benchmarks/reports.md` berisi angka + `EXPLAIN`.
+**Done kalau:** angka laporan cocok dengan fixture, akun lain tidak bisa melihat angka akun demo (laporan dan export), dan `docs/benchmarks/reports.md` berisi angka + `EXPLAIN`.
 
 ## Minggu 8 — Mobile (Expo)
 
-- Expo Router + TypeScript, TanStack Query, `expo-secure-store` (token), `expo-sqlite` (antrean + cache), `@react-native-community/netinfo`, `expo-crypto` (`randomUUID`).
-- Layar:
-  - Login + pilih household.
-  - **Quick-add**: keypad nominal besar, grid kategori (yang paling sering di atas), chip wallet, tipe expense default, tanggal default hari ini. Target: catat pengeluaran < 5 detik.
-  - Daftar transaksi (online: dari API; offline: cache terakhir + item antrean ditandai "belum terkirim").
-  - Status sinkronisasi: jumlah pending, daftar gagal + alasan, tombol coba lagi / hapus.
-- Cache offline untuk wallet dan kategori (supaya quick-add jalan tanpa sinyal).
-- Antrean offline (`client_id` dibuat saat item masuk antrean dan **tidak pernah diganti**):
+- Expo Router + TypeScript, TanStack Query, `expo-secure-store` (token), `expo-sqlite` (antrean + snapshot), `@react-native-community/netinfo`, `expo-crypto`.
+- Lima tab sesuai bagian "Tampilan dan Fitur per Platform". Progress bar dashboard dari `View`, tanpa library chart.
+- **Beranda:** satu panggilan `GET /dashboard`, disimpan sebagai snapshot SQLite; offline menampilkan snapshot + "diperbarui HH.MM".
+- **Rencana:** checklist + amplop; centang membuka sheet konfirmasi (nominal, akun) → masuk antrean.
+- **Catat:** keypad, kategori, akun, tipe; kategori beramplop otomatis masuk amplop.
+- Cache offline untuk akun, kategori, dan plan bulan berjalan.
+- Antrean offline (`client_id` dibuat saat item masuk antrean dan **tidak pernah diganti**; dua jenis item: `create_transaction` dan `check_plan_item`):
 
-| Status     | Arti                                                                  |
-| ---------- | --------------------------------------------------------------------- |
-| `pending`  | dibuat lokal, belum dikirim                                           |
-| `sending`  | sedang dikirim                                                        |
-| `synced`   | server balas 201, atau 200 (item sudah ada dari percobaan sebelumnya) |
-| `retrying` | network error / 5xx → backoff 2s, 10s, 1m, 5m, `client_id` sama       |
-| `failed`   | 422 / 403 → butuh tindakan user (mis. wallet sudah diarsip)           |
+| Status     | Arti                                                                                           |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| `pending`  | dibuat lokal, belum dikirim                                                                    |
+| `sending`  | sedang dikirim                                                                                 |
+| `synced`   | server balas 201, atau 200 (sudah ada dari percobaan sebelumnya)                               |
+| `retrying` | network error / 5xx → backoff 2s, 10s, 1m, 5m, `client_id` sama                                |
+| `failed`   | 422 / 403 / 409 (akun diarsip, item sudah dicentang dari perangkat lain) → butuh tindakan user |
 
-- Flush berurutan saat online, saat app kembali ke foreground, dan setelah item baru masuk.
-- Tampilan saldo offline = saldo terakhir dari server + efek item pending, dengan penanda "estimasi".
-- Test: unit test sync engine (mock fetch: sukses, timeout, response hilang lalu retry, 422). Manual: mode pesawat → catat 5 transaksi → online → 5 transaksi di server, reconcile 0. Matikan jaringan **setelah** request terkirim tapi sebelum response diterima → retry → tetap 1 transaksi.
-- Build APK internal (EAS) untuk dipakai sendiri dan pasangan.
+- Flush berurutan saat online, saat app kembali ke foreground, dan setelah item baru masuk. Saldo offline = saldo terakhir + efek item pending, dengan penanda "estimasi".
+- Test: unit test sync engine (mock fetch: sukses, timeout, response hilang lalu retry, 422, 409). Manual: mode pesawat → catat 5 transaksi + centang 2 item → online → semuanya di server, reconcile 0. Matikan jaringan **setelah** request terkirim tapi sebelum response diterima → retry → tetap 1 transaksi. Centang item yang sama dari web saat HP offline → HP online → item `failed` dengan pesan jelas, tanpa duplikat.
+- Build APK internal (EAS) untuk dipakai sendiri.
 
-**Done kalau:** skenario mode pesawat dan "response hilang" tidak menghasilkan duplikat, dan quick-add dipakai harian di HP.
+**Done kalau:** skenario mode pesawat dan "response hilang" tidak menghasilkan duplikat, Beranda mobile menampilkan angka yang sama dengan web, dan Catat dipakai harian di HP.
 
-## Minggu 9 — Hardening & Presentasi
+## Minggu 9 — Hardening dan Presentasi
 
-- Test: lengkapi yang belum, CI GitHub Actions (Pest + Larastan + Pint + build web + lint mobile), `php artisan test --parallel`. Playwright cukup **satu alur**: catat transaksi → budget naik → laporan berubah.
-- Keamanan: semua route di bawah household lewat Policy, validasi Form Request, rate limit login & import, ukuran upload maksimum, file import disimpan di disk privat dan dihapus setelah commit, header keamanan di Nginx, secret via env.
-- Operasional: backup MySQL harian + uji restore sekali, `wallets:reconcile` harian dengan notifikasi, `/up` health check, log terstruktur (JSON) dengan `household_id` dan `request_id`.
+- Test: lengkapi yang belum, CI GitHub Actions (Pest + Larastan + Pint + build web + lint mobile), `php artisan test --parallel`. Playwright cukup **satu alur**: centang item → saldo dan dashboard berubah → batal centang → kembali.
+- Keamanan: semua route ter-scope per akun (tes IDOR otomatis untuk setiap route), validasi Form Request, rate limit login dan import, ukuran upload maksimum, file import di disk privat dan dihapus setelah commit, header keamanan di Nginx, secret via env, `REGISTRATION_ENABLED=false` di produksi.
+- Operasional: backup MySQL harian + uji restore sekali, `accounts:reconcile` harian, `/up` health check, log terstruktur (JSON) dengan `user_id` dan `request_id`.
 - Docs (bagian yang dilihat recruiter pertama):
-  - README: problem (keuangan keluarga tercecer di catatan, mutasi bank, dan ingatan), **cerita nyata** (sejak kapan dipakai, berapa transaksi, bug nyata dari `dogfooding-log.md` dan cara memperbaikinya), screenshot web + GIF quick-add mobile, diagram alur, `docker compose up`, `make demo`.
-  - Bagian "Kenapa stack ini": tabel hasil review stack di atas (apa yang dipakai, apa yang sengaja tidak, kapan dibalik).
+  - README: problem (catatan keuangan tercecer dan budget yang tidak pernah dibandingkan dengan kenyataan), **cerita nyata** (sejak kapan dipakai, berapa transaksi, bug nyata dari `dogfooding-log.md`), screenshot web (Rencana, Beranda) + GIF Catat dan centang di mobile, diagram alur, `docker compose up`, `make demo`.
+  - Bagian "Kenapa stack ini": tabel pilihan stack (apa yang dipakai, apa yang sengaja tidak, kapan dibalik).
   - Tabel "Poin teknis" dengan link ke test yang membuktikan masing-masing.
-  - Tabel angka laporan + `EXPLAIN` dari minggu 7.
-  - `docs/adr/`: 001 uang integer, 002 saldo denormalisasi + reconcile, 003 transfer dua baris, 004 idempotensi transaksi berulang, 005 wallet privat & visibilitas laporan, 006 dedupe import, 007 laporan tanpa rollup/cache, 008 mobile offline create-only, 009 database queue tanpa Redis, 010 idempotensi tulis lewat `client_id`.
-  - "Known limitations & what I'd do next": multi-currency, edit offline + sync dua arah, parser bank tambahan, sinkronisasi bank otomatis, OCR struk, split bill antar anggota, tujuan tabungan, re-arm alert budget saat transaksi dihapus, deteksi payload beda pada retry `client_id`.
-- Screenshot pakai data seed, **bukan** data keluarga asli.
+  - Tabel angka laporan + dashboard + `EXPLAIN` dari minggu 7.
+  - `docs/adr/`: 001 uang integer, 002 saldo denormalisasi + reconcile, 003 transfer dua baris, 004 model plan (checklist vs amplop, definisi aktual), 005 template bulanan tanpa drift + auto-post idempoten, 006 dedupe import, 007 laporan dan dashboard tanpa rollup/cache, 008 mobile offline create-only, 009 database queue tanpa Redis, 010 idempotensi lewat `client_id`.
+  - "Known limitations & what I'd do next": transfer sebagai item plan (tabungan bulanan), menghubungkan transaksi import ke item plan, multi-currency, edit offline + sync dua arah, parser bank tambahan, sinkronisasi bank otomatis, OCR struk, pengingat tagihan (push notification), kunci bulan, tujuan tabungan.
+- Screenshot pakai data seed, **bukan** data pribadi asli.
 
 ---
 
 ## Schema Database (MySQL 8)
 
-Ditulis sebagai SQL supaya ringkas; implementasinya Laravel migration (`$table->...`), CHECK constraint lewat `DB::statement()`. Semua uang `BIGINT` rupiah. Tabel bawaan Laravel (`users`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `personal_access_tokens`, `password_reset_tokens`) tidak ditulis ulang.
+Ditulis sebagai SQL supaya ringkas; implementasinya Laravel migration, CHECK constraint dan generated column lewat `DB::statement()` / `virtualAs()`. Semua uang `BIGINT` rupiah. Tabel bawaan Laravel (`users` + kolom `timezone VARCHAR(40) NOT NULL DEFAULT 'Asia/Jakarta'`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `personal_access_tokens`, `password_reset_tokens`) tidak ditulis ulang.
 
 ```sql
--- ---------- Household & anggota ----------
+-- ---------- Akun & kategori ----------
 
-CREATE TABLE households (
-  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name        VARCHAR(100) NOT NULL,
-  currency    CHAR(3)      NOT NULL DEFAULT 'IDR',
-  timezone    VARCHAR(40)  NOT NULL DEFAULT 'Asia/Jakarta',
-  created_by  BIGINT UNSIGNED NOT NULL,
-  created_at  TIMESTAMP NULL,
-  updated_at  TIMESTAMP NULL,
-  FOREIGN KEY (created_by) REFERENCES users(id)
-);
-
-CREATE TABLE household_members (
-  household_id BIGINT UNSIGNED NOT NULL,
-  user_id      BIGINT UNSIGNED NOT NULL,
-  role         ENUM('owner','member') NOT NULL DEFAULT 'member',
-  joined_at    TIMESTAMP NOT NULL,
-  PRIMARY KEY (household_id, user_id),
-  KEY idx_members_user (user_id),
-  FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id)      REFERENCES users(id)      ON DELETE CASCADE
-);
-
-CREATE TABLE household_invitations (
-  id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  household_id BIGINT UNSIGNED NOT NULL,
-  email        VARCHAR(255) NOT NULL,
-  role         ENUM('owner','member') NOT NULL DEFAULT 'member',
-  token_hash   CHAR(64) NOT NULL,                 -- sha256(token), token asli hanya di email
-  invited_by   BIGINT UNSIGNED NOT NULL,
-  expires_at   TIMESTAMP NOT NULL,
-  accepted_at  TIMESTAMP NULL,
-  revoked_at   TIMESTAMP NULL,
-  created_at   TIMESTAMP NULL,
-  UNIQUE KEY uq_invitation_token (token_hash),
-  KEY idx_invitation_household_email (household_id, email),
-  FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE
-);
-
--- ---------- Wallet & kategori ----------
-
-CREATE TABLE wallets (
+CREATE TABLE accounts (
   id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  household_id    BIGINT UNSIGNED NOT NULL,
-  owner_user_id   BIGINT UNSIGNED NULL,           -- wajib diisi kalau private
-  visibility      ENUM('shared','private') NOT NULL DEFAULT 'shared',
-  type            ENUM('cash','bank','ewallet') NOT NULL,
-  name            VARCHAR(100) NOT NULL,
+  user_id         BIGINT UNSIGNED NOT NULL,
+  type            ENUM('bank','ewallet','cash') NOT NULL,    -- rekening | e-wallet | dompet
+  name            VARCHAR(100) NOT NULL,                     -- BCA, Bank Jago, GoPay, Dompet
   opening_balance BIGINT NOT NULL DEFAULT 0,
-  balance         BIGINT NOT NULL DEFAULT 0,      -- denormalisasi, dijaga reconcile
+  balance         BIGINT NOT NULL DEFAULT 0,                 -- denormalisasi, dijaga reconcile
+  sort_order      SMALLINT NOT NULL DEFAULT 0,
   archived_at     TIMESTAMP NULL,
   created_at      TIMESTAMP NULL,
   updated_at      TIMESTAMP NULL,
-  KEY idx_wallets_household (household_id, visibility),
-  FOREIGN KEY (household_id)  REFERENCES households(id) ON DELETE CASCADE,
-  FOREIGN KEY (owner_user_id) REFERENCES users(id),
-  CONSTRAINT chk_private_has_owner CHECK (visibility = 'shared' OR owner_user_id IS NOT NULL)
+  UNIQUE KEY uq_account_name (user_id, name),
+  KEY idx_accounts_user_type (user_id, type),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE categories (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id     BIGINT UNSIGNED NOT NULL,
+  kind        ENUM('income','expense') NOT NULL,
+  name        VARCHAR(60) NOT NULL,
+  color       VARCHAR(9)  NULL,
+  icon        VARCHAR(40) NULL,
+  archived_at TIMESTAMP NULL,
+  created_at  TIMESTAMP NULL,
+  updated_at  TIMESTAMP NULL,
+  UNIQUE KEY uq_category_name (user_id, kind, name),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ---------- Template & plan bulanan ----------
+
+CREATE TABLE plan_templates (
+  id             BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id        BIGINT UNSIGNED NOT NULL,
+  type           ENUM('income','expense') NOT NULL,
+  mode           ENUM('checklist','envelope') NOT NULL,
+  name           VARCHAR(100) NOT NULL,
+  category_id    BIGINT UNSIGNED NOT NULL,
+  planned_amount BIGINT NOT NULL,
+  account_id     BIGINT UNSIGNED NULL,                      -- akun default
+  frequency      ENUM('monthly','yearly') NOT NULL DEFAULT 'monthly',
+  day_of_month   TINYINT UNSIGNED NULL,                     -- 1..31, dibatasi hari terakhir bulan; NULL untuk envelope
+  month_of_year  TINYINT UNSIGNED NULL,                     -- 1..12, hanya yearly
+  auto_post      BOOLEAN NOT NULL DEFAULT FALSE,            -- hanya checklist
+  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMP NULL,
+  updated_at     TIMESTAMP NULL,
+  KEY idx_templates_user_active (user_id, is_active),
+  FOREIGN KEY (user_id)     REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  FOREIGN KEY (account_id)  REFERENCES accounts(id),
+  CONSTRAINT chk_tpl_amount CHECK (planned_amount > 0),
+  CONSTRAINT chk_tpl_auto   CHECK (auto_post = FALSE OR mode = 'checklist')
+);
+
+CREATE TABLE plan_items (
+  id             BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id        BIGINT UNSIGNED NOT NULL,
+  month          DATE NOT NULL,                             -- selalu tanggal 1 (zona waktu user)
+  type           ENUM('income','expense') NOT NULL,
+  mode           ENUM('checklist','envelope') NOT NULL,
+  name           VARCHAR(100) NOT NULL,
+  category_id    BIGINT UNSIGNED NOT NULL,
+  planned_amount BIGINT NOT NULL,
+  account_id     BIGINT UNSIGNED NULL,                      -- akun default saat dicentang
+  due_on         DATE NULL,                                 -- checklist saja
+  template_id    BIGINT UNSIGNED NULL,
+  source         ENUM('manual','template','copied') NOT NULL DEFAULT 'manual',
+  sort_order     SMALLINT NOT NULL DEFAULT 0,
+  skipped_at     TIMESTAMP NULL,
+  created_at     TIMESTAMP NULL,
+  updated_at     TIMESTAMP NULL,
+  -- satu amplop per kategori per bulan; NULL untuk checklist (boleh berulang)
+  envelope_category_id BIGINT UNSIGNED AS (IF(mode = 'envelope', category_id, NULL)) VIRTUAL,
+
+  KEY idx_plan_user_month (user_id, month),
+  UNIQUE KEY uq_plan_template_month (template_id, month),                 -- idempotensi plan:generate
+  UNIQUE KEY uq_plan_envelope (user_id, month, envelope_category_id),
+
+  FOREIGN KEY (user_id)     REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  FOREIGN KEY (account_id)  REFERENCES accounts(id),
+  FOREIGN KEY (template_id) REFERENCES plan_templates(id) ON DELETE SET NULL,
+  CONSTRAINT chk_plan_amount CHECK (planned_amount > 0),
+  CONSTRAINT chk_plan_month  CHECK (DAY(month) = 1),
+  CONSTRAINT chk_plan_due    CHECK (mode = 'checklist' OR due_on IS NULL)
+);
+
+CREATE TABLE budget_alerts (
   id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  household_id BIGINT UNSIGNED NOT NULL,
-  kind         ENUM('income','expense') NOT NULL,
-  name         VARCHAR(60) NOT NULL,
-  color        VARCHAR(9)  NULL,
-  icon         VARCHAR(40) NULL,
-  archived_at  TIMESTAMP NULL,
-  created_at   TIMESTAMP NULL,
-  updated_at   TIMESTAMP NULL,
-  UNIQUE KEY uq_category_name (household_id, kind, name),
-  FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE
+  plan_item_id BIGINT UNSIGNED NOT NULL,                    -- hanya amplop
+  threshold    TINYINT UNSIGNED NOT NULL,                   -- 80 | 100
+  spent_amount BIGINT NOT NULL,                             -- snapshot saat alert
+  triggered_at TIMESTAMP NOT NULL,
+  UNIQUE KEY uq_budget_alert (plan_item_id, threshold),     -- tidak ada spam
+  FOREIGN KEY (plan_item_id) REFERENCES plan_items(id) ON DELETE CASCADE
 );
 
 -- ---------- Transaksi ----------
 
 CREATE TABLE transactions (
   id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  household_id      BIGINT UNSIGNED NOT NULL,     -- denormalisasi: filter laporan tanpa join
-  wallet_id         BIGINT UNSIGNED NOT NULL,
-  category_id       BIGINT UNSIGNED NULL,         -- NULL untuk transfer & adjustment
+  user_id           BIGINT UNSIGNED NOT NULL,
+  account_id        BIGINT UNSIGNED NOT NULL,
+  category_id       BIGINT UNSIGNED NULL,           -- NULL untuk transfer & adjustment
   type              ENUM('income','expense','transfer','adjustment') NOT NULL,
-  status            ENUM('posted','pending') NOT NULL DEFAULT 'posted',
-  amount            BIGINT NOT NULL,              -- ber-tanda, sudut pandang wallet
-  occurred_on       DATE NOT NULL,                -- tanggal lokal household
+  amount            BIGINT NOT NULL,                -- ber-tanda, sudut pandang akun
+  occurred_on       DATE NOT NULL,                  -- tanggal lokal user
   note              VARCHAR(255) NULL,
-  transfer_group_id CHAR(36) NULL,                -- pasangan transfer
-  client_id         CHAR(36) NULL,                -- idempotensi tulis dari web/mobile (#11)
-  recurring_rule_id BIGINT UNSIGNED NULL,
-  import_hash       CHAR(64) NULL,                -- fingerprint import CSV
-  created_by        BIGINT UNSIGNED NOT NULL,
-  updated_by        BIGINT UNSIGNED NULL,
+  transfer_group_id CHAR(36) NULL,                  -- pasangan transfer
+  client_id         CHAR(36) NULL,                  -- idempotensi tulis dari web/mobile (#15)
+  plan_item_id      BIGINT UNSIGNED NULL,           -- terhubung ke item checklist (#8)
+  import_hash       CHAR(64) NULL,                  -- fingerprint import CSV
   created_at        TIMESTAMP NULL,
   updated_at        TIMESTAMP NULL,
   deleted_at        TIMESTAMP NULL,
 
-  KEY idx_tx_household_date (household_id, occurred_on),   -- laporan & daftar
-  KEY idx_tx_wallet_date    (wallet_id, occurred_on),      -- daftar per wallet, reconcile
-  KEY idx_tx_category_date  (category_id, occurred_on),    -- hitung budget
+  KEY idx_tx_user_date     (user_id, occurred_on),               -- laporan, daftar, dashboard
+  KEY idx_tx_user_cat_date (user_id, category_id, occurred_on),  -- aktual amplop & per kategori
+  KEY idx_tx_account_date  (account_id, occurred_on),            -- daftar per akun, reconcile
   KEY idx_tx_transfer_group (transfer_group_id),
-  UNIQUE KEY uq_tx_client   (household_id, client_id),     -- NULL boleh berulang di MySQL
-  UNIQUE KEY uq_tx_import   (wallet_id, import_hash),      -- NULL boleh berulang di MySQL
+  UNIQUE KEY uq_tx_client    (user_id, client_id),               -- NULL boleh berulang di MySQL
+  UNIQUE KEY uq_tx_plan_item (plan_item_id),                     -- 1 item checklist = maks 1 transaksi
+  UNIQUE KEY uq_tx_import    (account_id, import_hash),
 
-  FOREIGN KEY (household_id) REFERENCES households(id),
-  FOREIGN KEY (wallet_id)    REFERENCES wallets(id),
+  FOREIGN KEY (user_id)      REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id)   REFERENCES accounts(id),
   FOREIGN KEY (category_id)  REFERENCES categories(id),
-  FOREIGN KEY (created_by)   REFERENCES users(id),
+  FOREIGN KEY (plan_item_id) REFERENCES plan_items(id),
 
   CONSTRAINT chk_tx_sign CHECK (
        (type = 'income'     AND amount > 0)
@@ -485,84 +679,16 @@ CREATE TABLE transactions (
   )
 );
 
--- ---------- Budget ----------
-
-CREATE TABLE budgets (
-  id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  household_id BIGINT UNSIGNED NOT NULL,
-  category_id  BIGINT UNSIGNED NOT NULL,
-  month        DATE NOT NULL,                     -- selalu tanggal 1
-  limit_amount BIGINT NOT NULL,
-  created_at   TIMESTAMP NULL,
-  updated_at   TIMESTAMP NULL,
-  UNIQUE KEY uq_budget (household_id, category_id, month),
-  FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
-  FOREIGN KEY (category_id)  REFERENCES categories(id),
-  CONSTRAINT chk_budget_positive CHECK (limit_amount > 0),
-  CONSTRAINT chk_budget_month CHECK (DAY(month) = 1)
-);
-
-CREATE TABLE budget_alerts (
-  id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  budget_id    BIGINT UNSIGNED NOT NULL,
-  threshold    TINYINT UNSIGNED NOT NULL,         -- 80 | 100
-  spent_amount BIGINT NOT NULL,                   -- snapshot saat alert
-  triggered_at TIMESTAMP NOT NULL,
-  UNIQUE KEY uq_budget_alert (budget_id, threshold),   -- tidak ada spam
-  FOREIGN KEY (budget_id) REFERENCES budgets(id) ON DELETE CASCADE
-);
-
--- ---------- Transaksi berulang ----------
-
-CREATE TABLE recurring_rules (
-  id                    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  household_id          BIGINT UNSIGNED NOT NULL,
-  wallet_id             BIGINT UNSIGNED NOT NULL,
-  to_wallet_id          BIGINT UNSIGNED NULL,      -- untuk transfer
-  category_id           BIGINT UNSIGNED NULL,
-  type                  ENUM('income','expense','transfer') NOT NULL,
-  amount                BIGINT NOT NULL,           -- magnitudo (positif); tanda diberikan saat posting
-  note                  VARCHAR(255) NULL,
-  frequency             ENUM('weekly','monthly','yearly') NOT NULL,
-  interval_count        TINYINT UNSIGNED NOT NULL DEFAULT 1,
-  day_of_month          TINYINT UNSIGNED NULL,     -- anchor 1..31 (monthly/yearly)
-  day_of_week           TINYINT UNSIGNED NULL,     -- 1..7 (weekly)
-  start_on              DATE NOT NULL,
-  end_on                DATE NULL,
-  next_due_on           DATE NOT NULL,
-  requires_confirmation BOOLEAN NOT NULL DEFAULT FALSE,   -- listrik, air → pending
-  is_active             BOOLEAN NOT NULL DEFAULT TRUE,
-  created_by            BIGINT UNSIGNED NOT NULL,
-  created_at            TIMESTAMP NULL,
-  updated_at            TIMESTAMP NULL,
-  KEY idx_rules_due (is_active, next_due_on),
-  FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
-  FOREIGN KEY (wallet_id)    REFERENCES wallets(id),
-  CONSTRAINT chk_rule_amount CHECK (amount > 0),
-  CONSTRAINT chk_rule_transfer CHECK (type <> 'transfer' OR to_wallet_id IS NOT NULL)
-);
-
-CREATE TABLE recurring_occurrences (
-  id             BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  rule_id        BIGINT UNSIGNED NOT NULL,
-  due_on         DATE NOT NULL,
-  transaction_id BIGINT UNSIGNED NULL,            -- baris utama (keluar, untuk transfer)
-  created_at     TIMESTAMP NOT NULL,
-  UNIQUE KEY uq_occurrence (rule_id, due_on),     -- kunci idempotensi scheduler
-  FOREIGN KEY (rule_id) REFERENCES recurring_rules(id) ON DELETE CASCADE
-);
-
 -- ---------- Import CSV ----------
 
 CREATE TABLE imports (
   id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  household_id      BIGINT UNSIGNED NOT NULL,
-  wallet_id         BIGINT UNSIGNED NOT NULL,
   user_id           BIGINT UNSIGNED NOT NULL,
-  bank_format       VARCHAR(30) NOT NULL,         -- generic | <bank yang dipakai>
-  column_mapping    JSON NULL,                    -- untuk generic
+  account_id        BIGINT UNSIGNED NOT NULL,       -- harus bertipe bank (divalidasi di aplikasi)
+  bank_format       VARCHAR(30) NOT NULL,           -- generic | <bank yang dipakai>
+  column_mapping    JSON NULL,                      -- untuk generic
   original_filename VARCHAR(255) NOT NULL,
-  file_path         VARCHAR(255) NULL,            -- disk privat, dihapus setelah commit
+  file_path         VARCHAR(255) NULL,              -- disk privat, dihapus setelah commit
   status            ENUM('pending','parsing','ready','committing','committed','failed') NOT NULL DEFAULT 'pending',
   total_rows        INT UNSIGNED NOT NULL DEFAULT 0,
   new_rows          INT UNSIGNED NOT NULL DEFAULT 0,
@@ -571,8 +697,9 @@ CREATE TABLE imports (
   error             TEXT NULL,
   created_at        TIMESTAMP NULL,
   updated_at        TIMESTAMP NULL,
-  KEY idx_imports_household (household_id, created_at),
-  FOREIGN KEY (wallet_id) REFERENCES wallets(id)
+  KEY idx_imports_user (user_id, created_at),
+  FOREIGN KEY (user_id)    REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
 CREATE TABLE import_rows (
@@ -580,7 +707,7 @@ CREATE TABLE import_rows (
   import_id      BIGINT UNSIGNED NOT NULL,
   row_number     INT UNSIGNED NOT NULL,
   occurred_on    DATE NULL,
-  amount         BIGINT NULL,                     -- sudah ber-tanda
+  amount         BIGINT NULL,                       -- sudah ber-tanda
   description    VARCHAR(255) NULL,
   fingerprint    CHAR(64) NULL,
   status         ENUM('new','duplicate','possible_duplicate','invalid','committed','skipped') NOT NULL,
@@ -594,12 +721,12 @@ CREATE TABLE import_rows (
 
 -- STRETCH (minggu 6, hanya kalau waktu sisa)
 CREATE TABLE category_rules (
-  id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  household_id BIGINT UNSIGNED NOT NULL,
-  keyword      VARCHAR(100) NOT NULL,             -- dicocokkan ke deskripsi ternormalisasi
-  category_id  BIGINT UNSIGNED NOT NULL,
-  created_at   TIMESTAMP NULL,
-  UNIQUE KEY uq_category_rule (household_id, keyword),
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id     BIGINT UNSIGNED NOT NULL,
+  keyword     VARCHAR(100) NOT NULL,                -- dicocokkan ke deskripsi ternormalisasi
+  category_id BIGINT UNSIGNED NOT NULL,
+  created_at  TIMESTAMP NULL,
+  UNIQUE KEY uq_category_rule (user_id, keyword),
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 ```
@@ -607,50 +734,60 @@ CREATE TABLE category_rules (
 ### Query reconcile
 
 ```sql
-SELECT w.id, w.balance,
-       w.opening_balance + COALESCE(SUM(t.amount), 0) AS expected
-  FROM wallets w
-  LEFT JOIN transactions t
-         ON t.wallet_id = w.id AND t.status = 'posted' AND t.deleted_at IS NULL
- WHERE w.household_id = ?
- GROUP BY w.id, w.balance, w.opening_balance
-HAVING w.balance <> expected;
+SELECT a.id, a.balance,
+       a.opening_balance + COALESCE(SUM(t.amount), 0) AS expected
+  FROM accounts a
+  LEFT JOIN transactions t ON t.account_id = a.id AND t.deleted_at IS NULL
+ WHERE a.user_id = ?
+ GROUP BY a.id, a.balance, a.opening_balance
+HAVING a.balance <> expected;
 ```
 
 ### Catatan schema
 
-- `household_id` di `transactions` sengaja diduplikasi dari wallet supaya index laporan `(household_id, occurred_on)` bisa dipakai tanpa join. Wallet tidak pernah pindah household, jadi aman.
-- Soft delete transaksi + `UNIQUE (wallet_id, import_hash)`: baris yang sengaja dihapus user tidak akan masuk lagi saat import ulang. Itu perilaku yang diinginkan, tulis di ADR-006.
-- Tidak ada tabel rollup laporan, tidak ada tabel idempotency, dan tidak ada kolom `spent` di `budgets`. Semuanya dihitung dari `transactions` atau dijaga constraint.
+- Tidak ada kolom `status` di `transactions`: "belum dibayar" diwakili item plan yang belum punya transaksi. Status item (`done`/`planned`/`skipped`) **diturunkan**: done = ada transaksi dengan `plan_item_id` itu (belum soft-deleted), skipped = `skipped_at` terisi. Tidak ada kolom status yang harus disinkronkan.
+- `UNIQUE (plan_item_id)` menghitung baris soft-deleted, jadi batal centang dan hapus transaksi terhubung **wajib** menyetel `plan_item_id = NULL` (keputusan #8).
+- Generated column `envelope_category_id` + unique index menjaga "satu amplop per kategori per bulan" langsung di DB, tanpa trigger.
+- Tidak ada tabel rollup dan tidak ada kolom `spent` di plan. Semuanya dihitung dari `transactions` atau dijaga constraint.
 - Ukuran tabel: 200 ribu transaksi × ~150 byte ≈ 30 MB + index. Kecil untuk MySQL; inti buktinya ada di bentuk query dan index, bukan ukuran.
+
+### Index yang melayani query utama
+
+| Query                                                    | Index                             |
+| -------------------------------------------------------- | --------------------------------- |
+| Daftar transaksi, laporan per rentang tanggal, cash flow | `idx_tx_user_date`                |
+| Aktual per kategori, aktual amplop                       | `idx_tx_user_cat_date`            |
+| Reconcile, daftar per akun                               | `idx_tx_account_date`             |
+| Rencana bulan ini, item jatuh tempo                      | `idx_plan_user_month`             |
+| Cek item sudah dicentang / dedupe                        | `uq_tx_plan_item`, `uq_tx_client` |
 
 ---
 
 ## Struktur Folder
 
 ```
-household-finance/
+personal-finance/
 ├─ apps/
 │  ├─ api/                                   # Laravel 13
 │  │  ├─ app/
 │  │  │  ├─ Actions/
-│  │  │  │  ├─ Households/                    # CreateHousehold, InviteMember, AcceptInvitation, RemoveMember
-│  │  │  │  ├─ Wallets/                       # CreateWallet, AdjustBalance, ArchiveWallet, ReconcileWallets
+│  │  │  │  ├─ Accounts/                      # CreateAccount, AdjustBalance, ArchiveAccount, ReconcileAccounts
 │  │  │  │  ├─ Transactions/                  # CreateTransaction, UpdateTransaction, DeleteTransaction
 │  │  │  │  ├─ Transfers/                     # CreateTransfer, UpdateTransfer, DeleteTransfer
-│  │  │  │  ├─ Recurring/                     # PostDueOccurrences, ConfirmPendingTransaction
+│  │  │  │  ├─ Plan/                          # CheckPlanItem, UncheckPlanItem, SkipPlanItem,
+│  │  │  │  │                                 # CopyPlanFromPreviousMonth, GeneratePlanFromTemplates, AutoPostDueItems
 │  │  │  │  └─ Imports/                       # ParseImport, CommitImport
 │  │  │  ├─ Console/Commands/
-│  │  │  │  ├─ ReconcileWalletsCommand.php    # wallets:reconcile {--fix}
-│  │  │  │  ├─ PostRecurringCommand.php       # recurring:post-due {--date=}
+│  │  │  │  ├─ ReconcileAccountsCommand.php   # accounts:reconcile {--fix}
+│  │  │  │  ├─ GeneratePlanCommand.php        # plan:generate {--month=}
+│  │  │  │  ├─ AutoPostPlanCommand.php        # plan:auto-post
+│  │  │  │  ├─ ResetUserPassword.php          # user:reset-password
 │  │  │  │  ├─ SeedLargeDemo.php              # demo:seed-large
-│  │  │  │  └─ BenchmarkReports.php           # reports:benchmark
-│  │  │  ├─ Enums/                            # HouseholdRole, WalletType, WalletVisibility,
-│  │  │  │                                    # TransactionType, TransactionStatus, Frequency
+│  │  │  │  └─ BenchmarkReports.php           # reports:benchmark (laporan + dashboard)
+│  │  │  ├─ Enums/                            # AccountType, TransactionType, PlanMode, PlanItemType, Frequency
 │  │  │  ├─ Http/
-│  │  │  │  ├─ Controllers/Api/               # Auth, Household, Invitation, Wallet, Category,
-│  │  │  │  │                                 # Transaction, Transfer, Budget, RecurringRule,
-│  │  │  │  │                                 # Import, Report, Notification
+│  │  │  │  ├─ Controllers/Api/               # Auth, Account, Category, Transaction, Transfer, PlanItem,
+│  │  │  │  │                                 # PlanTemplate, Dashboard, Import, Report, Notification
 │  │  │  │  ├─ Requests/
 │  │  │  │  └─ Resources/
 │  │  │  ├─ Imports/
@@ -658,98 +795,99 @@ household-finance/
 │  │  │  │  ├─ Parsers/ (GenericCsvParser, <Bank>CsvParser)   # satu bank yang kamu pakai
 │  │  │  │  ├─ FingerprintCalculator.php
 │  │  │  │  ├─ DescriptionNormalizer.php
-│  │  │  │  └─ CategorySuggester.php          # stretch: category_rules
-│  │  │  ├─ Jobs/ (CheckBudgetThresholds, ProcessImport)
+│  │  │  │  └─ CategorySuggester.php          # stretch
+│  │  │  ├─ Jobs/ (CheckEnvelopeThresholds, ProcessImport)
 │  │  │  ├─ Models/
-│  │  │  ├─ Notifications/ (BudgetThresholdReached, InvitationSent, ReconcileMismatch)
-│  │  │  ├─ Policies/ (Household, Wallet, Transaction, Category, Budget, RecurringRule, Import)
-│  │  │  ├─ Reports/
-│  │  │  │  ├─ VisibleWallets.php             # satu sumber kebenaran visibilitas
-│  │  │  │  ├─ MonthlySummaryReport.php
-│  │  │  │  ├─ CategoryBreakdownReport.php
-│  │  │  │  ├─ TrendReport.php
-│  │  │  │  ├─ CashFlowReport.php
-│  │  │  │  └─ TransactionCsvExporter.php     # streaming
-│  │  │  ├─ Recurring/RecurrenceCalculator.php    # murni, tanpa DB
+│  │  │  │  └─ Concerns/BelongsToUser.php     # global scope + auto user_id
+│  │  │  ├─ Notifications/ (EnvelopeThresholdReached, ReconcileMismatch)
+│  │  │  ├─ Queries/
+│  │  │  │  ├─ PlanComparisonQuery.php        # satu sumber kebenaran rencana vs aktual
+│  │  │  │  ├─ DashboardQuery.php             # memakai PlanComparisonQuery
+│  │  │  │  ├─ TrendQuery.php
+│  │  │  │  └─ CashFlowQuery.php
+│  │  │  ├─ Reports/ (MonthlySummaryReport, CategoryBreakdownReport, CashVsNonCashReport, TransactionCsvExporter)
+│  │  │  ├─ Plan/MonthlyDueDate.php           # day_of_month → tanggal, dibatasi hari terakhir bulan
 │  │  │  └─ Support/Money.php
 │  │  ├─ database/
 │  │  │  ├─ migrations/
 │  │  │  ├─ factories/
 │  │  │  └─ seeders/ (DefaultCategorySeeder, DemoSeeder)
 │  │  ├─ routes/
-│  │  │  ├─ api.php                           # /api/households/{household}/... (scopeBindings)
-│  │  │  └─ console.php                       # jadwal: recurring, reconcile
+│  │  │  ├─ api.php
+│  │  │  └─ console.php                       # jadwal: plan:generate, plan:auto-post, accounts:reconcile
 │  │  └─ tests/
-│  │     ├─ Unit/ (MoneyTest, RecurrenceCalculatorTest, FingerprintTest, DescriptionNormalizerTest)
+│  │     ├─ Unit/ (MoneyTest, MonthlyDueDateTest, FingerprintTest, DescriptionNormalizerTest)
 │  │     ├─ Feature/
 │  │     │  ├─ Auth/ (SpaAuthTest, MobileTokenTest)
-│  │     │  ├─ Households/ (InvitationTest, RolesTest)
-│  │     │  ├─ Wallets/ (BalanceConsistencyTest, TransferTest, ReconcileTest)
+│  │     │  ├─ Isolation/ (DataIsolationTest)   # IDOR di setiap route
+│  │     │  ├─ Accounts/ (BalanceConsistencyTest, TransferTest, ReconcileTest)
 │  │     │  ├─ Transactions/ (ClientIdIdempotencyTest, SignConstraintTest)
-│  │     │  ├─ Budgets/ (BudgetAlertTest)
-│  │     │  ├─ Recurring/ (RecurringIdempotencyTest, CatchUpTest, PendingConfirmationTest)
+│  │     │  ├─ Plan/ (CheckUncheckTest, EnvelopeActualTest, UnplannedTest, EnvelopeAlertTest,
+│  │     │  │         TemplateGenerateTest, AutoPostTest)
+│  │     │  ├─ Dashboard/ (DashboardFixtureTest, DashboardMatchesPlanTest)
 │  │     │  ├─ Imports/ (ImportDedupeTest, OverlappingStatementTest)
-│  │     │  ├─ Reports/ (ReportAccuracyTest, ExportCsvTest)
-│  │     │  └─ Privacy/ (PrivateWalletVisibilityTest)   # list, detail, report, export, budget
+│  │     │  └─ Reports/ (ReportAccuracyTest, ExportCsvTest)
 │  │     └─ Fixtures/statements/              # CSV anonim
 │  ├─ web/                                    # React + Vite + TS
 │  │  ├─ src/
 │  │  │  ├─ main.tsx, router.tsx
-│  │  │  ├─ api/ (client.ts, households.ts, wallets.ts, transactions.ts, budgets.ts,
-│  │  │  │       recurring.ts, imports.ts, reports.ts)
-│  │  │  ├─ hooks/                            # TanStack Query: useWallets, useTransactions, ...
+│  │  │  ├─ api/ (client.ts, accounts.ts, transactions.ts, plan.ts, dashboard.ts, imports.ts, reports.ts)
+│  │  │  ├─ hooks/                            # TanStack Query: useAccounts, usePlan, useDashboard, ...
 │  │  │  ├─ pages/
-│  │  │  │  ├─ auth/ (LoginPage, RegisterPage, AcceptInvitationPage)
-│  │  │  │  ├─ DashboardPage.tsx
+│  │  │  │  ├─ auth/ (LoginPage, RegisterPage)
+│  │  │  │  ├─ DashboardPage.tsx              # Beranda
+│  │  │  │  ├─ PlanPage.tsx                   # Rencana
 │  │  │  │  ├─ TransactionsPage.tsx
-│  │  │  │  ├─ WalletsPage.tsx
-│  │  │  │  ├─ CategoriesPage.tsx
-│  │  │  │  ├─ BudgetsPage.tsx
-│  │  │  │  ├─ RecurringPage.tsx
-│  │  │  │  ├─ imports/ (ImportUploadPage, ImportPreviewPage)
+│  │  │  │  ├─ AccountsPage.tsx
 │  │  │  │  ├─ ReportsPage.tsx
-│  │  │  │  └─ settings/ (MembersPage, HouseholdPage)
+│  │  │  │  ├─ imports/ (ImportUploadPage, ImportPreviewPage)
+│  │  │  │  └─ settings/ (CategoriesPage, TemplatesPage, ProfilePage)
 │  │  │  ├─ components/
 │  │  │  │  ├─ ui/                            # hasil shadcn add
 │  │  │  │  ├─ money/ (MoneyInput, MoneyText)
+│  │  │  │  ├─ plan/ (PlanChecklistRow, EnvelopeRow, CheckItemDialog, PlanSummaryCards)
+│  │  │  │  ├─ dashboard/ (KpiCards, CategoryPlanVsActualChart, IncomeSourcesList,
+│  │  │  │  │              TrendChart, DueItemsPanel, EnvelopeWarningPanel, RecentTransactions)
 │  │  │  │  ├─ transactions/ (TransactionForm, TransferForm, TransactionTable)
-│  │  │  │  ├─ budgets/ (BudgetProgress)
 │  │  │  │  ├─ charts/ (TrendBarChart, CategoryDonut, CashFlowLine)
-│  │  │  │  └─ layout/ (AppShell, HouseholdSwitcher, NotificationBell)
+│  │  │  │  └─ layout/ (AppShell, MonthPicker, NotificationBell)
 │  │  │  └─ lib/dates.ts
-│  │  └─ e2e/                                 # Playwright: satu alur (catat → budget → laporan)
+│  │  └─ e2e/                                 # Playwright: satu alur (centang → dashboard → batal)
 │  └─ mobile/                                 # Expo
 │     ├─ metro.config.js                      # watchFolders → packages/shared
 │     ├─ app/                                 # Expo Router
 │     │  ├─ _layout.tsx
 │     │  ├─ (auth)/login.tsx
 │     │  └─ (app)/
-│     │     ├─ index.tsx                      # quick-add
+│     │     ├─ index.tsx                      # Beranda (dashboard)
+│     │     ├─ plan.tsx                       # Rencana
+│     │     ├─ add.tsx                        # Catat
 │     │     ├─ transactions.tsx
-│     │     ├─ sync.tsx                       # status antrean
-│     │     └─ settings.tsx                   # ganti household, logout
+│     │     ├─ accounts.tsx
+│     │     └─ sync.tsx                       # status antrean
 │     └─ src/
 │        ├─ api/client.ts                     # bearer token dari secure-store
 │        ├─ offline/
-│        │  ├─ db.ts                          # expo-sqlite: tabel queue + cache
+│        │  ├─ db.ts                          # expo-sqlite: antrean + snapshot
 │        │  ├─ queue.ts                       # enqueue (client_id dibuat di sini), status transitions
 │        │  ├─ sync-engine.ts                 # flush berurutan, backoff, klasifikasi error
 │        │  ├─ sync-engine.test.ts
-│        │  └─ reference-cache.ts             # wallet & kategori untuk offline
-│        ├─ components/ (AmountKeypad, CategoryGrid, WalletChips, SyncBadge)
-│        └─ hooks/ (useNetworkStatus, useSyncQueue)
+│        │  └─ snapshot.ts                    # dashboard, akun, kategori, plan bulan berjalan
+│        ├─ components/ (AmountKeypad, CategoryGrid, AccountChips, ProgressBar,
+│        │               DashboardCards, PlanChecklist, CheckItemSheet, SyncBadge)
+│        └─ hooks/ (useNetworkStatus, useSyncQueue, useDashboard)
 ├─ packages/
 │  └─ shared/
 │     └─ src/
 │        ├─ money.ts                          # formatIDR, parseIDRInput (tanpa float) + test
-│        ├─ schemas/                          # zod: transaction, transfer, wallet, budget
-│        ├─ types/api.ts
+│        ├─ schemas/                          # zod: transaction, transfer, account, plan item, check item
+│        ├─ types/api.ts                      # termasuk tipe response dashboard
 │        └─ client-id.ts                      # newClientId()
 ├─ docs/
 │  ├─ adr/ (001 … 010)
-│  ├─ benchmarks/reports.md                   # EXPLAIN + p50/p95
+│  ├─ benchmarks/reports.md                   # EXPLAIN + p50/p95 (laporan + dashboard)
 │  ├─ dogfooding-log.md                       # catatan pemakaian nyata
-│  └─ diagrams/                               # alur transaksi, recurring, import, sync mobile
+│  └─ diagrams/                               # alur centang, template bulanan, import, sync mobile
 ├─ load-tests/
 │  └─ concurrent-writes.js                    # k6: tulis paralel + client_id duplikat → reconcile
 ├─ docker/
@@ -757,7 +895,7 @@ household-finance/
 │  ├─ web.Dockerfile                          # build vite → disalin ke nginx
 │  ├─ nginx/default.conf                      # / → SPA, /api & /sanctum → php-fpm
 │  └─ mysql/my.cnf
-├─ docker-compose.yml                         # app, worker, scheduler, nginx, mysql (+ mailpit dev)
+├─ docker-compose.yml                         # app, worker, scheduler, nginx, mysql
 ├─ .github/workflows/ci.yml
 ├─ .npmrc                                     # node-linker=hoisted (Metro + pnpm)
 ├─ Makefile                                   # make up, seed, demo, test, bench, reconcile
@@ -770,31 +908,35 @@ household-finance/
 ## Poin yang Harus Terlihat di Portofolio
 
 - **Cerita nyata di bagian atas README**: dipakai sejak kapan, berapa transaksi, 2–3 bug nyata dari `dogfooding-log.md` dan perbaikannya.
-- **Bagian "Kenapa stack ini"**: apa yang dipakai, apa yang sengaja tidak (Redis, rollup, dll), dan kapan keputusannya dibalik.
-- Test konsistensi saldo + k6 tulis paralel → `wallets:reconcile` selisih 0.
-- Transfer yang tidak muncul di laporan pemasukan/pengeluaran, dibuktikan test.
-- Scheduler jalan dua kali (dan paralel) → tetap satu transaksi berulang; tanggal 31 tidak drift.
-- Alert budget yang terkirim tepat sekali per ambang.
-- Test privasi: wallet privat tidak bocor di list, detail, laporan, export, maupun budget.
+- **Bagian "Kenapa stack ini"**: apa yang dipakai, apa yang sengaja tidak (Redis, rollup, chart mobile, email), dan kapan keputusannya dibalik.
+- **Rencana vs aktual yang konsisten**: definisi angka yang jelas (checklist, amplop, di luar rencana) dan test yang membuktikan Beranda = Rencana = Laporan untuk bulan yang sama.
+- Test konsistensi saldo + k6 tulis paralel → `accounts:reconcile` selisih 0, termasuk setelah rangkaian centang/batal centang.
+- Centang paralel/ganda → tepat satu transaksi; batal lalu centang ulang berfungsi (kasus unique + soft delete).
+- `plan:generate` dan `plan:auto-post` jalan dua kali → tidak ada duplikat; template tanggal 31 tidak drift.
+- Transfer tidak muncul di perbandingan rencana vs aktual; tarik tunai dan top up e-wallet berjalan sebagai transfer.
+- Alert amplop terkirim tepat sekali per ambang.
+- Test isolasi data antar akun di setiap endpoint.
 - Import ulang mutasi yang sama → 0 baris baru, dua transaksi identik sah tetap masuk.
-- Tabel `EXPLAIN` + p95 laporan di 200 ribu (+1 juta noise) transaksi: bukti index cukup, tanpa rollup dan tanpa Redis.
-- GIF mobile: mode pesawat → catat → online → tersinkron tanpa duplikat.
-- ADR yang menjelaskan kenapa "biasa" itu pilihan sadar (database queue, tanpa Redis, tanpa rollup, `client_id` alih-alih tabel idempotency) beserta kapan keputusan itu harus dibalik.
+- Tabel `EXPLAIN` + p95 laporan **dan dashboard** di 200 ribu (+1 juta noise) transaksi: bukti index cukup, tanpa rollup dan tanpa Redis.
+- GIF mobile: mode pesawat → catat dan centang → online → tersinkron tanpa duplikat.
+- ADR yang menjelaskan kenapa "biasa" itu pilihan sadar (database queue, tanpa Redis, tanpa rollup, `client_id`) beserta kapan keputusan itu harus dibalik.
 
 ## Risiko yang Perlu Diwaspadai
 
 - **Float menyelinap:** `parseFloat`, `Number("1.250")` (hasilnya 1.25), pembagian persen di PHP. Satu helper, aturan lint, test.
-- **Format angka Indonesia:** titik ribuan, koma desimal. CSV bank sering pakai format berbeda per bank; uji dengan fixture dari bank yang kamu pakai.
-- **Timezone:** simpan `occurred_on` sebagai `DATE` lokal. Scheduler pakai timezone household, bukan UTC server.
-- **Wallet privat bocor lewat laporan:** paling sering terjadi saat menambah endpoint baru. Semua query transaksi wajib lewat `VisibleWallets`, dan test privasi mencakup setiap endpoint laporan.
-- **Deadlock transfer:** selalu kunci wallet berurutan id.
-- **Edit transfer setengah jalan:** kedua baris selalu diubah dalam satu transaksi DB.
-- **Drift tanggal berulang:** hitung dari anchor `day_of_month`, bukan dari jatuh tempo sebelumnya.
-- **Budget dihitung dari transaksi pending atau transfer:** filter `status = 'posted' AND type = 'expense'`.
-- **Seed tanpa noise:** angka `EXPLAIN` terlihat bagus padahal index household tidak pernah diuji.
+- **Format angka Indonesia:** titik ribuan, koma desimal. CSV bank berbeda per bank; uji dengan fixture dari bank yang kamu pakai.
+- **Angka tidak konsisten antar layar:** Rencana, Beranda, dan Laporan harus memakai `PlanComparisonQuery` yang sama; jangan menulis ulang rumusnya di tempat lain.
+- **Dobel hitung aktual:** transaksi yang sudah dicentang dari checklist tidak boleh ikut dihitung di amplop kategorinya (`plan_item_id IS NULL` di query amplop).
+- **Unique + soft delete:** `UNIQUE (plan_item_id)` tetap menghitung baris soft-deleted. Batal centang dan hapus transaksi harus menyetel `plan_item_id = NULL`, kalau tidak item tidak bisa dicentang ulang.
+- **Urutan kunci:** selalu plan item → akun (urut id untuk transfer). Urutan beda antar Action = deadlock.
+- **Timezone:** `occurred_on` dan `plan_items.month` memakai zona waktu user. Scheduler harus menentukan "hari ini" per user.
+- **Tanggal akhir bulan:** hitung `due_on` per bulan dari `day_of_month` (dibatasi hari terakhir), bukan bergulir.
+- **Dompet tunai meleset:** wajar. Sediakan "sesuaikan saldo" dan tampilkan selisih "tak tercatat" supaya tidak terasa bug.
 - **Mobile mengirim ulang dengan `client_id` baru:** `client_id` dibuat saat item masuk antrean dan disimpan bersama item, bukan saat request dikirim.
-- **Cek `client_id` sebelum wallet dikunci:** dua retry paralel bisa sama-sama lolos cek. Urutannya harus kunci wallet dulu, baru cek `client_id`.
-- **Metro + pnpm:** symlink pnpm sering membuat Metro gagal resolve `packages/shared`. Pakai `node-linker=hoisted` dan atur `watchFolders`; tes bundling mobile sejak minggu 1, jangan menunggu minggu 8.
-- **Data asli keluarga:** jangan commit CSV mutasi asli, jangan pakai data asli di screenshot, backup + uji restore sebelum dipakai serius.
-- **Scope creep:** multi-currency, investasi/saham, OCR struk, sinkronisasi API bank, split bill, gamifikasi, parser bank tambahan. Taruh di "next steps".
-- **Waktu UI:** pakai default shadcn/ui dan Recharts. Waktu paling berharga ada di kebenaran saldo, test, dan pemakaian nyata.
+- **Cek `client_id` sebelum baris dikunci:** dua retry paralel bisa sama-sama lolos. Urutannya: kunci dulu, baru cek `client_id`.
+- **Centang offline vs web:** item yang sama dicentang di dua perangkat → yang kedua `409`; layar sinkronisasi harus menjelaskan itu, bukan menampilkan error mentah.
+- **Metro + pnpm:** symlink pnpm sering membuat Metro gagal resolve `packages/shared`. Pakai `node-linker=hoisted` dan `watchFolders`; tes bundling sejak minggu 1.
+- **Seed tanpa noise:** angka `EXPLAIN` terlihat bagus padahal index `user_id` tidak pernah diuji.
+- **Data pribadi asli:** jangan commit CSV mutasi asli, jangan pakai data asli di screenshot, backup + uji restore sebelum dipakai serius, matikan registrasi di produksi.
+- **Scope creep:** transfer sebagai item plan, multi-currency, investasi/saham, OCR struk, sinkronisasi API bank, split bill, gamifikasi, parser bank tambahan, push notification. Taruh di "next steps".
+- **Waktu UI:** pakai default shadcn/ui dan Recharts. Waktu paling berharga ada di kebenaran saldo, konsistensi angka, test, dan pemakaian nyata.
