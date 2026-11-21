@@ -6,7 +6,7 @@ use App\Models\Household;
 use App\Models\User;
 
 /**
- * Versi awal: cukup keanggotaan. Matriks peran lengkap (Keputusan #5) dilengkapi di #13 dan #26.
+ * Keputusan #5. Matriks peran lengkap diuji di tests/Feature/Policies/RoleMatrixTest.php.
  */
 class HouseholdPolicy
 {
