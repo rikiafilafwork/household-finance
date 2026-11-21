@@ -20,6 +20,8 @@ class TransactionResource extends JsonResource
             'id' => $this->id,
             'wallet_id' => $this->wallet_id,
             'category_id' => $this->category_id,
+            // Ikut dikirim walau kategorinya sudah diarsip, supaya transaksi lama tetap tampil lengkap.
+            'category' => new CategoryResource($this->whenLoaded('category')),
             'type' => $this->type->value,
             'status' => $this->status->value,
             'amount' => $this->amount, // integer ber-tanda, sudut pandang wallet

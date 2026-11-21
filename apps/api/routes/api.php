@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\HouseholdController;
 use App\Http\Controllers\Api\InvitationAcceptController;
 use App\Http\Controllers\Api\InvitationController;
@@ -51,6 +52,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('wallets/{wallet}/archive', [WalletController::class, 'archive']);
         Route::post('wallets/{wallet}/unarchive', [WalletController::class, 'unarchive']);
         Route::post('wallets/{wallet}/adjust', [WalletController::class, 'adjust']);
+
+        Route::apiResource('categories', CategoryController::class);
+        Route::post('categories/{category}/archive', [CategoryController::class, 'archive']);
+        Route::post('categories/{category}/unarchive', [CategoryController::class, 'unarchive']);
 
         Route::apiResource('transactions', TransactionController::class);
 

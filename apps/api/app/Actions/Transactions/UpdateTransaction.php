@@ -38,7 +38,7 @@ class UpdateTransaction
             if ($newWallet->isNot($oldWallet)) {
                 $this->assertWalletWritable($newWallet, $household, $actor);
             }
-            $this->assertCategoryMatches($input->categoryId, $input->type, $household);
+            $this->assertCategoryMatches($input->categoryId, $input->type, $household, $current->category_id);
 
             if ($current->status === TransactionStatus::Posted) {
                 $oldWallet->decrement('balance', $current->amount);
