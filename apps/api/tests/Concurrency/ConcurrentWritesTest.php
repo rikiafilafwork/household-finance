@@ -1,9 +1,13 @@
 <?php
 
+use App\Models\Budget;
+use App\Models\BudgetAlert;
+use App\Models\Category;
 use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
@@ -162,4 +166,39 @@ it('keeps the ledger consistent under mixed concurrent writes with some duplicat
     expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
         ->and(Transaction::count())->toBe(9); // 1 dari 4 duplikat + 8 unik
     assertLedgerBalanced();
+});
+
+it('alerts a budget threshold exactly once when 8 expenses cross it at the same time', function () {
+    [$household, $owner, $wallet] = concurrencySetup();
+    $food = Category::factory()->for($household)->create();
+    $budget = Budget::factory()->for($household)->forMonth('2026-11')->create(['category_id' => $food->id, 'limit_amount' => 800_000]);
+
+    // 8 × Rp90.000 = Rp720.000 = 90%: semua proses menyelesaikan transaksinya lalu menjalankan job
+    // (queue sync, afterCommit) hampir bersamaan; beberapa melihat ≥ 80% sekaligus.
+    $results = runConcurrently(array_map(fn () => [
+        'op' => 'transaction', 'household_id' => $household->id, 'user_id' => $owner->id,
+        'wallet_id' => $wallet->id, 'category_id' => $food->id, 'amount' => 90_000, 'client_id' => (string) Str::uuid(),
+    ], range(1, 8)));
+
+    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
+        ->and(BudgetAlert::where('budget_id', $budget->id)->pluck('threshold')->all())->toBe([80])
+        ->and(DatabaseNotification::where('notifiable_id', $owner->id)->count())->toBe(1);
+    assertLedgerBalanced();
+});
+
+it('inserts each threshold once when 8 budget checks race on an already-exceeded budget', function () {
+    [$household, $owner, $wallet] = concurrencySetup();
+    $food = Category::factory()->for($household)->create();
+    $budget = Budget::factory()->for($household)->forMonth('2026-11')->create(['category_id' => $food->id, 'limit_amount' => 100_000]);
+    Transaction::factory()->for($household)->forWallet($wallet)->expense(150_000)
+        ->create(['category_id' => $food->id, 'occurred_on' => '2026-11-10']);
+
+    $results = runConcurrently(array_fill(0, 8, [
+        'op' => 'budget-check', 'household_id' => $household->id, 'user_id' => $owner->id,
+        'category_id' => $food->id, 'month' => '2026-11-01', 'amount' => 0, 'client_id' => '',
+    ]));
+
+    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
+        ->and(BudgetAlert::where('budget_id', $budget->id)->orderBy('threshold')->pluck('threshold')->all())->toBe([80, 100])
+        ->and(DatabaseNotification::where('notifiable_id', $owner->id)->count())->toBe(1);
 });
