@@ -2,24 +2,26 @@
 
 namespace Database\Seeders;
 
+use App\Enums\HouseholdRole;
+use App\Models\Household;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Data dev lokal: satu owner + satu member dalam satu household.
+     * Login: owner@example.com / member@example.com, password "password".
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $owner = User::factory()->create(['name' => 'Demo Owner', 'email' => 'owner@example.com']);
+        $member = User::factory()->create(['name' => 'Demo Member', 'email' => 'member@example.com']);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $household = Household::factory()->create(['name' => 'Keluarga Demo', 'created_by' => $owner->id]);
+        $household->members()->attach($owner, ['role' => HouseholdRole::Owner, 'joined_at' => now()]);
+        $household->members()->attach($member, ['role' => HouseholdRole::Member, 'joined_at' => now()]);
+
+        $this->call(DefaultCategorySeeder::class);
     }
 }
