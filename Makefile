@@ -2,7 +2,7 @@
 COMPOSE ?= docker compose
 APP     := $(COMPOSE) exec app
 
-.PHONY: help up down logs setup install migrate test seed fresh shell
+.PHONY: help up down logs setup install migrate test seed fresh shell reconcile load-test
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -38,3 +38,15 @@ fresh: ## Reset database + seed
 
 shell: ## Masuk ke shell container app
 	$(APP) sh
+
+reconcile: ## Cek saldo semua wallet vs riwayat transaksi (selisih harus 0)
+	$(APP) php artisan wallets:reconcile --no-notify
+
+VUS      ?= 50
+DURATION ?= 20s
+
+load-test: ## k6: 50 VU tulis ke wallet yang sama (+ client_id duplikat), lalu reconcile
+	$(APP) php artisan db:seed --class=LoadTestUserSeeder --force
+	docker run --rm --network household-finance_default -v $(CURDIR)/load-tests:/scripts \
+		-e VUS=$(VUS) -e DURATION=$(DURATION) grafana/k6:latest run /scripts/concurrent-writes.js
+	$(APP) php artisan wallets:reconcile --no-notify
