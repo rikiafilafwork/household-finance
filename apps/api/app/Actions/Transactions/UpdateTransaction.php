@@ -7,6 +7,7 @@ use App\Enums\TransactionStatus;
 use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\BudgetCheck;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -58,6 +59,10 @@ class UpdateTransaction
                 // Model wallet di koleksi sama: refresh nilai supaya increment memakai angka terbaru.
                 $newWallet->refresh()->increment('balance', $current->amount);
             }
+
+            // Hanya keadaan baru yang bisa menembus ambang (kategori/bulan lama hanya turun),
+            // termasuk saat transaksi dipindah ke bulan lalu (backdate).
+            BudgetCheck::after($current, $newWallet);
 
             return $current;
         });

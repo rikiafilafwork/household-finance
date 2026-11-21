@@ -7,6 +7,7 @@ use App\Enums\TransactionStatus;
 use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\BudgetCheck;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -80,6 +81,9 @@ class CreateTransaction
             if ($input->status === TransactionStatus::Posted) {
                 $wallet->increment('balance', $transaction->amount);
             }
+
+            // Keputusan #8: cek ambang budget setelah commit (job ShouldQueueAfterCommit).
+            BudgetCheck::after($transaction, $wallet);
 
             return [$transaction, true];
         });

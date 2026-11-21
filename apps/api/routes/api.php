@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\HouseholdController;
 use App\Http\Controllers\Api\InvitationAcceptController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\MemberController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
@@ -38,6 +39,11 @@ Route::post('invitations/{token}/accept', [InvitationAcceptController::class, 'a
     ->middleware(['auth:sanctum', 'throttle:invitation-token']);
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Lonceng notifikasi (milik user, lintas household)
+    Route::get('notifications', [NotificationController::class, 'index']);
+    Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification');
+
     Route::get('households', [HouseholdController::class, 'index']);
     Route::post('households', [HouseholdController::class, 'store']);
 
