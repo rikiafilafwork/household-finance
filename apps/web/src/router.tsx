@@ -2,12 +2,15 @@ import { createBrowserRouter } from 'react-router';
 import { onUnauthorized } from '@/api/client';
 import { qk } from '@/api/keys';
 import { GuestOnly, RequireAuth } from '@/auth/guards';
+import { AppShell } from '@/components/layout/AppShell';
 import { queryClient } from '@/lib/query-client';
 import { withNext } from '@/lib/redirect';
 import { AcceptInvitationPage } from '@/pages/auth/AcceptInvitationPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
-import { HomePlaceholder } from '@/pages/HomePlaceholder';
+import { ComingSoon } from '@/pages/ComingSoon';
+import { HomeRedirect } from '@/pages/HomeRedirect';
+import { OnboardingPage } from '@/pages/OnboardingPage';
 
 export const router = createBrowserRouter([
   {
@@ -20,7 +23,23 @@ export const router = createBrowserRouter([
   { path: '/invitations/:token', element: <AcceptInvitationPage /> },
   {
     element: <RequireAuth />,
-    children: [{ path: '*', element: <HomePlaceholder /> }],
+    children: [
+      { path: '/', element: <HomeRedirect /> },
+      { path: '/onboarding', element: <OnboardingPage /> },
+      {
+        path: '/h/:householdId',
+        element: <AppShell />,
+        children: [
+          { index: true, element: <ComingSoon title="Beranda" issue={36} /> },
+          { path: 'transactions', element: <ComingSoon title="Transaksi" issue={37} /> },
+          { path: 'wallets', element: <ComingSoon title="Wallet" issue={38} /> },
+          { path: 'categories', element: <ComingSoon title="Kategori" issue={38} /> },
+          { path: 'budgets', element: <ComingSoon title="Budget" issue={39} /> },
+          { path: 'members', element: <ComingSoon title="Anggota & undangan" issue={40} /> },
+        ],
+      },
+      { path: '*', element: <HomeRedirect /> },
+    ],
   },
 ]);
 
