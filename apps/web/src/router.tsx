@@ -9,6 +9,7 @@ import { AcceptInvitationPage } from '@/pages/auth/AcceptInvitationPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ComingSoon } from '@/pages/ComingSoon';
+import { DashboardPage } from '@/pages/DashboardPage';
 import { HomeRedirect } from '@/pages/HomeRedirect';
 import { OnboardingPage } from '@/pages/OnboardingPage';
 
@@ -30,7 +31,7 @@ export const router = createBrowserRouter([
         path: '/h/:householdId',
         element: <AppShell />,
         children: [
-          { index: true, element: <ComingSoon title="Beranda" issue={36} /> },
+          { index: true, element: <DashboardPage /> },
           { path: 'transactions', element: <ComingSoon title="Transaksi" issue={37} /> },
           { path: 'wallets', element: <ComingSoon title="Wallet" issue={38} /> },
           { path: 'categories', element: <ComingSoon title="Kategori" issue={38} /> },
