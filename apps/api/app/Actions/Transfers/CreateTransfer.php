@@ -8,6 +8,7 @@ use App\Enums\TransactionType;
 use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +32,31 @@ class CreateTransfer
             throw ValidationException::withMessages(['to_wallet_id' => 'Wallet asal dan tujuan harus berbeda.']);
         }
 
+        try {
+            return $this->create($household, $actor, $input);
+        } catch (UniqueConstraintViolationException $e) {
+            // Lihat CreateTransaction: retry ber-client_id sama ke pasangan wallet berbeda.
+            $existing = $input->clientId === null ? null : Transaction::query()
+                ->where('household_id', $household->getKey())
+                ->where('client_id', $input->clientId)
+                ->first();
+
+            if ($existing === null) {
+                throw $e;
+            }
+            if ($existing->transfer_group_id === null) {
+                throw ValidationException::withMessages(['client_id' => 'client_id sudah dipakai transaksi lain.']);
+            }
+
+            return [TransferPair::find($household, $existing->transfer_group_id), false];
+        }
+    }
+
+    /**
+     * @return array{0: TransferPair, 1: bool}
+     */
+    private function create(Household $household, User $actor, TransferInput $input): array
+    {
         return DB::transaction(function () use ($household, $actor, $input) {
             $wallets = $this->lockWallets->handle([$input->fromWalletId, $input->toWalletId]);
 

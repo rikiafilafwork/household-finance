@@ -19,7 +19,8 @@ class StoreTransferRequest extends FormRequest
             'amount' => ['required', 'integer:strict', 'min:1', 'max:'.StoreWalletRequest::MAX_AMOUNT],
             'occurred_on' => ['required', 'date_format:Y-m-d'],
             'note' => ['nullable', 'string', 'max:255'],
-            'client_id' => ['nullable', 'uuid'],
+            // Wajib (Keputusan #11): web membuatnya per submit, mobile per item antrean.
+            'client_id' => ['required', 'uuid'],
         ];
     }
 
