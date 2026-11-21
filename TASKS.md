@@ -34,20 +34,20 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #12 Terima undangan + InvitationTest `api` `test`
 - [x] #13 Kelola anggota: keluarkan & ubah peran + RolesTest `api` `test`
 
-## Minggu 2 — Wallet, Transaksi, Saldo (0/10)
+## Minggu 2 — Wallet, Transaksi, Saldo (10/10)
 
 > **Done kalau:** semua test hijau dan k6 + reconcile menunjukkan saldo tidak meleset walau ditulis paralel.
 
-- [ ] #14 Migration wallets & transactions + CHECK constraint `api`
-- [ ] #15 Wallet CRUD + opening balance + arsip `api`
-- [ ] #16 Actions transaksi: Create/Update/Delete + saldo atomik `api`
-- [ ] #17 Actions transfer: Create/Update/Delete (2 baris berpasangan) `api`
-- [ ] #18 AdjustBalance (sesuaikan saldo) `api`
-- [ ] #19 Idempotensi tulis via `client_id` + ClientIdIdempotencyTest `api` `shared` `test`
-- [ ] #20 `GET /transactions`: filter + cursor pagination `api`
-- [ ] #21 Command `wallets:reconcile {--household=} {--fix}` + jadwal harian `api`
-- [ ] #22 BalanceConsistencyTest: semua skenario → reconcile 0 `test`
-- [ ] #23 Load test k6: tulis paralel ke wallet yang sama `test` `perf`
+- [x] #14 Migration wallets & transactions + CHECK constraint `api`
+- [x] #15 Wallet CRUD + opening balance + arsip `api`
+- [x] #16 Actions transaksi: Create/Update/Delete + saldo atomik `api`
+- [x] #17 Actions transfer: Create/Update/Delete (2 baris berpasangan) `api`
+- [x] #18 AdjustBalance (sesuaikan saldo) `api`
+- [x] #19 Idempotensi tulis via `client_id` + ClientIdIdempotencyTest `api` `shared` `test`
+- [x] #20 `GET /transactions`: filter + cursor pagination `api`
+- [x] #21 Command `wallets:reconcile {--household=} {--fix}` + jadwal harian `api`
+- [x] #22 BalanceConsistencyTest: semua skenario → reconcile 0 `test`
+- [x] #23 Load test k6: tulis paralel ke wallet yang sama `test` `perf`
 
 ## Minggu 3 — Kategori, Budget, Policy (0/7)
 
