@@ -1,0 +1,14 @@
+{
+  "name": "household-finance",
+  "private": true,
+  "description": "Keuangan rumah tangga: Laravel + React + Expo monorepo",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "lint": "pnpm -r --if-present lint",
+    "build": "pnpm -r --if-present build"
+  }
+}

@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Build output
+dist/
+build/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# Laravel
+apps/api/storage/*.key
+apps/api/storage/logs/*
+apps/api/bootstrap/cache/*.php
+apps/api/public/hot
+apps/api/.phpunit.result.cache
+.phpunit.cache/
+
+# Expo / React Native
+apps/mobile/.expo/
+apps/mobile/ios/
+apps/mobile/android/
+*.apk
+*.aab
+
+# Data keuangan asli: JANGAN di-commit (fixture anonim ada di tests/Fixtures/statements/)
+*.csv
+!apps/api/tests/Fixtures/statements/*.csv
+statements/
+backups/
+*.sql.gz
+
+# Editor & OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
