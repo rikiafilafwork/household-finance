@@ -28,8 +28,10 @@ class AuthController extends Controller
         $user = DB::transaction(function () use ($request, $createHousehold) {
             $user = User::create($request->safe()->only(['name', 'email', 'password']));
 
-            $householdName = $request->string('household_name')->trim()->toString();
-            $createHousehold->handle($user, $householdName !== '' ? $householdName : 'Keluarga '.$user->name);
+            if ($request->boolean('create_household', true)) {
+                $householdName = $request->string('household_name')->trim()->toString();
+                $createHousehold->handle($user, $householdName !== '' ? $householdName : 'Keluarga '.$user->name);
+            }
 
             return $user;
         });

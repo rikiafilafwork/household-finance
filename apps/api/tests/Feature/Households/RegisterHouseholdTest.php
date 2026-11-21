@@ -13,8 +13,8 @@ use function Pest\Laravel\withoutExceptionHandling;
 use function Pest\Laravel\withToken;
 
 /**
- * @param  array<string, string>  $overrides
- * @return array<string, string>
+ * @param  array<string, string|bool>  $overrides
+ * @return array<string, string|bool>
  */
 function registerPayload(array $overrides = []): array
 {
@@ -43,6 +43,22 @@ it('uses the household name given at registration', function () {
     spa()->csrf()->post('/api/auth/register', registerPayload(['household_name' => 'Rumah Bandung']))->assertCreated();
 
     expect(Household::sole()->name)->toBe('Rumah Bandung');
+});
+
+it('skips the household when registering from an invitation (create_household: false)', function () {
+    spa()->csrf()->post('/api/auth/register', registerPayload(['create_household' => false]))->assertCreated();
+
+    expect(User::sole()->households()->count())->toBe(0)
+        ->and(Household::count())->toBe(0);
+});
+
+it('answers validation errors in Indonesian with domain field names', function () {
+    $response = spa()->csrf()->post('/api/auth/register', ['email' => 'bukan-email', 'household_name' => str_repeat('a', 101)]);
+
+    $response->assertUnprocessable();
+    expect($response->json('errors.name.0'))->toBe('Nama wajib diisi.')
+        ->and($response->json('errors.household_name.0'))->toBe('Nama household maksimal berisi 100 karakter.')
+        ->and($response->json('errors.password.0'))->toContain('wajib diisi');
 });
 
 it('rolls back the user when household creation fails', function () {

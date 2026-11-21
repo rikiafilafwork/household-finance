@@ -23,6 +23,8 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'household_name' => ['sometimes', 'nullable', 'string', 'max:100'],
+            // false = daftar lewat link undangan: jangan buatkan household kosong.
+            'create_household' => ['sometimes', 'boolean'],
         ];
     }
 }

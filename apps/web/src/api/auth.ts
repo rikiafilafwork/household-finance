@@ -11,7 +11,7 @@ export const authApi = {
     }
   },
   login: (body: { email: string; password: string; remember?: boolean }) => unwrap(api.post<{ data: User }>('/auth/login', body)),
-  register: (body: { name: string; email: string; password: string; password_confirmation: string; household_name?: string }) =>
+  register: (body: { name: string; email: string; password: string; password_confirmation: string; household_name?: string; create_household?: boolean }) =>
     unwrap(api.post<{ data: User }>('/auth/register', body)),
   logout: async () => {
     await api.post('/auth/logout');

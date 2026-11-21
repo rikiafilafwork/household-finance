@@ -1,14 +1,33 @@
 import { createBrowserRouter } from 'react-router';
-import { formatIDR } from '@household-finance/shared';
+import { onUnauthorized } from '@/api/client';
+import { qk } from '@/api/keys';
+import { GuestOnly, RequireAuth } from '@/auth/guards';
+import { queryClient } from '@/lib/query-client';
+import { withNext } from '@/lib/redirect';
+import { AcceptInvitationPage } from '@/pages/auth/AcceptInvitationPage';
+import { LoginPage } from '@/pages/auth/LoginPage';
+import { RegisterPage } from '@/pages/auth/RegisterPage';
+import { HomePlaceholder } from '@/pages/HomePlaceholder';
 
-// Kerangka #31. Halaman sesungguhnya menyusul di #34–#40.
-function Placeholder() {
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-2 p-6 text-center">
-      <h1 className="text-2xl font-semibold">Keuangan Rumah</h1>
-      <p className="text-muted-foreground">Web siap. Contoh format: {formatIDR(1_250_000)}</p>
-    </main>
-  );
-}
+export const router = createBrowserRouter([
+  {
+    element: <GuestOnly />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+    ],
+  },
+  { path: '/invitations/:token', element: <AcceptInvitationPage /> },
+  {
+    element: <RequireAuth />,
+    children: [{ path: '*', element: <HomePlaceholder /> }],
+  },
+]);
 
-export const router = createBrowserRouter([{ path: '*', element: <Placeholder /> }]);
+// 401 di request mana pun (sesi habis): lupakan user, ke login, lalu kembali ke halaman ini.
+onUnauthorized(() => {
+  const { pathname, search } = router.state.location;
+  if (pathname === '/login' || pathname === '/register') return;
+  queryClient.setQueryData(qk.me, null);
+  void router.navigate(withNext('/login', pathname + search), { replace: true });
+});
