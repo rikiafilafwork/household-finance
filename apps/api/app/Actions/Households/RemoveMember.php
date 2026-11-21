@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Keluarkan anggota (owner) atau keluar sendiri (anggota mana pun).
- * Wallet private milik user tersebut ditangani saat modul wallet ada (#15).
+ *
+ * Wallet privat miliknya tetap tersimpan (riwayat & saldo utuh) tapi tidak terlihat siapa pun,
+ * termasuk owner household, sampai ia bergabung lagi (VisibleWallets mensyaratkan keanggotaan).
  */
 class RemoveMember
 {
