@@ -2,6 +2,7 @@
 
 namespace App\Actions\Categories;
 
+use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Hapus permanen hanya kalau kategori belum pernah dipakai (termasuk transaksi soft-deleted,
- * karena FK & riwayat). Selain itu wajib arsip: transaksi lama tetap menunjuk kategori itu.
+ * atau budget, karena FK & riwayat). Selain itu wajib arsip: transaksi lama tetap menunjuk kategori itu.
  */
 class DeleteCategory
 {
@@ -30,6 +31,7 @@ class DeleteCategory
 
     private function inUse(Category $category): bool
     {
-        return Transaction::withTrashed()->where('category_id', $category->getKey())->exists();
+        return Transaction::withTrashed()->where('category_id', $category->getKey())->exists()
+            || Budget::query()->where('category_id', $category->getKey())->exists();
     }
 }

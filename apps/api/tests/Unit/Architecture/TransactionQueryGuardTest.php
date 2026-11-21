@@ -12,6 +12,7 @@
 
 const TRANSACTION_QUERY_ALLOWLIST = [
     'Reports/TransactionQuery.php' => 'sumber query baca; selalu wallet_id IN VisibleWallets',
+    'Reports/BudgetSpending.php' => 'agregat budget; hanya wallet SHARED (terlihat semua anggota)',
     'Actions/Transactions/ValidatesTransactionTarget.php' => 'replay client_id; dicek VisibleWallets::canSee',
     'Actions/Transactions/UpdateTransaction.php' => 'mengunci baris yang sudah lolos TransactionPolicy',
     'Actions/Transactions/DeleteTransaction.php' => 'mengunci baris yang sudah lolos TransactionPolicy',

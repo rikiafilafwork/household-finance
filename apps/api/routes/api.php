@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\HouseholdController;
 use App\Http\Controllers\Api\InvitationAcceptController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
 use App\Http\Controllers\Api\WalletController;
+use App\Support\BudgetMonth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -56,6 +58,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('categories', CategoryController::class);
         Route::post('categories/{category}/archive', [CategoryController::class, 'archive']);
         Route::post('categories/{category}/unarchive', [CategoryController::class, 'unarchive']);
+
+        // {month} = YYYY-MM (Keputusan #8: budget per kategori per bulan)
+        Route::get('budgets/{month}', [BudgetController::class, 'show'])->where('month', BudgetMonth::ROUTE_PATTERN);
+        Route::put('budgets/{month}', [BudgetController::class, 'update'])->where('month', BudgetMonth::ROUTE_PATTERN);
+        Route::post('budgets/{month}/copy-from-previous', [BudgetController::class, 'copyFromPrevious'])->where('month', BudgetMonth::ROUTE_PATTERN);
 
         Route::apiResource('transactions', TransactionController::class);
 
