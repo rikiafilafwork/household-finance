@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Pest\TestSuite;
@@ -14,6 +15,28 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
+
+// Concurrency: proses lain harus melihat data, jadi tidak boleh dibungkus transaksi.
+// Tabel dikosongkan sebelum tiap test dan sesudah test terakhir supaya tidak bocor ke suite lain.
+pest()->extend(TestCase::class)
+    ->use(DatabaseTruncation::class)
+    ->afterEach(fn () => truncateAllTables())
+    ->in('Concurrency');
+
+/** Kosongkan semua tabel (kecuali migrations) tanpa menghapus schema. */
+function truncateAllTables(): void
+{
+    $db = DB::connection();
+    $tables = array_column($db->select(
+        "SELECT table_name AS name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name <> 'migrations'"
+    ), 'name');
+
+    $db->statement('SET FOREIGN_KEY_CHECKS = 0');
+    foreach ($tables as $table) {
+        $db->statement("TRUNCATE TABLE `{$table}`");
+    }
+    $db->statement('SET FOREIGN_KEY_CHECKS = 1');
+}
 
 /** Klien SPA (session cookie + CSRF), lihat tests/Support/SpaClient.php. */
 function spa(): SpaClient

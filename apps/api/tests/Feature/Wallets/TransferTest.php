@@ -6,6 +6,7 @@ use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
+use Illuminate\Support\Str;
 
 use function Pest\Laravel\actingAs;
 
@@ -46,6 +47,7 @@ function transferPayload(Wallet $from, Wallet $to, array $overrides = []): array
         'amount' => 500_000,
         'occurred_on' => '2026-11-21',
         'note' => 'Tarik tunai',
+        'client_id' => (string) Str::uuid(),
     ], $overrides);
 }
 

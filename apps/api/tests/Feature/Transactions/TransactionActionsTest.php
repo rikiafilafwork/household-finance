@@ -6,6 +6,7 @@ use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
+use Illuminate\Support\Str;
 
 use function Pest\Laravel\actingAs;
 
@@ -48,6 +49,7 @@ function expensePayload(Wallet $wallet, ?Category $category = null, array $overr
         'occurred_on' => '2026-11-21',
         'category_id' => $category?->id,
         'note' => 'Kopi',
+        'client_id' => (string) Str::uuid(),
     ], $overrides);
 }
 

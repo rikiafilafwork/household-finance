@@ -6,6 +6,7 @@ use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
+use Illuminate\Support\Str;
 
 use function Pest\Laravel\actingAs;
 
@@ -69,6 +70,7 @@ it('accounts for existing transactions before adjusting', function () {
     [$household, $owner, , $wallet] = adjustSetup();
     actingAs($owner)->postJson("/api/households/{$household->id}/transactions", [
         'wallet_id' => $wallet->id, 'type' => 'expense', 'amount' => 100_000, 'occurred_on' => '2026-11-20',
+        'client_id' => (string) Str::uuid(),
     ])->assertCreated();
 
     actingAs($owner)->postJson(adjustUrl($household, $wallet), ['actual_balance' => 390_000, 'occurred_on' => '2026-11-21'])
