@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HouseholdController;
+use App\Http\Controllers\Api\InvitationAcceptController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\TokenController;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +24,11 @@ Route::prefix('auth')->group(function () {
         Route::delete('token', [TokenController::class, 'destroy']);
     });
 });
+
+// Penerima undangan: token dari link email. Pratinjau boleh tanpa login.
+Route::get('invitations/{token}', [InvitationAcceptController::class, 'show'])->middleware('throttle:invitation-token');
+Route::post('invitations/{token}/accept', [InvitationAcceptController::class, 'accept'])
+    ->middleware(['auth:sanctum', 'throttle:invitation-token']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('households', [HouseholdController::class, 'index']);
