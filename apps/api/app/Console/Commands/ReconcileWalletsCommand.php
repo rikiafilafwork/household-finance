@@ -6,11 +6,12 @@ use App\Actions\Wallets\ReconcileWallets;
 use App\Actions\Wallets\WalletMismatch;
 use App\Enums\HouseholdRole;
 use App\Models\Household;
+use App\Models\Wallet;
 use App\Notifications\ReconcileMismatch;
+use App\Reports\VisibleWallets;
 use App\Support\Money;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Notification;
 
 class ReconcileWalletsCommand extends Command
 {
@@ -58,6 +59,9 @@ class ReconcileWalletsCommand extends Command
     }
 
     /**
+     * Wallet shared → owner household. Wallet private → pemiliknya saja (Keputusan #5: nama dan
+     * saldo wallet privat tidak boleh sampai ke owner household, termasuk lewat notifikasi ini).
+     *
      * @param  Collection<int, WalletMismatch>  $mismatches
      */
     private function notifyOwners(Collection $mismatches, bool $fixed): void
@@ -68,12 +72,28 @@ class ReconcileWalletsCommand extends Command
                 continue;
             }
 
+            $wallets = Wallet::query()->whereIn('id', $rows->map(fn (WalletMismatch $m) => $m->walletId))->get()->keyBy('id');
             $owners = $household->members()->wherePivot('role', HouseholdRole::Owner->value)->get();
-            Notification::send($owners, new ReconcileMismatch(
-                $household,
-                $rows->map(fn (WalletMismatch $m) => $m->toArray())->values()->all(),
-                $fixed,
-            ));
+            $privateOwners = $household->members()
+                ->whereIn('users.id', $wallets->filter(fn (Wallet $w) => $w->isPrivate())->pluck('owner_user_id'))
+                ->get();
+
+            foreach ($owners->merge($privateOwners)->unique('id') as $recipient) {
+                $visible = $rows->filter(function (WalletMismatch $m) use ($wallets, $recipient, $household) {
+                    $wallet = $wallets->get($m->walletId);
+
+                    return $wallet !== null && VisibleWallets::canSee($recipient, $wallet)
+                        && ($wallet->isPrivate() || $household->isOwner($recipient));
+                });
+
+                if ($visible->isNotEmpty()) {
+                    $recipient->notify(new ReconcileMismatch(
+                        $household,
+                        $visible->map(fn (WalletMismatch $m) => $m->toArray())->values()->all(),
+                        $fixed,
+                    ));
+                }
+            }
         }
     }
 }

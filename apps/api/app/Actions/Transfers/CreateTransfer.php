@@ -36,10 +36,7 @@ class CreateTransfer
             return $this->create($household, $actor, $input);
         } catch (UniqueConstraintViolationException $e) {
             // Lihat CreateTransaction: retry ber-client_id sama ke pasangan wallet berbeda.
-            $existing = $input->clientId === null ? null : Transaction::query()
-                ->where('household_id', $household->getKey())
-                ->where('client_id', $input->clientId)
-                ->first();
+            $existing = $this->existingByClientId($household, $actor, $input->clientId);
 
             if ($existing === null) {
                 throw $e;
@@ -48,8 +45,20 @@ class CreateTransfer
                 throw ValidationException::withMessages(['client_id' => 'client_id sudah dipakai transaksi lain.']);
             }
 
-            return [TransferPair::find($household, $existing->transfer_group_id), false];
+            return [$this->replay($household, $actor, $existing->transfer_group_id), false];
         }
+    }
+
+    /** Transfer lama hanya dikembalikan kalau KEDUA wallet-nya terlihat pengirim. */
+    private function replay(Household $household, User $actor, string $groupId): TransferPair
+    {
+        $pair = TransferPair::find($household, $groupId);
+
+        if (! $pair->visibleTo($actor)) {
+            throw self::clientIdTaken();
+        }
+
+        return $pair;
     }
 
     /**
@@ -61,13 +70,10 @@ class CreateTransfer
             $wallets = $this->lockWallets->handle([$input->fromWalletId, $input->toWalletId]);
 
             if ($input->clientId !== null) {
-                $existing = Transaction::query()
-                    ->where('household_id', $household->getKey())
-                    ->where('client_id', $input->clientId)
-                    ->first();
+                $existing = $this->existingByClientId($household, $actor, $input->clientId);
 
                 if ($existing !== null && $existing->transfer_group_id !== null) {
-                    return [TransferPair::find($household, $existing->transfer_group_id), false];
+                    return [$this->replay($household, $actor, $existing->transfer_group_id), false];
                 }
                 if ($existing !== null) {
                     throw ValidationException::withMessages(['client_id' => 'client_id sudah dipakai transaksi lain.']);

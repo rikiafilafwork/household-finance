@@ -28,10 +28,7 @@ class CreateTransaction
             // Jaring terakhir: retry dengan client_id sama tapi ke wallet LAIN tidak terserialisasi
             // oleh kunci wallet, jadi bisa lolos cek bersamaan. Unique index menolak yang kalah;
             // transaksi DB-nya sudah rollback, kembalikan baris pemenang sebagai respons idempoten.
-            $existing = $input->clientId === null ? null : Transaction::query()
-                ->where('household_id', $household->getKey())
-                ->where('client_id', $input->clientId)
-                ->first();
+            $existing = $this->existingByClientId($household, $actor, $input->clientId);
 
             if ($existing === null) {
                 throw $e;
@@ -54,10 +51,7 @@ class CreateTransaction
 
             // Idempotensi (Keputusan #11): dicek SETELAH wallet terkunci → retry paralel jadi serial.
             if ($input->clientId !== null) {
-                $existing = Transaction::query()
-                    ->where('household_id', $household->getKey())
-                    ->where('client_id', $input->clientId)
-                    ->first();
+                $existing = $this->existingByClientId($household, $actor, $input->clientId);
 
                 if ($existing !== null && $existing->transfer_group_id !== null) {
                     throw ValidationException::withMessages(['client_id' => 'client_id sudah dipakai sebuah transfer.']);
