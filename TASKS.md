@@ -16,23 +16,23 @@ Checklist semua task dari [`Architecture.md`](./Architecture.md). Satu baris = s
 Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfooding` `stretch`
 
 <!-- auto:tasks:start -->
-## Minggu 1 — Fondasi (5/13)
+## Minggu 1 — Fondasi (13/13)
 
 > **Done kalau:** register → household + kategori default terbentuk; undang email kedua → accept → jadi member; token yang sama tidak bisa dipakai dua kali; login token dari curl bisa memanggil `GET /api/households`.
 
 - [x] #1 Setup monorepo pnpm (api, web, mobile, shared) `infra`
 - [x] #2 Docker Compose: app, nginx, mysql, worker, scheduler (+ mailpit dev) `infra`
 - [x] #3 Bootstrap Laravel 13 + Pest + Larastan + Pint + Enum `api` `infra`
-- [ ] #4 Smoke test bundling Expo + packages/shared sejak awal `mobile` `shared` `infra`
+- [x] #4 Smoke test bundling Expo + packages/shared sejak awal `mobile` `shared` `infra`
 - [x] #5 Helper `App\Support\Money` + unit test lengkap `api` `test`
 - [x] #6 packages/shared: `money.ts` + `newClientId()` `shared` `test`
-- [ ] #7 Auth web: Sanctum SPA (register, login, logout) + rate limit `api`
-- [ ] #8 Auth mobile: personal access token `api`
-- [ ] #9 Migration & model: households, household_members, categories `api`
-- [ ] #10 Register → household pertama + owner + kategori default `api`
-- [ ] #11 Undangan anggota: kirim undangan via queue `api`
-- [ ] #12 Terima undangan + InvitationTest `api` `test`
-- [ ] #13 Kelola anggota: keluarkan & ubah peran + RolesTest `api` `test`
+- [x] #7 Auth web: Sanctum SPA (register, login, logout) + rate limit `api`
+- [x] #8 Auth mobile: personal access token `api`
+- [x] #9 Migration & model: households, household_members, categories `api`
+- [x] #10 Register → household pertama + owner + kategori default `api`
+- [x] #11 Undangan anggota: kirim undangan via queue `api`
+- [x] #12 Terima undangan + InvitationTest `api` `test`
+- [x] #13 Kelola anggota: keluarkan & ubah peran + RolesTest `api` `test`
 
 ## Minggu 2 — Wallet, Transaksi, Saldo (0/10)
 
