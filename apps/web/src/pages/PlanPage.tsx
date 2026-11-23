@@ -14,13 +14,14 @@ import { CheckForm } from '@/components/plan/CheckForm';
 import { PlanItemForm } from '@/components/plan/PlanItemForm';
 import { ChecklistRow, EnvelopeRow, UnplannedRow, type RowAction } from '@/components/plan/PlanRows';
 import { freeMoney, type FreeMoney } from '@/components/plan/planMeta';
+import { TransactionDialog, type DialogState as TxDialogState } from '@/components/transactions/TransactionDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAccounts, useCategories } from '@/hooks/useMoneyData';
 import { usePlanMutations } from '@/hooks/usePlanMutations';
-import { formatMonth, monthIn, shiftMonth, todayIn } from '@/lib/dates';
+import { defaultDateIn, formatMonth, monthIn, shiftMonth, todayIn } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 type DialogState =
@@ -72,9 +73,10 @@ function Summary({ plan, free }: { plan: PlanComparison; free: FreeMoney | null 
   );
 }
 
-function Section({ title, total, children, onAdd, addLabel, columns }: {
+function Section({ title, total, hint, children, onAdd, addLabel, columns }: {
   title: string;
   total?: ReactNode;
+  hint?: ReactNode;
   children: ReactNode;
   onAdd: () => void;
   addLabel: string;
@@ -86,6 +88,7 @@ function Section({ title, total, children, onAdd, addLabel, columns }: {
         <h2 className="text-sm font-semibold">{title}</h2>
         {total && <span className="text-xs text-muted-foreground">{total}</span>}
       </div>
+      {hint && <p className="mb-2 px-1 text-xs text-muted-foreground">{hint}</p>}
       <div className="rounded-lg border bg-background px-4">
         {columns && (
           <div aria-hidden className="hidden gap-3 border-b py-2 text-xs text-muted-foreground md:flex">
@@ -122,6 +125,7 @@ export function PlanPage() {
   const { data: categories = [] } = useCategories();
   const m = usePlanMutations();
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [txDialog, setTxDialog] = useState<TxDialogState>(null);
   const close = () => setDialog(null);
 
   const plan = planQuery.data;
@@ -133,6 +137,15 @@ export function PlanPage() {
   const today = todayIn(timezone);
 
   const act = (item: PlanItem) => async (action: RowAction) => {
+    if (action === 'record') {
+      setTxDialog({
+        mode: 'new',
+        kind: item.type,
+        title: `Catat ${item.type === 'income' ? 'pemasukan' : 'pengeluaran'} — ${item.name}`,
+        preset: { category_id: item.category_id, occurred_on: defaultDateIn(month, today) },
+      });
+      return;
+    }
     if (action === 'skip' || action === 'unskip') {
       try {
         await m.skip.mutateAsync({ id: item.id, skipped: action === 'skip' });
@@ -258,7 +271,12 @@ export function PlanPage() {
             {fixed.map((item) => <ChecklistRow key={item.id} item={item} category={categoryMap.get(item.category_id)} onAction={act(item)} />)}
           </Section>
 
-          <Section title="Amplop" onAdd={addFor('expense', 'envelope')} addLabel="Tambah amplop">
+          <Section
+            title="Amplop"
+            hint="Amplop berkurang dari transaksi pengeluaran berkategori sama di bulan ini (centang checklist tidak ikut). Catat langsung dengan tombol Catat, atau dari halaman Transaksi."
+            onAdd={addFor('expense', 'envelope')}
+            addLabel="Tambah amplop"
+          >
             {envelopes.map((item) => <EnvelopeRow key={item.id} item={item} category={categoryMap.get(item.category_id)} onAction={act(item)} />)}
             {(plan.totals.expense.unplanned > 0 || envelopes.length > 0) && (
               <UnplannedRow label="Di luar rencana" amount={plan.totals.expense.unplanned} hint="Pengeluaran di kategori tanpa amplop dan tanpa item" />
@@ -266,6 +284,8 @@ export function PlanPage() {
           </Section>
         </>
       )}
+
+      <TransactionDialog state={txDialog} onClose={() => setTxDialog(null)} accounts={accounts} categories={categories} today={today} />
 
       <Dialog open={dialog !== null} onOpenChange={(open) => !open && close()}>
         <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md">

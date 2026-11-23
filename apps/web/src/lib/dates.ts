@@ -36,3 +36,20 @@ export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { da
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
   return new Intl.DateTimeFormat('id-ID', { ...opts, timeZone: 'UTC' }).format(Date.UTC(y, m - 1, d));
 }
+
+/** Tanggal terakhir bulan YYYY-MM. */
+export function lastDayOf(month: string): string {
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  const day = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${month}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * Tanggal awal untuk transaksi yang dicatat dari rencana bulan `month`: hari ini kalau bulan berjalan,
+ * hari terakhir untuk bulan lalu, tanggal 1 untuk bulan depan — selalu jatuh di bulan itu.
+ */
+export function defaultDateIn(month: string, today: string): string {
+  const current = today.slice(0, 7);
+  if (month === current) return today;
+  return month < current ? lastDayOf(month) : `${month}-01`;
+}
