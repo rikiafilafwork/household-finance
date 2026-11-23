@@ -3,10 +3,11 @@
 namespace App\Support;
 
 use App\Enums\CategoryKind;
-use App\Models\Household;
+use App\Models\Category;
+use App\Models\User;
 
 /**
- * Kategori bawaan untuk household baru (dipakai saat register, #10).
+ * Kategori bawaan untuk user baru (dipakai saat register).
  * Ikon = nama ikon lucide (dirender di web/mobile).
  */
 final class DefaultCategories
@@ -53,12 +54,12 @@ final class DefaultCategories
      * Idempoten: aman dipanggil ulang. insertOrIgnore bersandar pada uq_category_name.
      * Catatan: upsert($rows, $keys, []) TIDAK idempoten; Laravel mengubahnya jadi insert biasa.
      */
-    public static function seedFor(Household $household): void
+    public static function seedFor(User $user): void
     {
         $now = now();
 
         $rows = array_map(fn (array $c) => [
-            'household_id' => $household->getKey(),
+            'user_id' => $user->getKey(),
             'kind' => $c['kind']->value,
             'name' => $c['name'],
             'color' => $c['color'],
@@ -67,6 +68,6 @@ final class DefaultCategories
             'updated_at' => $now,
         ], self::all());
 
-        $household->categories()->getQuery()->toBase()->insertOrIgnore($rows);
+        Category::ownedBy($user)->toBase()->insertOrIgnore($rows);
     }
 }

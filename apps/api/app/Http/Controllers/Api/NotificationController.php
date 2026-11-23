@@ -11,8 +11,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Notifications\DatabaseNotification;
 
 /**
- * Lonceng web: notifikasi milik user yang login saja (bukan per household; `household_id`
- * ada di `data` untuk filter). Id notifikasi orang lain → 404.
+ * Lonceng web & mobile (in-app saja, tanpa email): notifikasi milik user yang login.
+ * Id notifikasi orang lain → 404.
  */
 class NotificationController extends Controller
 {
@@ -20,14 +20,12 @@ class NotificationController extends Controller
     {
         $request->validate([
             'unread' => ['sometimes', 'boolean'],
-            'household_id' => ['sometimes', 'integer'],
             'per_page' => ['sometimes', 'integer', 'between:1,100'],
         ]);
         $user = $this->user($request);
 
         $page = $user->notifications()
             ->when($request->boolean('unread'), fn ($q) => $q->whereNull('read_at'))
-            ->when($request->filled('household_id'), fn ($q) => $q->where('data->household_id', $request->integer('household_id')))
             ->reorder()->orderByDesc('created_at')->orderByDesc('id')
             ->paginate($request->integer('per_page', 20))
             ->withQueryString();

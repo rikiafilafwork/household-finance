@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Actions\Households\CreateHousehold;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Support\DefaultCategories;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -21,17 +21,13 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * Register = user + household pertama (user jadi owner) + kategori default, satu transaksi DB.
+     * Register = user + kategori default, satu transaksi DB.
      */
-    public function register(RegisterRequest $request, CreateHousehold $createHousehold): JsonResponse
+    public function register(RegisterRequest $request): JsonResponse
     {
-        $user = DB::transaction(function () use ($request, $createHousehold) {
+        $user = DB::transaction(function () use ($request) {
             $user = User::create($request->safe()->only(['name', 'email', 'password']));
-
-            if ($request->boolean('create_household', true)) {
-                $householdName = $request->string('household_name')->trim()->toString();
-                $createHousehold->handle($user, $householdName !== '' ? $householdName : 'Keluarga '.$user->name);
-            }
+            DefaultCategories::seedFor($user);
 
             return $user;
         });
