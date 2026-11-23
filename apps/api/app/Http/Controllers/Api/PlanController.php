@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Plan\CheckPlanItem;
 use App\Actions\Plan\CopyPlanFromPreviousMonth;
 use App\Actions\Plan\DeletePlanItem;
 use App\Actions\Plan\SavePlanItem;
 use App\Actions\Plan\SkipPlanItem;
+use App\Actions\Plan\UncheckPlanItem;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Plan\CheckPlanItemRequest;
 use App\Http\Requests\Plan\PlanItemRequest;
 use App\Http\Resources\PlanItemResource;
+use App\Http\Resources\TransactionResource;
 use App\Models\PlanItem;
 use App\Models\User;
 use App\Plan\PlanMonth;
@@ -77,6 +81,27 @@ class PlanController extends Controller
     public function unskip(Request $request, PlanItem $planItem, SkipPlanItem $skip): PlanItemResource
     {
         return new PlanItemResource($skip->unskip($this->user($request), $planItem)->load(['category', 'transaction']));
+    }
+
+    /**
+     * Centang = transaksi baru (201). Retry client_id sama → 200 + transaksi yang sama.
+     * Sudah dicentang (perangkat lain) → 409.
+     */
+    public function check(CheckPlanItemRequest $request, PlanItem $planItem, CheckPlanItem $check): JsonResponse
+    {
+        [$transaction, $created] = $check->handle($this->user($request), $planItem, $request->toInput());
+
+        return response()->json([
+            'data' => [
+                'item' => new PlanItemResource($planItem->refresh()->load(['category', 'transaction'])),
+                'transaction' => new TransactionResource($transaction->load('category')),
+            ],
+        ], $created ? 201 : 200);
+    }
+
+    public function uncheck(Request $request, PlanItem $planItem, UncheckPlanItem $uncheck): PlanItemResource
+    {
+        return new PlanItemResource($uncheck->handle($this->user($request), $planItem)->load(['category', 'transaction']));
     }
 
     private function user(Request $request): User
