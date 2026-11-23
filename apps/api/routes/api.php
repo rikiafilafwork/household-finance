@@ -67,4 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('plan-items/{planItem}', [PlanController::class, 'destroy']);
     Route::post('plan-items/{planItem}/skip', [PlanController::class, 'skip']);
     Route::post('plan-items/{planItem}/unskip', [PlanController::class, 'unskip']);
+    // Centang = transaksi (Keputusan #8); client_id wajib (Keputusan #15).
+    Route::post('plan-items/{planItem}/check', [PlanController::class, 'check']);
+    Route::post('plan-items/{planItem}/uncheck', [PlanController::class, 'uncheck']);
 });

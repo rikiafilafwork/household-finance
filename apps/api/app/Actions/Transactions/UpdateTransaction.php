@@ -33,6 +33,14 @@ class UpdateTransaction
             $newAccount = $accounts->get($input->accountId);
             assert($oldAccount !== null && $newAccount !== null);
 
+            // Transaksi centang (Keputusan #8): nominal, tanggal, akun, catatan boleh diubah; jenis dan
+            // kategori tidak, karena itulah yang membuatnya "milik" item checklist tersebut.
+            if ($current->plan_item_id !== null && ($input->type !== $current->type || $input->categoryId !== $current->category_id)) {
+                throw ValidationException::withMessages([
+                    $input->type !== $current->type ? 'type' : 'category_id' => 'Transaksi ini terhubung ke item rencana. Batalkan centang dulu untuk mengubah jenis atau kategorinya.',
+                ]);
+            }
+
             if ($newAccount->isNot($oldAccount)) {
                 $this->assertAccountWritable($newAccount);
             }

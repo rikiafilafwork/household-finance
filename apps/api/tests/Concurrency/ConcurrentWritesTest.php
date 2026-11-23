@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Account;
+use App\Models\Category;
+use App\Models\PlanItem;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Process\Pool;
@@ -17,7 +19,7 @@ use Illuminate\Support\Str;
  * Jalankan $jobs bersamaan; kembalikan hasil JSON per proses.
  *
  * @param  list<array<string, mixed>>  $jobs
- * @return list<array{ok: bool, id?: string, created?: bool, error?: string}>
+ * @return list<array{ok: bool, id?: string, created?: bool, status?: int|null, error?: string}>
  */
 function runConcurrently(array $jobs): array
 {
@@ -40,7 +42,7 @@ function runConcurrently(array $jobs): array
 
     $decoded = [];
     foreach ($results as $result) {
-        /** @var array{ok: bool, id?: string, created?: bool, error?: string} $row */
+        /** @var array{ok: bool, id?: string, created?: bool, status?: int|null, error?: string} $row */
         $row = json_decode($result->output(), true) ?? ['ok' => false, 'error' => $result->errorOutput()];
         $decoded[] = $row;
     }
@@ -158,5 +160,62 @@ it('keeps the ledger consistent under mixed concurrent writes with some duplicat
 
     expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
         ->and(Transaction::ownedBy($owner)->count())->toBe(9); // 1 dari 4 duplikat + 8 unik
+    assertLedgerBalanced();
+});
+
+/**
+ * @return array{0: User, 1: Account, 2: PlanItem}
+ */
+function checklistSetup(): array
+{
+    [$owner, $account] = concurrencySetup();
+    $bills = Category::factory()->forUser($owner)->create();
+
+    return [$owner, $account, PlanItem::factory()->forUser($owner)->create([
+        'category_id' => $bills->id, 'planned_amount' => 500_000, 'account_id' => $account->id,
+    ])];
+}
+
+it('checks a plan item exactly once when 8 devices with different client_ids race (others get 409)', function () {
+    [$owner, $account, $item] = checklistSetup();
+
+    $results = runConcurrently(array_map(fn () => [
+        'op' => 'check', 'user_id' => $owner->id, 'plan_item_id' => $item->id, 'amount' => 0, 'client_id' => (string) Str::uuid(),
+    ], range(1, 8)));
+
+    expect(array_filter(array_column($results, 'ok')))->toHaveCount(1, json_encode($results))
+        ->and(array_column(array_filter($results, fn ($r) => ! $r['ok']), 'status'))->toBe(array_fill(0, 7, 409))
+        ->and(Transaction::ownedBy($owner)->count())->toBe(1)
+        ->and($account->fresh()?->balance)->toBe(500_000);
+    assertLedgerBalanced();
+});
+
+it('answers 8 concurrent retries of the same check with one transaction and 200s', function () {
+    [$owner, $account, $item] = checklistSetup();
+    $job = ['op' => 'check', 'user_id' => $owner->id, 'plan_item_id' => $item->id, 'amount' => 0, 'client_id' => (string) Str::uuid()];
+
+    $results = runConcurrently(array_fill(0, 8, $job));
+
+    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
+        ->and(array_filter(array_column($results, 'created')))->toHaveCount(1)
+        ->and(array_unique(array_column($results, 'id')))->toHaveCount(1)
+        ->and(Transaction::ownedBy($owner)->count())->toBe(1)
+        ->and($account->fresh()?->balance)->toBe(500_000);
+});
+
+it('stays consistent when checks and unchecks of one item interleave in parallel', function () {
+    [$owner, $account, $item] = checklistSetup();
+
+    $jobs = [];
+    foreach (range(1, 10) as $i) {
+        $jobs[] = ['op' => $i % 2 ? 'check' : 'uncheck', 'user_id' => $owner->id, 'plan_item_id' => $item->id, 'amount' => 0, 'client_id' => (string) Str::uuid()];
+    }
+
+    $results = runConcurrently($jobs);
+
+    // Setiap kegagalan hanya boleh 409 (sudah dicentang), tidak ada deadlock/500.
+    expect(array_unique(array_column(array_filter($results, fn ($r) => ! $r['ok']), 'status')))->toBeIn([[], [409]])
+        ->and(Transaction::ownedBy($owner)->count())->toBeLessThanOrEqual(1)
+        ->and($account->fresh()?->balance)->toBe(1_000_000 - 500_000 * Transaction::ownedBy($owner)->count());
     assertLedgerBalanced();
 });

@@ -84,7 +84,7 @@ final class IsolationContext
             'account_id' => $this->victimAccount->id, 'category_id' => $this->victimCategory->id, 'type' => 'expense',
             'amount' => 25_000, 'occurred_on' => '2026-11-21', 'note' => 'catatan rahasia', 'client_id' => $this->victimClientId,
         ])->assertCreated();
-        $this->victimTransaction = Transaction::ownedBy($this->victim)->sole();
+        $this->victimTransaction = Transaction::ownedBy($this->victim)->where('client_id', $this->victimClientId)->sole();
         $this->victimTransferGroup = (string) actingAs($this->victim)->postJson('/api/transfers', [
             'from_account_id' => $this->victimAccount->id, 'to_account_id' => $this->victimAccount2->id,
             'amount' => 100_000, 'occurred_on' => '2026-11-21', 'client_id' => (string) Str::uuid(),
@@ -99,6 +99,9 @@ final class IsolationContext
         // Rencana korban: bulan ini (dibaca) dan bulan lalu (sumber "salin dari bulan lalu").
         $this->victimPlanItem = PlanItem::factory()->forUser($this->victim)->forMonth('2026-11')
             ->create(['name' => 'Cicilan Rahasia', 'category_id' => $this->victimCategory->id, 'account_id' => $this->victimAccount->id, 'due_on' => '2026-11-05']);
+        actingAs($this->victim)->postJson("/api/plan-items/{$this->victimPlanItem->id}/check", [
+            'client_id' => (string) Str::uuid(), 'occurred_on' => '2026-11-05',
+        ])->assertCreated();
         PlanItem::factory()->forUser($this->victim)->forMonth('2026-10')
             ->create(['name' => 'Cicilan Rahasia', 'category_id' => $this->victimCategory->id]);
 
@@ -231,6 +234,10 @@ function isolationCases(): array
         'delete plan item' => ['DELETE api/plan-items/{planItem}', fn ($c, $id) => ['DELETE', '/api/plan-items/'.$id('plan_item')]],
         'skip plan item' => ['POST api/plan-items/{planItem}/skip', fn ($c, $id) => ['POST', '/api/plan-items/'.$id('plan_item').'/skip']],
         'unskip plan item' => ['POST api/plan-items/{planItem}/unskip', fn ($c, $id) => ['POST', '/api/plan-items/'.$id('plan_item').'/unskip']],
+        'check the victim’s plan item' => ['POST api/plan-items/{planItem}/check', fn ($c, $id) => ['POST', '/api/plan-items/'.$id('plan_item').'/check', ['client_id' => (string) Str::uuid(), 'account_id' => $c->myAccount->id]]],
+        'check own item into the victim’s account' => ['POST api/plan-items/{planItem}/check', fn ($c, $id) => ['POST', '/api/plan-items/'.$c->myPlanItemId.'/check', ['client_id' => (string) Str::uuid(), 'account_id' => $id('account')]]],
+        'check own item replaying the victim’s client_id' => ['POST api/plan-items/{planItem}/check', fn ($c, $id) => ['POST', '/api/plan-items/'.$c->myPlanItemId.'/check', ['client_id' => $id('client_id'), 'account_id' => $c->myAccount->id]]],
+        'uncheck the victim’s plan item' => ['POST api/plan-items/{planItem}/uncheck', fn ($c, $id) => ['POST', '/api/plan-items/'.$id('plan_item').'/uncheck']],
     ];
 
     return array_map(fn (array $case) => new IsolationCase($case[0], $case[1]), $cases);
@@ -317,7 +324,8 @@ it('really exercises the victim’s data (sanity check of the fixture)', functio
 
     actingAs($c->victim)->getJson('/api/accounts/'.$c->victimAccount->id)->assertOk();
     actingAs($c->victim)->getJson('/api/transfers/'.$c->victimTransferGroup)->assertOk();
-    actingAs($c->victim)->getJson('/api/transactions?q=rahasia')->assertJsonCount(1, 'data');
+    actingAs($c->victim)->getJson('/api/transactions?q=catatan')->assertJsonCount(1, 'data');
+    actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.0.status', 'done');
     actingAs($c->victim)->getJson('/api/notifications')->assertJsonCount(1, 'data');
     actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.0.name', 'Cicilan Rahasia');
     actingAs($c->victim)->getJson('/api/plan-items/'.$c->victimPlanItem->id)->assertOk();
