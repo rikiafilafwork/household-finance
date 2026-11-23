@@ -71,7 +71,7 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #123 P6: `DataIsolationTest`: IDOR di setiap route `api` `test`
 - [x] #124 P7: Web tanpa household: rute datar, Akun, zona waktu user `web`
 
-## Minggu 3 — Plan: Checklist dan Amplop (4/6)
+## Minggu 3 — Plan: Checklist dan Amplop (5/6)
 
 > **Done kalau:** semua test plan hijau dan reconcile 0 setelah rangkaian centang/batal/hapus acak.
 
@@ -79,7 +79,7 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #126 `CheckPlanItem` / `UncheckPlanItem` (centang = transaksi) `api`
 - [x] #127 `PlanComparisonQuery`: rencana vs aktual (satu sumber angka) `api`
 - [x] #128 Alert amplop: `CheckEnvelopeThresholds` + notifikasi in-app `api`
-- [ ] #129 Test plan: centang/batal paralel, amplop tidak dobel, di luar rencana `test`
+- [x] #129 Test plan: centang/batal paralel, amplop tidak dobel, di luar rencana `test`
 - [ ] #130 Properti: reconcile 0 setelah rangkaian centang/batal/hapus acak `test`
 
 ## Minggu 4 — Web Inti + Dogfooding (7/12)
