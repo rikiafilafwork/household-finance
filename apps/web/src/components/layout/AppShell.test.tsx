@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { qk } from '@/api/keys';
 
 vi.mock('@/api/auth', () => ({ authApi: { me: vi.fn(async () => null), logout: vi.fn() } }));
+vi.mock('@/api/notifications', () => ({
+  notificationsApi: { list: vi.fn(async () => ({ data: [], meta: { current_page: 1, last_page: 1, total: 0, per_page: 20, unread_count: 0 } })), read: vi.fn(), readAll: vi.fn() },
+}));
 
 const { AppShell } = await import('./AppShell');
 

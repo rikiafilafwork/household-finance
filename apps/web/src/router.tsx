@@ -12,6 +12,7 @@ import { AccountsPage } from '@/pages/AccountsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { PlanPage } from '@/pages/PlanPage';
 import { CategoriesPage } from '@/pages/settings/CategoriesPage';
+import { ProfilePage } from '@/pages/settings/ProfilePage';
 import { SettingsLayout } from '@/pages/settings/SettingsLayout';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 
@@ -40,7 +41,7 @@ export const router = createBrowserRouter([
             children: [
               { path: '/settings/categories', element: <CategoriesPage /> },
               { path: '/settings/templates', element: <ComingSoon title="Template bulanan" issue={48} bare /> },
-              { path: '/settings/profile', element: <ComingSoon title="Profil & zona waktu" issue={40} bare /> },
+              { path: '/settings/profile', element: <ProfilePage /> },
             ],
           },
         ],

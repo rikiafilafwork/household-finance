@@ -40,6 +40,26 @@ export function useLogout() {
   });
 }
 
+/**
+ * Nama / zona waktu. Zona waktu menentukan "hari ini" dan "bulan ini" (Keputusan #12), jadi rencana
+ * dan dashboard dimuat ulang.
+ */
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Parameters<typeof authApi.updateProfile>[0]) => authApi.updateProfile(body),
+    onSuccess: (user) => {
+      queryClient.setQueryData(qk.me, user);
+      void queryClient.invalidateQueries({ queryKey: qk.plan() });
+      void queryClient.invalidateQueries({ queryKey: qk.dashboard });
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({ mutationFn: (body: Parameters<typeof authApi.changePassword>[0]) => authApi.changePassword(body) });
+}
+
 /** Zona waktu user (Keputusan #12); fallback Asia/Jakarta sebelum `me` termuat. */
 export function useTimezone(): string {
   return useMe().data?.timezone ?? 'Asia/Jakarta';

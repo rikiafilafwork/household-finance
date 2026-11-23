@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { invalidateMoney, qk } from '@/api/keys';
+import { invalidateMoney, qk, refreshNotifications } from '@/api/keys';
 import { planApi, type CheckBody, type PlanItemBody } from '@/api/plan';
 import type { Id } from '@/api/types';
 
@@ -13,7 +13,7 @@ export function usePlanMutations() {
     queryClient.invalidateQueries({ queryKey: qk.plan() }),
     queryClient.invalidateQueries({ queryKey: qk.dashboard }),
     // Amplop baru/diubah bisa memicu alert ambang (job afterCommit).
-    queryClient.invalidateQueries({ queryKey: qk.notifications }),
+    refreshNotifications(queryClient),
   ]);
   const money = () => invalidateMoney(queryClient);
 

@@ -62,7 +62,7 @@ export interface Transfer {
 
 export interface AppNotification {
   id: string;
-  type: 'reconcile_mismatch' | string;
+  type: 'envelope_threshold_reached' | 'reconcile_mismatch' | string;
   payload: Record<string, unknown>;
   read_at: string | null;
   created_at: string | null;
@@ -71,6 +71,18 @@ export interface AppNotification {
 export interface ReconcileMismatchPayload {
   mismatches: { account_id: Id; name: string; balance: number; expected: number; diff: number }[];
   fixed: boolean;
+}
+
+/** Amplop tembus 80% / 100% (job CheckEnvelopeThresholds). Angka dalam rupiah bulat. */
+export interface EnvelopeThresholdPayload {
+  plan_item_id: Id;
+  name: string;
+  category_id: Id;
+  month: string; // YYYY-MM
+  threshold: number; // 80 | 100
+  spent: number;
+  planned: number;
+  percent: number;
 }
 
 export interface Data<T> { data: T }
