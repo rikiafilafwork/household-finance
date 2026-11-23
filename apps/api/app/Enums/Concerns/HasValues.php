@@ -4,7 +4,7 @@ namespace App\Enums\Concerns;
 
 /**
  * Helper untuk enum string-backed, mis. dipakai di migration:
- * `$table->enum('role', HouseholdRole::values())`.
+ * `$table->enum('type', AccountType::values())`.
  */
 trait HasValues
 {

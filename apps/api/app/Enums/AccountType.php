@@ -5,13 +5,13 @@ namespace App\Enums;
 use App\Enums\Concerns\HasValues;
 
 /**
- * Jenis wallet.
+ * Jenis akun (Keputusan #6). Hanya `bank` yang punya import CSV mutasi.
  */
-enum WalletType: string
+enum AccountType: string
 {
     use HasValues;
 
-    case Cash = 'cash';
     case Bank = 'bank';
     case Ewallet = 'ewallet';
+    case Cash = 'cash';
 }

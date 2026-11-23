@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,29 +12,28 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('household_id')->constrained(); // denormalisasi: filter laporan tanpa join
-            $table->foreignId('wallet_id')->constrained();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('account_id')->constrained();
             $table->foreignId('category_id')->nullable()->constrained(); // NULL untuk transfer & adjustment
             $table->enum('type', TransactionType::values());
-            $table->enum('status', TransactionStatus::values())->default(TransactionStatus::Posted->value);
-            $table->bigInteger('amount');              // ber-tanda, sudut pandang wallet (Keputusan #2)
-            $table->date('occurred_on');               // tanggal lokal household (Keputusan #7)
+            $table->bigInteger('amount');              // ber-tanda, sudut pandang akun (Keputusan #2)
+            $table->date('occurred_on');               // tanggal lokal user (Keputusan #12)
             $table->string('note')->nullable();
             $table->char('transfer_group_id', 36)->nullable();
-            $table->char('client_id', 36)->nullable(); // idempotensi tulis web/mobile (Keputusan #11)
-            $table->unsignedBigInteger('recurring_rule_id')->nullable();
+            $table->char('client_id', 36)->nullable(); // idempotensi tulis web/mobile (Keputusan #15)
+            // Terhubung ke item checklist (Keputusan #8). FK ke plan_items ditambahkan migration plan (#125).
+            $table->unsignedBigInteger('plan_item_id')->nullable();
             $table->char('import_hash', 64)->nullable();
-            $table->foreignId('created_by')->constrained('users');
-            $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['household_id', 'occurred_on'], 'idx_tx_household_date');
-            $table->index(['wallet_id', 'occurred_on'], 'idx_tx_wallet_date');
-            $table->index(['category_id', 'occurred_on'], 'idx_tx_category_date');
+            $table->index(['user_id', 'occurred_on'], 'idx_tx_user_date');
+            $table->index(['user_id', 'category_id', 'occurred_on'], 'idx_tx_user_cat_date');
+            $table->index(['account_id', 'occurred_on'], 'idx_tx_account_date');
             $table->index('transfer_group_id', 'idx_tx_transfer_group');
-            $table->unique(['household_id', 'client_id'], 'uq_tx_client');  // NULL boleh berulang
-            $table->unique(['wallet_id', 'import_hash'], 'uq_tx_import');    // NULL boleh berulang
+            $table->unique(['user_id', 'client_id'], 'uq_tx_client');      // NULL boleh berulang
+            $table->unique('plan_item_id', 'uq_tx_plan_item');             // 1 item checklist = maks 1 transaksi
+            $table->unique(['account_id', 'import_hash'], 'uq_tx_import'); // NULL boleh berulang
         });
 
         // MySQL >= 8.0.16 menegakkan CHECK constraint.

@@ -1,11 +1,9 @@
 <?php
 
+use App\Enums\AccountType;
+use App\Enums\CategoryKind;
 use App\Enums\Frequency;
-use App\Enums\HouseholdRole;
-use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
-use App\Enums\WalletType;
-use App\Enums\WalletVisibility;
 
 // Nilai enum harus persis sama dengan ENUM di schema Architecture.md.
 /**
@@ -15,11 +13,9 @@ use App\Enums\WalletVisibility;
 it('matches the database schema values', function (array $actual, array $expected) {
     expect($actual)->toBe($expected);
 })->with([
-    'household role' => [HouseholdRole::values(), ['owner', 'member']],
-    'wallet type' => [WalletType::values(), ['cash', 'bank', 'ewallet']],
-    'wallet visibility' => [WalletVisibility::values(), ['shared', 'private']],
+    'account type' => [AccountType::values(), ['bank', 'ewallet', 'cash']],
+    'category kind' => [CategoryKind::values(), ['income', 'expense']],
     'transaction type' => [TransactionType::values(), ['income', 'expense', 'transfer', 'adjustment']],
-    'transaction status' => [TransactionStatus::values(), ['posted', 'pending']],
     'frequency' => [Frequency::values(), ['weekly', 'monthly', 'yearly']],
 ]);
 

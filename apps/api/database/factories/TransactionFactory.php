@@ -2,16 +2,14 @@
 
 namespace Database\Factories;
 
-use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
+use App\Models\Account;
 use App\Models\Transaction;
-use App\Models\User;
-use App\Models\Wallet;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * PERINGATAN: factory ini menulis langsung ke tabel dan TIDAK mengubah wallets.balance.
+ * PERINGATAN: factory ini menulis langsung ke tabel dan TIDAK mengubah accounts.balance.
  * Pakai Actions untuk skenario saldo; factory hanya untuk seed data / test constraint & reconcile.
  *
  * @extends Factory<Transaction>
@@ -24,20 +22,18 @@ class TransactionFactory extends Factory
     public function definition(): array
     {
         return [
-            'wallet_id' => Wallet::factory(),
-            'household_id' => fn (array $attributes) => Wallet::findOrFail($attributes['wallet_id'])->household_id,
+            'account_id' => Account::factory(),
+            'user_id' => fn (array $attributes) => Account::query()->withoutGlobalScopes()->findOrFail($attributes['account_id'])->user_id,
             'category_id' => null,
             'type' => TransactionType::Expense,
-            'status' => TransactionStatus::Posted,
             'amount' => -25_000,
             'occurred_on' => now()->toDateString(),
-            'created_by' => User::factory(),
         ];
     }
 
-    public function forWallet(Wallet $wallet): static
+    public function forAccount(Account $account): static
     {
-        return $this->state(['wallet_id' => $wallet->id, 'household_id' => $wallet->household_id]);
+        return $this->state(['account_id' => $account->id, 'user_id' => $account->user_id]);
     }
 
     public function income(int $amount = 5_000_000): static
@@ -63,10 +59,5 @@ class TransactionFactory extends Factory
     public function adjustment(int $signedAmount): static
     {
         return $this->state(['type' => TransactionType::Adjustment, 'amount' => $signedAmount]);
-    }
-
-    public function pending(): static
-    {
-        return $this->state(['status' => TransactionStatus::Pending]);
     }
 }

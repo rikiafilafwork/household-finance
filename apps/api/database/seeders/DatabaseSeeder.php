@@ -2,26 +2,31 @@
 
 namespace Database\Seeders;
 
-use App\Enums\HouseholdRole;
-use App\Models\Household;
+use App\Actions\Accounts\CreateAccount;
+use App\Enums\AccountType;
 use App\Models\User;
+use App\Support\DefaultCategories;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Data dev lokal: satu owner + satu member dalam satu household.
-     * Login: owner@example.com / member@example.com, password "password".
+     * Data dev lokal: satu akun pengguna demo dengan rekening, e-wallet, dan dompet.
+     * Login: demo@example.com, password "password".
      */
-    public function run(): void
+    public function run(CreateAccount $createAccount): void
     {
-        $owner = User::factory()->create(['name' => 'Demo Owner', 'email' => 'owner@example.com']);
-        $member = User::factory()->create(['name' => 'Demo Member', 'email' => 'member@example.com']);
+        $user = User::factory()->create(['name' => 'Demo', 'email' => 'demo@example.com']);
 
-        $household = Household::factory()->create(['name' => 'Keluarga Demo', 'created_by' => $owner->id]);
-        $household->members()->attach($owner, ['role' => HouseholdRole::Owner, 'joined_at' => now()]);
-        $household->members()->attach($member, ['role' => HouseholdRole::Member, 'joined_at' => now()]);
+        foreach ([
+            ['BCA', AccountType::Bank, 5_000_000],
+            ['Bank Jago', AccountType::Bank, 1_500_000],
+            ['GoPay', AccountType::Ewallet, 250_000],
+            ['Dompet', AccountType::Cash, 300_000],
+        ] as $i => [$name, $type, $opening]) {
+            $createAccount->handle($user, $name, $type, $opening, $i);
+        }
 
-        $this->call(DefaultCategorySeeder::class);
+        DefaultCategories::seedFor($user);
     }
 }

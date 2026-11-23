@@ -1,32 +1,28 @@
 <?php
 
+use App\Models\Account;
+use App\Models\Category;
+use App\Models\Concerns\BelongsToUser;
+use App\Models\Transaction;
+
 /*
- * Penjaga #25: tidak ada query baca transaksi yang melewati VisibleWallets.
- *
- * Membaca transaksi untuk ditampilkan wajib lewat App\Reports\TransactionQuery (yang memfilter
- * wallet_id IN VisibleWallets::for(...)). Selain itu hanya file di daftar ini yang boleh membuat
- * query ke tabel transactions, masing-masing dengan alasan. File baru yang menulis query transaksi
- * akan membuat test ini gagal: pakai TransactionQuery, atau tambahkan ke daftar dengan alasan +
- * test privasi untuk endpoint-nya.
+ * Penjaga isolasi data (Keputusan #5): global scope BelongsToUser hanya boleh dilewati di file
+ * yang ada di daftar ini, masing-masing dengan alasan. Kode baru yang memakai
+ * withoutGlobalScope(s), DB::table() atau toBase() akan membuat test ini gagal: pakai model
+ * ber-scope / Model::ownedBy($user), atau tambahkan ke daftar dengan alasan + test isolasi.
  */
 
-const TRANSACTION_QUERY_ALLOWLIST = [
-    'Reports/TransactionQuery.php' => 'sumber query baca; selalu wallet_id IN VisibleWallets',
-    'Reports/BudgetSpending.php' => 'agregat budget; hanya wallet SHARED (terlihat semua anggota)',
-    'Actions/Transactions/ValidatesTransactionTarget.php' => 'replay client_id; dicek VisibleWallets::canSee',
-    'Actions/Transactions/UpdateTransaction.php' => 'mengunci baris yang sudah lolos TransactionPolicy',
-    'Actions/Transactions/DeleteTransaction.php' => 'mengunci baris yang sudah lolos TransactionPolicy',
-    'Actions/Transfers/TransferPair.php' => 'pemanggil wajib cek visibleTo()/manageableBy()',
-    'Actions/Wallets/ArchiveWallet.php' => 'hanya exists(), wallet sudah lolos WalletPolicy',
-    'Actions/Wallets/ReconcileWallets.php' => 'internal (command), notifikasi difilter per penerima',
-    'Actions/Categories/DeleteCategory.php' => 'hanya exists(), tidak mengembalikan data',
+const SCOPE_BYPASS_ALLOWLIST = [
+    'Models/Concerns/BelongsToUser.php' => 'definisi ownedBy(): melepas scope lalu WHERE user_id = user eksplisit',
+    'Models/User.php' => 'relasi accounts/categories/transactions sudah dibatasi FK user_id',
+    'Actions/Accounts/ArchiveAccount.php' => 'exists() termasuk soft-deleted pada akun yang sudah ter-scope',
+    'Actions/Accounts/ReconcileAccounts.php' => 'internal (command/scheduler) lintas user; notifikasi per pemilik',
+    'Actions/Categories/DeleteCategory.php' => 'exists() termasuk soft-deleted, tidak mengembalikan data',
+    'Support/DefaultCategories.php' => 'insertOrIgnore kategori bawaan untuk satu user eksplisit',
 ];
 
-it('only builds transaction queries in allow-listed files', function () {
-    $pattern = '/Transaction::(query|where\w*|with\w*|find\w*|all|first\w*|on|select|pluck|sum|count)\b'
-        .'|->transactions\(\)'
-        .'|table\([\'"]transactions[\'"]\)'
-        .'|from\([\'"]transactions[\'"]\)/';
+it('only bypasses the user scope in allow-listed files', function () {
+    $pattern = '/withoutGlobalScopes?\(|DB::table\(|->toBase\(\)|DB::select\(/';
 
     $root = dirname(__DIR__, 3).'/app/';
     $offenders = [];
@@ -38,7 +34,7 @@ it('only builds transaction queries in allow-listed files', function () {
         }
 
         $relative = substr($file->getPathname(), strlen($root));
-        if (str_starts_with($relative, 'Models/') || array_key_exists($relative, TRANSACTION_QUERY_ALLOWLIST)) {
+        if (array_key_exists($relative, SCOPE_BYPASS_ALLOWLIST)) {
             continue;
         }
 
@@ -47,19 +43,29 @@ it('only builds transaction queries in allow-listed files', function () {
         }
     }
 
-    expect($offenders)->toBe([], 'Query transaksi di luar TransactionQuery/allowlist: '.implode(', ', $offenders));
+    expect($offenders)->toBe([], 'Scope user dilewati di luar allowlist: '.implode(', ', $offenders));
 });
 
-it('keeps the allowlist honest (every entry still exists and still queries transactions)', function () {
+it('keeps the allowlist honest (every entry still exists and still bypasses the scope)', function () {
     $root = dirname(__DIR__, 3).'/app/';
 
-    foreach (array_keys(TRANSACTION_QUERY_ALLOWLIST) as $relative) {
-        expect(file_exists($root.$relative))->toBeTrue("{$relative} sudah tidak ada; hapus dari allowlist");
+    foreach (array_keys(SCOPE_BYPASS_ALLOWLIST) as $relative) {
+        expect(file_exists($root.$relative))->toBeTrue("{$relative} sudah tidak ada; hapus dari allowlist")
+            ->and((string) file_get_contents($root.$relative))
+            ->toMatch('/withoutGlobalScopes?\(|DB::table\(|->toBase\(\)/', "{$relative} tidak lagi melewati scope; hapus dari allowlist");
     }
 });
 
-it('makes TransactionQuery filter by VisibleWallets', function () {
+it('makes every user-owned model use BelongsToUser', function (string $model) {
+    expect(class_uses_recursive($model))->toHaveKey(BelongsToUser::class);
+})->with([
+    Account::class,
+    Category::class,
+    Transaction::class,
+]);
+
+it('makes TransactionQuery scope by an explicit user', function () {
     $source = (string) file_get_contents(dirname(__DIR__, 3).'/app/Reports/TransactionQuery.php');
 
-    expect($source)->toContain('VisibleWallets::for(')->toContain("whereIn('wallet_id'");
+    expect($source)->toContain('Transaction::ownedBy($user)');
 });

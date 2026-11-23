@@ -3,23 +3,23 @@
 namespace App\Models;
 
 use App\Enums\CategoryKind;
+use App\Models\Concerns\BelongsToUser;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
  * @property CategoryKind $kind
  * @property Carbon|null $archived_at
  */
-#[Fillable(['household_id', 'kind', 'name', 'color', 'icon', 'archived_at'])]
+#[Fillable(['user_id', 'kind', 'name', 'color', 'icon', 'archived_at'])]
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
-    use HasFactory;
+    use BelongsToUser, HasFactory;
 
     /**
      * @return array<string, string>
@@ -30,14 +30,6 @@ class Category extends Model
             'kind' => CategoryKind::class,
             'archived_at' => 'datetime',
         ];
-    }
-
-    /**
-     * @return BelongsTo<Household, $this>
-     */
-    public function household(): BelongsTo
-    {
-        return $this->belongsTo(Household::class);
     }
 
     /**

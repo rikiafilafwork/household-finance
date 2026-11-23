@@ -2,32 +2,31 @@
 
 namespace App\Models;
 
-use App\Enums\WalletType;
-use App\Enums\WalletVisibility;
-use Database\Factories\WalletFactory;
+use App\Enums\AccountType;
+use App\Models\Concerns\BelongsToUser;
+use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
  * `balance` hanya boleh berubah lewat Actions transaksi (dalam transaksi DB + lockForUpdate),
- * tidak pernah di-set langsung. Kebenarannya dibuktikan wallets:reconcile (Keputusan #3).
+ * tidak pernah di-set langsung. Kebenarannya dibuktikan accounts:reconcile (Keputusan #3).
  *
- * @property WalletType $type
- * @property WalletVisibility $visibility
+ * @property AccountType $type
  * @property int $opening_balance
  * @property int $balance
+ * @property int $sort_order
  * @property Carbon|null $archived_at
  */
-#[Fillable(['household_id', 'owner_user_id', 'visibility', 'type', 'name', 'opening_balance', 'balance', 'archived_at'])]
-class Wallet extends Model
+#[Fillable(['user_id', 'type', 'name', 'opening_balance', 'balance', 'sort_order', 'archived_at'])]
+class Account extends Model
 {
-    /** @use HasFactory<WalletFactory> */
-    use HasFactory;
+    /** @use HasFactory<AccountFactory> */
+    use BelongsToUser, HasFactory;
 
     /**
      * @return array<string, string>
@@ -35,28 +34,12 @@ class Wallet extends Model
     protected function casts(): array
     {
         return [
-            'type' => WalletType::class,
-            'visibility' => WalletVisibility::class,
+            'type' => AccountType::class,
             'opening_balance' => 'integer',
             'balance' => 'integer',
+            'sort_order' => 'integer',
             'archived_at' => 'datetime',
         ];
-    }
-
-    /**
-     * @return BelongsTo<Household, $this>
-     */
-    public function household(): BelongsTo
-    {
-        return $this->belongsTo(Household::class);
-    }
-
-    /**
-     * @return BelongsTo<User, $this>
-     */
-    public function owner(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'owner_user_id');
     }
 
     /**
@@ -67,18 +50,13 @@ class Wallet extends Model
         return $this->hasMany(Transaction::class);
     }
 
-    public function isPrivate(): bool
-    {
-        return $this->visibility === WalletVisibility::Private;
-    }
-
     public function isArchived(): bool
     {
         return $this->archived_at !== null;
     }
 
     /**
-     * @param  Builder<Wallet>  $query
+     * @param  Builder<Account>  $query
      */
     public function scopeActive(Builder $query): void
     {

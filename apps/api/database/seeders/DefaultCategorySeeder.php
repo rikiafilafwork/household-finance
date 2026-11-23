@@ -2,17 +2,17 @@
 
 namespace Database\Seeders;
 
-use App\Models\Household;
+use App\Models\User;
 use App\Support\DefaultCategories;
 use Illuminate\Database\Seeder;
 
 /**
- * Pastikan setiap household punya kategori bawaan (idempoten).
+ * Pastikan setiap user punya kategori bawaan (idempoten).
  */
 class DefaultCategorySeeder extends Seeder
 {
     public function run(): void
     {
-        Household::query()->each(fn (Household $household) => DefaultCategories::seedFor($household));
+        User::query()->each(fn (User $user) => DefaultCategories::seedFor($user));
     }
 }
