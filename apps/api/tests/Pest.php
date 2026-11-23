@@ -52,20 +52,20 @@ function spa(): SpaClient
 }
 
 /**
- * Invariant saldo (Keputusan #2/#3) untuk SEMUA wallet:
- * balance = opening_balance + SUM(amount) WHERE status = 'posted' AND deleted_at IS NULL.
- * (Command wallets:reconcile di #21 memakai rumus yang sama di kode aplikasi.)
+ * Invariant saldo (Keputusan #2/#3) untuk SEMUA akun:
+ * balance = opening_balance + SUM(amount) WHERE deleted_at IS NULL.
+ * (Command accounts:reconcile memakai rumus yang sama di kode aplikasi.)
  */
 function assertLedgerBalanced(): void
 {
-    $mismatches = DB::select("
-        SELECT w.id, w.balance, w.opening_balance + COALESCE(SUM(t.amount), 0) AS expected
-          FROM wallets w
+    $mismatches = DB::select('
+        SELECT a.id, a.balance, a.opening_balance + COALESCE(SUM(t.amount), 0) AS expected
+          FROM accounts a
           LEFT JOIN transactions t
-                 ON t.wallet_id = w.id AND t.status = 'posted' AND t.deleted_at IS NULL
-         GROUP BY w.id, w.balance, w.opening_balance
-        HAVING w.balance <> expected
-    ");
+                 ON t.account_id = a.id AND t.deleted_at IS NULL
+         GROUP BY a.id, a.balance, a.opening_balance
+        HAVING a.balance <> expected
+    ');
 
-    expect($mismatches)->toBe([], 'Saldo wallet meleset dari ledger: '.json_encode($mismatches));
+    expect($mismatches)->toBe([], 'Saldo akun meleset dari ledger: '.json_encode($mismatches));
 }

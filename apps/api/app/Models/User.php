@@ -2,16 +2,20 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\OwnedByCurrentUser;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
+/**
+ * @property string $timezone zona waktu IANA untuk tanggal lokal (Keputusan #12)
+ */
+#[Fillable(['name', 'email', 'password', 'timezone'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,13 +36,29 @@ class User extends Authenticatable
     }
 
     /**
-     * @return BelongsToMany<Household, $this, HouseholdMember, 'membership'>
+     * Relasi ke data milik user. Lewati global scope: relasi ini sudah dibatasi user_id,
+     * dan harus tetap jalan dari console/job tanpa sesi login.
+     *
+     * @return HasMany<Account, $this>
      */
-    public function households(): BelongsToMany
+    public function accounts(): HasMany
     {
-        return $this->belongsToMany(Household::class, 'household_members')
-            ->using(HouseholdMember::class)
-            ->as('membership')
-            ->withPivot(['role', 'joined_at']);
+        return $this->hasMany(Account::class)->withoutGlobalScope(OwnedByCurrentUser::class);
+    }
+
+    /**
+     * @return HasMany<Category, $this>
+     */
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class)->withoutGlobalScope(OwnedByCurrentUser::class);
+    }
+
+    /**
+     * @return HasMany<Transaction, $this>
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class)->withoutGlobalScope(OwnedByCurrentUser::class);
     }
 }

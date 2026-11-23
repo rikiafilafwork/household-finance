@@ -5,7 +5,7 @@ namespace App\Enums;
 use App\Enums\Concerns\HasValues;
 
 /**
- * Tanda amount mengikuti sudut pandang wallet (Keputusan #2):
+ * Tanda amount mengikuti sudut pandang akun (Keputusan #2):
  * income positif, expense negatif, transfer keluar negatif / masuk positif, adjustment bebas.
  * Ditegakkan juga oleh CHECK constraint `chk_tx_sign` di database.
  */

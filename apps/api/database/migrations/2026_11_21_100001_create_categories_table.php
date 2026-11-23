@@ -11,7 +11,7 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('household_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->enum('kind', CategoryKind::values());
             $table->string('name', 60);
             $table->string('color', 9)->nullable();
@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamp('archived_at')->nullable();
             $table->timestamps();
 
-            $table->unique(['household_id', 'kind', 'name'], 'uq_category_name');
+            $table->unique(['user_id', 'kind', 'name'], 'uq_category_name');
         });
     }
 
