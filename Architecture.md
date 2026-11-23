@@ -131,11 +131,12 @@ Definisi angka (satu sumber kebenaran, dipakai Rencana, Dashboard, dan Laporan l
 
 - **Rencana** = `SUM(planned_amount)` item bulan itu yang tidak di-skip.
 - **Aktual** = `SUM(amount)` **semua** transaksi `income`/`expense` bulan itu (termasuk yang di luar rencana).
+  Pengecualian: transaksi yang terhubung ke item checklist dihitung di bulan **item**-nya, bukan bulan tanggal transaksinya (tagihan November yang dibayar 30 Oktober tetap aktual November), supaya rencana vs aktual per item selalu cocok.
 - **Di luar rencana** = transaksi yang tidak terhubung ke checklist **dan** kategorinya tidak punya amplop bulan itu.
 - Aktual = aktual checklist + aktual amplop + di luar rencana. Transaksi yang sudah dicentang dari checklist tidak ikut masuk amplop kategorinya (mencegah dobel hitung).
 - **Sisa anggaran** = rencana pengeluaran − aktual pengeluaran. Sub-angka "belum dibayar" = jumlah rencana item checklist pengeluaran yang belum dicentang.
 - Satu bulan hanya boleh punya **satu amplop per kategori** (dijaga unique index lewat generated column).
-- Item bisa di-skip (`skipped_at`), mis. tagihan yang tidak ada bulan ini. Item yang di-skip tidak masuk rencana.
+- Item bisa di-skip (`skipped_at`), mis. tagihan yang tidak ada bulan ini. Item yang di-skip tidak masuk rencana; transaksi kategori amplop yang di-skip dihitung sebagai di luar rencana.
 - Plan dibuat lewat: (a) template (#9), (b) "Salin dari bulan lalu", atau (c) tambah manual. Salin hanya menyalin item yang belum ada dari template di bulan itu.
 
 **8. Centang = membuat transaksi (satu transaksi DB).**

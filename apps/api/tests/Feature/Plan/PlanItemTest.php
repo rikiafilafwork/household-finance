@@ -86,8 +86,8 @@ describe('creating and listing', function () {
 
         actingAs($s['user'])->getJson('/api/plan/2026-11')
             ->assertOk()
-            ->assertJsonPath('data.*.id', [$early->id, $late->id, $envelope->id])
-            ->assertJsonPath('data.0.category.name', 'Tagihan');
+            ->assertJsonPath('data.items.*.id', [$early->id, $late->id, $envelope->id])
+            ->assertJsonPath('data.items.0.category.name', 'Tagihan');
     });
 
     it('allows several checklist items in one category but only one envelope per category per month', function () {
