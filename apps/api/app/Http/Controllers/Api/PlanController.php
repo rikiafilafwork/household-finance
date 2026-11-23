@@ -11,33 +11,33 @@ use App\Actions\Plan\UncheckPlanItem;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Plan\CheckPlanItemRequest;
 use App\Http\Requests\Plan\PlanItemRequest;
+use App\Http\Resources\PlanComparisonResource;
 use App\Http\Resources\PlanItemResource;
 use App\Http\Resources\TransactionResource;
 use App\Models\PlanItem;
 use App\Models\User;
 use App\Plan\PlanMonth;
+use App\Queries\PlanComparisonQuery;
+use App\Queries\PlanItemComparison;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 /**
  * Rencana bulanan: `/plan/{YYYY-MM}` untuk daftar & tambah, `/plan-items/{id}` untuk item.
- * Angka rencana vs aktual ada di PlanComparisonQuery (#127).
+ * Angka rencana vs aktual dari PlanComparisonQuery (satu sumber untuk Rencana/Dashboard/Laporan).
  */
 class PlanController extends Controller
 {
-    public function index(string $month): AnonymousResourceCollection
+    /**
+     * Rencana sebulan + rencana vs aktual (PlanComparisonQuery). Kategori item dimuat untuk tampilan.
+     */
+    public function index(Request $request, string $month, PlanComparisonQuery $query): PlanComparisonResource
     {
-        $items = PlanItem::query()
-            ->forMonth(PlanMonth::parse($month)->firstDay())
-            ->with(['category', 'transaction'])
-            ->orderBy('sort_order')
-            ->orderByRaw('due_on IS NULL, due_on')
-            ->orderBy('id')
-            ->get();
+        $plan = $query->for($this->user($request), PlanMonth::parse($month));
+        $plan->items->each(fn (PlanItemComparison $row) => $row->item->loadMissing('category'));
 
-        return PlanItemResource::collection($items);
+        return new PlanComparisonResource($plan);
     }
 
     public function store(PlanItemRequest $request, string $month, SavePlanItem $save): JsonResponse

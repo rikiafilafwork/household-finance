@@ -325,8 +325,8 @@ it('really exercises the victim’s data (sanity check of the fixture)', functio
     actingAs($c->victim)->getJson('/api/accounts/'.$c->victimAccount->id)->assertOk();
     actingAs($c->victim)->getJson('/api/transfers/'.$c->victimTransferGroup)->assertOk();
     actingAs($c->victim)->getJson('/api/transactions?q=catatan')->assertJsonCount(1, 'data');
-    actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.0.status', 'done');
+    actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.items.0.status', 'done');
     actingAs($c->victim)->getJson('/api/notifications')->assertJsonCount(1, 'data');
-    actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.0.name', 'Cicilan Rahasia');
+    actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.items.0.name', 'Cicilan Rahasia');
     actingAs($c->victim)->getJson('/api/plan-items/'.$c->victimPlanItem->id)->assertOk();
 });
