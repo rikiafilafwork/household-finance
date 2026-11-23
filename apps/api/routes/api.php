@@ -4,10 +4,12 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
+use App\Plan\PlanMonth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -55,4 +57,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('transfers/{transfer}', [TransferController::class, 'show'])->whereUuid('transfer');
     Route::patch('transfers/{transfer}', [TransferController::class, 'update'])->whereUuid('transfer');
     Route::delete('transfers/{transfer}', [TransferController::class, 'destroy'])->whereUuid('transfer');
+
+    // Rencana bulanan (Keputusan #7). {month} = YYYY-MM.
+    Route::get('plan/{month}', [PlanController::class, 'index'])->where('month', PlanMonth::ROUTE_PATTERN);
+    Route::post('plan/{month}/items', [PlanController::class, 'store'])->where('month', PlanMonth::ROUTE_PATTERN);
+    Route::post('plan/{month}/copy-from-previous', [PlanController::class, 'copyFromPrevious'])->where('month', PlanMonth::ROUTE_PATTERN);
+    Route::get('plan-items/{planItem}', [PlanController::class, 'show']);
+    Route::patch('plan-items/{planItem}', [PlanController::class, 'update']);
+    Route::delete('plan-items/{planItem}', [PlanController::class, 'destroy']);
+    Route::post('plan-items/{planItem}/skip', [PlanController::class, 'skip']);
+    Route::post('plan-items/{planItem}/unskip', [PlanController::class, 'unskip']);
 });
