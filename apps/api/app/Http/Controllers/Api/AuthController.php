@@ -25,8 +25,11 @@ class AuthController extends Controller
      */
     public function register(RegisterRequest $request): JsonResponse
     {
+        // Keputusan #5: di-deploy publik, registrasi dimatikan setelah akun dibuat.
+        abort_unless(config('auth.registration_enabled'), 403, 'Pendaftaran akun baru sedang ditutup.');
+
         $user = DB::transaction(function () use ($request) {
-            $user = User::create($request->safe()->only(['name', 'email', 'password']));
+            $user = User::create($request->safe()->only(['name', 'email', 'password', 'timezone']));
             DefaultCategories::seedFor($user);
 
             return $user;

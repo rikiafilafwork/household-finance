@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(fn () => RateLimiter::clear('login'));
 
@@ -32,6 +33,57 @@ it('registers a user and starts a session', function () {
     $browser->get('/api/auth/me')->assertOk()->assertJsonPath('data.name', 'Riki');
 });
 
+it('returns the timezone on /auth/me and accepts one at registration', function () {
+    $browser = spa()->csrf();
+
+    $browser->post('/api/auth/register', [
+        'name' => 'Riki', 'email' => 'riki@example.com',
+        'password' => 'rahasia-panjang', 'password_confirmation' => 'rahasia-panjang',
+        'timezone' => 'Asia/Makassar',
+    ])->assertCreated()->assertJsonPath('data.timezone', 'Asia/Makassar');
+
+    $browser->get('/api/auth/me')->assertJsonPath('data.timezone', 'Asia/Makassar');
+});
+
+it('defaults the timezone to Asia/Jakarta', function () {
+    spa()->csrf()->post('/api/auth/register', [
+        'name' => 'Riki', 'email' => 'riki@example.com',
+        'password' => 'rahasia-panjang', 'password_confirmation' => 'rahasia-panjang',
+    ])->assertCreated()->assertJsonPath('data.timezone', 'Asia/Jakarta');
+});
+
+it('seeds the default categories for the new user only (no household)', function () {
+    $browser = spa()->csrf();
+    $browser->post('/api/auth/register', [
+        'name' => 'Riki', 'email' => 'riki@example.com',
+        'password' => 'rahasia-panjang', 'password_confirmation' => 'rahasia-panjang',
+    ])->assertCreated();
+
+    $browser->get('/api/categories?kind=expense')->assertOk()
+        ->assertJsonPath('data.*.name', ['Belanja', 'Hiburan', 'Kesehatan', 'Lainnya', 'Makan', 'Pendidikan', 'Tagihan', 'Transport']);
+    $browser->get('/api/categories?kind=income')->assertOk()
+        ->assertJsonPath('data.*.name', ['Freelance', 'Gaji', 'Lainnya']);
+    expect(Schema::hasTable('households'))->toBeFalse();
+});
+
+it('rejects registration when REGISTRATION_ENABLED is false', function () {
+    config(['auth.registration_enabled' => false]);
+
+    spa()->csrf()->post('/api/auth/register', [
+        'name' => 'Riki', 'email' => 'riki@example.com',
+        'password' => 'rahasia-panjang', 'password_confirmation' => 'rahasia-panjang',
+    ])->assertForbidden()->assertJsonPath('message', 'Pendaftaran akun baru sedang ditutup.');
+
+    expect(User::count())->toBe(0);
+});
+
+it('still lets existing users log in when registration is closed', function () {
+    config(['auth.registration_enabled' => false]);
+    User::factory()->create(['email' => 'riki@example.com', 'password' => 'rahasia-panjang']);
+
+    spa()->csrf()->post('/api/auth/login', ['email' => 'riki@example.com', 'password' => 'rahasia-panjang'])->assertOk();
+});
+
 it('validates registration input', function (array $payload, string $field) {
     User::factory()->create(['email' => 'taken@example.com']);
 
@@ -47,6 +99,7 @@ it('validates registration input', function (array $payload, string $field) {
     'password too short' => [['password' => 'pendek', 'password_confirmation' => 'pendek'], 'password'],
     'password not confirmed' => [['password_confirmation' => 'lain-lagi-ya'], 'password'],
     'missing name' => [['name' => ''], 'name'],
+    'unknown timezone' => [['timezone' => 'Mars/Olympus'], 'timezone'],
 ]);
 
 it('logs in with valid credentials, case-insensitive email', function () {

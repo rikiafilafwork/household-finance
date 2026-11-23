@@ -23,6 +23,15 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
+     * Samakan dengan default kolom supaya user yang baru dibuat langsung punya zona waktu.
+     *
+     * @var array<string, string>
+     */
+    protected $attributes = [
+        'timezone' => 'Asia/Jakarta',
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

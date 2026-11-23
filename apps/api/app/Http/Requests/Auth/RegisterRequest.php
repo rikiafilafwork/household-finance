@@ -22,6 +22,8 @@ class RegisterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            // Opsional: web mengirim zona waktu browser; default kolom Asia/Jakarta.
+            'timezone' => ['sometimes', 'string', 'timezone:all'],
         ];
     }
 }

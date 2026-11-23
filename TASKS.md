@@ -59,14 +59,14 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #29 BudgetAlertTest `test`
 - [x] #30 PrivateWalletVisibilityTest (list, transaksi, detail, pencarian) `test`
 
-## Pivot — Keuangan Pribadi (0/7)
+## Pivot — Keuangan Pribadi (4/7)
 
 > **Done kalau:** semua data ter-isolasi per user dengan test IDOR di setiap route, wallet → akun, household hilang dari API & web, dan test saldo/idempotensi/concurrency + k6 tetap hijau.
 
-- [ ] #118 P1: Schema baru per user + trait `BelongsToUser` `api`
-- [ ] #119 P2: Hapus domain household (model, action, policy, route, undangan) `api`
-- [ ] #120 P3: Wallet → Akun (CRUD, arsip, sesuaikan saldo, `sort_order`) `api`
-- [ ] #121 P4: Adaptasi transaksi, transfer, reconcile ke akun per user `api` `test`
+- [x] #118 P1: Schema baru per user + trait `BelongsToUser` `api`
+- [x] #119 P2: Hapus domain household (model, action, policy, route, undangan) `api`
+- [x] #120 P3: Wallet → Akun (CRUD, arsip, sesuaikan saldo, `sort_order`) `api`
+- [x] #121 P4: Adaptasi transaksi, transfer, reconcile ke akun per user `api` `test`
 - [ ] #122 P5: Auth pribadi: `REGISTRATION_ENABLED`, `user:reset-password`, zona waktu, kategori default `api`
 - [ ] #123 P6: `DataIsolationTest`: IDOR di setiap route `api` `test`
 - [ ] #124 P7: Web tanpa household: rute datar, Akun, zona waktu user `web`

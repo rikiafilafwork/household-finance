@@ -20,6 +20,7 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'timezone' => $this->timezone, // tanggal lokal transaksi & bulan plan (Keputusan #12)
         ];
     }
 }
