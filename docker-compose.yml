@@ -1,13 +1,13 @@
 # Service: app (php-fpm), worker (queue:work), scheduler (schedule:work), nginx, mysql.
 # Profil dev menambah mailpit. Jalankan: `make up`.
-name: household-finance
+name: personal-finance
 
 x-api: &api
   build:
     context: .
     dockerfile: docker/app.Dockerfile
     target: ${APP_BUILD_TARGET:-dev}
-  image: household-finance-api:${APP_BUILD_TARGET:-dev}
+  image: personal-finance-api:${APP_BUILD_TARGET:-dev}
   volumes:
     - ./apps/api:/var/www/api
   depends_on:
@@ -43,7 +43,7 @@ services:
   mysql:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-household_finance}
+      MYSQL_DATABASE: ${DB_DATABASE:-personal_finance}
       MYSQL_USER: ${DB_USERNAME:-household}
       MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}

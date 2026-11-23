@@ -1,4 +1,4 @@
-import { formatIDR } from '@household-finance/shared';
+import { formatIDR } from '@personal-finance/shared';
 import { cn } from '@/lib/utils';
 
 /**

@@ -1,4 +1,4 @@
-import { amountSchema, localDateSchema, newClientId } from '@household-finance/shared';
+import { amountSchema, localDateSchema, newClientId } from '@personal-finance/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';

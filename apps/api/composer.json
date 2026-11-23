@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "household-finance/api",
+    "name": "personal-finance/api",
     "type": "project",
-    "description": "Household Finance API (Laravel 13)",
+    "description": "Personal Finance API (Laravel 13)",
     "keywords": [
         "laravel",
         "framework"

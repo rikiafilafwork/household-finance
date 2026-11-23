@@ -28,13 +28,13 @@ test: ## Jalankan test API (Pest) dan test JS workspace
 	pnpm test
 
 web: ## Build SPA ke apps/web/dist (disajikan nginx di http://localhost:8080)
-	pnpm --filter @household-finance/web build
+	pnpm --filter @personal-finance/web build
 
 web-dev: ## Vite dev server di http://localhost:5173 (proxy /api ke :8080, hot reload)
-	pnpm --filter @household-finance/web dev
+	pnpm --filter @personal-finance/web dev
 
 lint: ## Lint web (larangan float) + Pint + Larastan
-	pnpm --filter @household-finance/web lint
+	pnpm --filter @personal-finance/web lint
 	$(APP) composer lint
 	$(APP) composer analyse
 
@@ -58,6 +58,6 @@ DURATION ?= 20s
 
 load-test: ## k6: 50 VU tulis ke wallet yang sama (+ client_id duplikat), lalu reconcile
 	$(APP) php artisan db:seed --class=LoadTestUserSeeder --force
-	docker run --rm --network household-finance_default -v $(CURDIR)/load-tests:/scripts \
+	docker run --rm --network personal-finance_default -v $(CURDIR)/load-tests:/scripts \
 		-e VUS=$(VUS) -e DURATION=$(DURATION) grafana/k6:latest run /scripts/concurrent-writes.js
 	$(APP) php artisan wallets:reconcile --no-notify
