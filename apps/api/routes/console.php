@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Schedule;
 */
 
 // Bukti harian bahwa saldo tidak meleset (ADR-002). Deteksi saja, tanpa --fix:
-// selisih = bug yang harus diselidiki dulu, owner dinotifikasi.
-Schedule::command('wallets:reconcile')
+// selisih = bug yang harus diselidiki dulu, pemilik akun dinotifikasi in-app.
+Schedule::command('accounts:reconcile')
     ->dailyAt('02:00')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping()

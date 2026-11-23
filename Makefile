@@ -50,14 +50,14 @@ fresh: ## Reset database + seed
 shell: ## Masuk ke shell container app
 	$(APP) sh
 
-reconcile: ## Cek saldo semua wallet vs riwayat transaksi (selisih harus 0)
-	$(APP) php artisan wallets:reconcile --no-notify
+reconcile: ## Cek saldo semua akun vs riwayat transaksi (selisih harus 0)
+	$(APP) php artisan accounts:reconcile --no-notify
 
 VUS      ?= 50
 DURATION ?= 20s
 
-load-test: ## k6: 50 VU tulis ke wallet yang sama (+ client_id duplikat), lalu reconcile
+load-test: ## k6: 50 VU tulis ke akun yang sama (+ client_id duplikat), lalu reconcile
 	$(APP) php artisan db:seed --class=LoadTestUserSeeder --force
 	docker run --rm --network personal-finance_default -v $(CURDIR)/load-tests:/scripts \
 		-e VUS=$(VUS) -e DURATION=$(DURATION) grafana/k6:latest run /scripts/concurrent-writes.js
-	$(APP) php artisan wallets:reconcile --no-notify
+	$(APP) php artisan accounts:reconcile --no-notify

@@ -2,10 +2,9 @@
 
 namespace App\Actions\Transfers;
 
+use App\Actions\Accounts\LockAccounts;
 use App\Actions\Transactions\ValidatesTransactionTarget;
-use App\Actions\Wallets\LockWallets;
 use App\Enums\TransactionType;
-use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -14,29 +13,29 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Transfer = 2 baris berpasangan (Keputusan #4): keluar di wallet asal (negatif),
- * masuk di wallet tujuan (positif), category NULL. client_id dipasang di baris keluar.
+ * Transfer = 2 baris berpasangan (Keputusan #4): keluar di akun asal (negatif),
+ * masuk di akun tujuan (positif), category NULL. client_id dipasang di baris keluar.
  */
 class CreateTransfer
 {
     use ValidatesTransactionTarget;
 
-    public function __construct(private readonly LockWallets $lockWallets) {}
+    public function __construct(private readonly LockAccounts $lockAccounts) {}
 
     /**
      * @return array{0: TransferPair, 1: bool} [transfer, baru dibuat?]
      */
-    public function handle(Household $household, User $actor, TransferInput $input): array
+    public function handle(User $user, TransferInput $input): array
     {
-        if ($input->fromWalletId === $input->toWalletId) {
-            throw ValidationException::withMessages(['to_wallet_id' => 'Wallet asal dan tujuan harus berbeda.']);
+        if ($input->fromAccountId === $input->toAccountId) {
+            throw ValidationException::withMessages(['to_account_id' => 'Akun asal dan tujuan harus berbeda.']);
         }
 
         try {
-            return $this->create($household, $actor, $input);
+            return $this->create($user, $input);
         } catch (UniqueConstraintViolationException $e) {
-            // Lihat CreateTransaction: retry ber-client_id sama ke pasangan wallet berbeda.
-            $existing = $this->existingByClientId($household, $actor, $input->clientId);
+            // Lihat CreateTransaction: retry ber-client_id sama ke pasangan akun berbeda.
+            $existing = $this->existingByClientId($user, $input->clientId);
 
             if ($existing === null) {
                 throw $e;
@@ -45,72 +44,59 @@ class CreateTransfer
                 throw ValidationException::withMessages(['client_id' => 'client_id sudah dipakai transaksi lain.']);
             }
 
-            return [$this->replay($household, $actor, $existing->transfer_group_id), false];
+            return [TransferPair::find($user, $existing->transfer_group_id), false];
         }
-    }
-
-    /** Transfer lama hanya dikembalikan kalau KEDUA wallet-nya terlihat pengirim. */
-    private function replay(Household $household, User $actor, string $groupId): TransferPair
-    {
-        $pair = TransferPair::find($household, $groupId);
-
-        if (! $pair->visibleTo($actor)) {
-            throw self::clientIdTaken();
-        }
-
-        return $pair;
     }
 
     /**
      * @return array{0: TransferPair, 1: bool}
      */
-    private function create(Household $household, User $actor, TransferInput $input): array
+    private function create(User $user, TransferInput $input): array
     {
-        return DB::transaction(function () use ($household, $actor, $input) {
-            $wallets = $this->lockWallets->handle([$input->fromWalletId, $input->toWalletId]);
+        return DB::transaction(function () use ($user, $input) {
+            $accounts = $this->lockAccounts->handle($user, [$input->fromAccountId, $input->toAccountId]);
 
             if ($input->clientId !== null) {
-                $existing = $this->existingByClientId($household, $actor, $input->clientId);
+                $existing = $this->existingByClientId($user, $input->clientId);
 
                 if ($existing !== null && $existing->transfer_group_id !== null) {
-                    return [$this->replay($household, $actor, $existing->transfer_group_id), false];
+                    return [TransferPair::find($user, $existing->transfer_group_id), false];
                 }
                 if ($existing !== null) {
                     throw ValidationException::withMessages(['client_id' => 'client_id sudah dipakai transaksi lain.']);
                 }
             }
 
-            $from = $wallets->get($input->fromWalletId);
-            $to = $wallets->get($input->toWalletId);
+            $from = $accounts->get($input->fromAccountId);
+            $to = $accounts->get($input->toAccountId);
             assert($from !== null && $to !== null);
 
-            $this->assertWalletWritable($from, $household, $actor, 'from_wallet_id');
-            $this->assertWalletWritable($to, $household, $actor, 'to_wallet_id');
+            $this->assertAccountWritable($from, 'from_account_id');
+            $this->assertAccountWritable($to, 'to_account_id');
 
             $groupId = (string) Str::uuid();
             $base = [
-                'household_id' => $household->getKey(),
+                'user_id' => $user->getKey(),
                 'type' => TransactionType::Transfer,
                 'occurred_on' => $input->occurredOn,
                 'note' => $input->note,
                 'transfer_group_id' => $groupId,
-                'created_by' => $actor->getKey(),
             ];
 
             $out = Transaction::create($base + [
-                'wallet_id' => $from->getKey(),
+                'account_id' => $from->getKey(),
                 'amount' => -abs($input->amount),
                 'client_id' => $input->clientId,
             ]);
             $in = Transaction::create($base + [
-                'wallet_id' => $to->getKey(),
+                'account_id' => $to->getKey(),
                 'amount' => abs($input->amount),
             ]);
 
             $from->increment('balance', $out->amount);
             $to->increment('balance', $in->amount);
 
-            return [TransferPair::find($household, $groupId), true];
+            return [TransferPair::find($user, $groupId), true];
         });
     }
 }

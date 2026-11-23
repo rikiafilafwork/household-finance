@@ -24,7 +24,7 @@ class UpdateCategoryRequest extends FormRequest
             'name' => [
                 'sometimes', 'required', 'string', 'max:60',
                 Rule::unique('categories')
-                    ->where('household_id', $category->household_id)
+                    ->where('user_id', $category->user_id)
                     ->where('kind', $category->kind->value)
                     ->ignore($category->getKey()),
             ],

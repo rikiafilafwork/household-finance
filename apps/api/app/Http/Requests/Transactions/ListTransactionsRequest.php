@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Transactions;
 
-use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -15,10 +14,9 @@ class ListTransactionsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'wallet_id' => ['sometimes', 'integer'],
+            'account_id' => ['sometimes', 'integer'],
             'category_id' => ['sometimes', 'integer'],
             'type' => ['sometimes', Rule::enum(TransactionType::class)],
-            'status' => ['sometimes', Rule::enum(TransactionStatus::class)],
             'from' => ['sometimes', 'date_format:Y-m-d'],
             'to' => ['sometimes', 'date_format:Y-m-d', 'after_or_equal:from'],
             'q' => ['sometimes', 'string', 'max:100'],

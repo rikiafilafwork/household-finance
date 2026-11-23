@@ -20,8 +20,8 @@ class TransferResource extends JsonResource
 
         return [
             'transfer_group_id' => $pair->groupId(),
-            'from_wallet_id' => $pair->out->wallet_id,
-            'to_wallet_id' => $pair->in->wallet_id,
+            'from_account_id' => $pair->out->account_id,
+            'to_account_id' => $pair->in->account_id,
             'amount' => $pair->in->amount, // magnitudo
             'occurred_on' => $pair->out->occurred_on->toDateString(),
             'note' => $pair->out->note,

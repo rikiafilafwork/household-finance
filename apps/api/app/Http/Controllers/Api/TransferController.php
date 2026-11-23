@@ -10,51 +10,40 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Transfers\StoreTransferRequest;
 use App\Http\Requests\Transfers\UpdateTransferRequest;
 use App\Http\Resources\TransferResource;
-use App\Models\Household;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Gate;
 
 /**
- * Transfer diidentifikasi transfer_group_id (UUID), bukan id baris.
+ * Transfer diidentifikasi transfer_group_id (UUID), bukan id baris. Milik user lain = 404.
  */
 class TransferController extends Controller
 {
-    public function store(StoreTransferRequest $request, Household $household, CreateTransfer $createTransfer): JsonResponse
+    public function store(StoreTransferRequest $request, CreateTransfer $createTransfer): JsonResponse
     {
-        Gate::authorize('view', $household);
-
-        [$pair, $created] = $createTransfer->handle($household, $this->user($request), $request->toInput());
+        [$pair, $created] = $createTransfer->handle($this->user($request), $request->toInput());
 
         return (new TransferResource($pair))->response()->setStatusCode($created ? 201 : 200);
     }
 
-    public function show(Request $request, Household $household, string $transfer): TransferResource
+    public function show(Request $request, string $transfer): TransferResource
     {
-        $pair = TransferPair::find($household, $transfer);
-        abort_unless($pair->visibleTo($this->user($request)), 403);
-
-        return new TransferResource($pair);
+        return new TransferResource(TransferPair::find($this->user($request), $transfer));
     }
 
-    public function update(UpdateTransferRequest $request, Household $household, string $transfer, UpdateTransfer $updateTransfer): TransferResource
+    public function update(UpdateTransferRequest $request, string $transfer, UpdateTransfer $updateTransfer): TransferResource
     {
         $user = $this->user($request);
-        $pair = TransferPair::find($household, $transfer);
-        abort_unless($pair->manageableBy($user), 403);
+        $pair = TransferPair::find($user, $transfer);
 
-        return new TransferResource($updateTransfer->handle($household, $user, $pair, $request->toInput($pair)));
+        return new TransferResource($updateTransfer->handle($user, $pair, $request->toInput($pair)));
     }
 
-    public function destroy(Request $request, Household $household, string $transfer, DeleteTransfer $deleteTransfer): Response
+    public function destroy(Request $request, string $transfer, DeleteTransfer $deleteTransfer): Response
     {
         $user = $this->user($request);
-        $pair = TransferPair::find($household, $transfer);
-        abort_unless($pair->manageableBy($user), 403);
-
-        $deleteTransfer->handle($household, $user, $pair);
+        $deleteTransfer->handle($user, TransferPair::find($user, $transfer));
 
         return response()->noContent();
     }

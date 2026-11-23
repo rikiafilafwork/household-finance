@@ -13,8 +13,6 @@ use App\Actions\Transactions\TransactionInput;
 use App\Actions\Transfers\CreateTransfer;
 use App\Actions\Transfers\TransferInput;
 use App\Enums\TransactionType;
-use App\Jobs\CheckBudgetThresholds;
-use App\Models\Household;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 
@@ -22,7 +20,7 @@ require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-/** @var array{op: string, household_id: int, user_id: int, start_at: float, wallet_id?: int, category_id?: int, month?: string, from?: int, to?: int, amount: int, client_id: string} $job */
+/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, from?: int, to?: int, amount: int, client_id: string} $job */
 $job = json_decode($argv[1] ?? '{}', true, flags: JSON_THROW_ON_ERROR);
 
 while (microtime(true) < $job['start_at']) {
@@ -30,13 +28,13 @@ while (microtime(true) < $job['start_at']) {
 }
 
 try {
-    $household = Household::findOrFail($job['household_id']);
+    // Tanpa sesi login (seperti scheduler/worker): Actions harus bekerja dengan User eksplisit.
     $user = User::findOrFail($job['user_id']);
 
     $result = match ($job['op']) {
-        'transaction' => (function () use ($household, $user, $job) {
-            [$tx, $created] = app(CreateTransaction::class)->handle($household, $user, new TransactionInput(
-                walletId: (int) $job['wallet_id'],
+        'transaction' => (function () use ($user, $job) {
+            [$tx, $created] = app(CreateTransaction::class)->handle($user, new TransactionInput(
+                accountId: (int) $job['account_id'],
                 type: TransactionType::Expense,
                 categoryId: isset($job['category_id']) ? (int) $job['category_id'] : null,
                 amount: $job['amount'],
@@ -46,21 +44,16 @@ try {
 
             return ['id' => (string) $tx->id, 'created' => $created];
         })(),
-        'transfer' => (function () use ($household, $user, $job) {
-            [$pair, $created] = app(CreateTransfer::class)->handle($household, $user, new TransferInput(
-                fromWalletId: (int) $job['from'],
-                toWalletId: (int) $job['to'],
+        'transfer' => (function () use ($user, $job) {
+            [$pair, $created] = app(CreateTransfer::class)->handle($user, new TransferInput(
+                fromAccountId: (int) $job['from'],
+                toAccountId: (int) $job['to'],
                 amount: $job['amount'],
                 occurredOn: '2026-11-21',
                 clientId: $job['client_id'],
             ));
 
             return ['id' => $pair->groupId(), 'created' => $created];
-        })(),
-        'budget-check' => (function () use ($household, $job) {
-            (new CheckBudgetThresholds($household->id, (int) $job['category_id'], (string) $job['month']))->handle();
-
-            return ['id' => 'budget-check', 'created' => true];
         })(),
         default => throw new InvalidArgumentException("op tidak dikenal: {$job['op']}"),
     };

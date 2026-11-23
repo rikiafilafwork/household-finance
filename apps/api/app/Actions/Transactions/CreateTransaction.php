@@ -2,12 +2,9 @@
 
 namespace App\Actions\Transactions;
 
-use App\Actions\Wallets\LockWallets;
-use App\Enums\TransactionStatus;
-use App\Models\Household;
+use App\Actions\Accounts\LockAccounts;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Support\BudgetCheck;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,20 +13,20 @@ class CreateTransaction
 {
     use ValidatesTransactionTarget;
 
-    public function __construct(private readonly LockWallets $lockWallets) {}
+    public function __construct(private readonly LockAccounts $lockAccounts) {}
 
     /**
      * @return array{0: Transaction, 1: bool} [transaksi, baru dibuat?]
      */
-    public function handle(Household $household, User $actor, TransactionInput $input): array
+    public function handle(User $user, TransactionInput $input): array
     {
         try {
-            return $this->create($household, $actor, $input);
+            return $this->create($user, $input);
         } catch (UniqueConstraintViolationException $e) {
-            // Jaring terakhir: retry dengan client_id sama tapi ke wallet LAIN tidak terserialisasi
-            // oleh kunci wallet, jadi bisa lolos cek bersamaan. Unique index menolak yang kalah;
+            // Jaring terakhir: retry dengan client_id sama tapi ke akun LAIN tidak terserialisasi
+            // oleh kunci akun, jadi bisa lolos cek bersamaan. Unique index menolak yang kalah;
             // transaksi DB-nya sudah rollback, kembalikan baris pemenang sebagai respons idempoten.
-            $existing = $this->existingByClientId($household, $actor, $input->clientId);
+            $existing = $this->existingByClientId($user, $input->clientId);
 
             if ($existing === null) {
                 throw $e;
@@ -45,14 +42,14 @@ class CreateTransaction
     /**
      * @return array{0: Transaction, 1: bool}
      */
-    private function create(Household $household, User $actor, TransactionInput $input): array
+    private function create(User $user, TransactionInput $input): array
     {
-        return DB::transaction(function () use ($household, $actor, $input) {
-            $wallet = $this->lockWallets->one($input->walletId);
+        return DB::transaction(function () use ($user, $input) {
+            $account = $this->lockAccounts->one($user, $input->accountId);
 
-            // Idempotensi (Keputusan #11): dicek SETELAH wallet terkunci → retry paralel jadi serial.
+            // Idempotensi (Keputusan #15): dicek SETELAH akun terkunci → retry paralel jadi serial.
             if ($input->clientId !== null) {
-                $existing = $this->existingByClientId($household, $actor, $input->clientId);
+                $existing = $this->existingByClientId($user, $input->clientId);
 
                 if ($existing !== null && $existing->transfer_group_id !== null) {
                     throw ValidationException::withMessages(['client_id' => 'client_id sudah dipakai sebuah transfer.']);
@@ -62,28 +59,21 @@ class CreateTransaction
                 }
             }
 
-            $this->assertWalletWritable($wallet, $household, $actor);
-            $this->assertCategoryMatches($input->categoryId, $input->type, $household);
+            $this->assertAccountWritable($account);
+            $this->assertCategoryMatches($user, $input->categoryId, $input->type);
 
             $transaction = Transaction::create([
-                'household_id' => $household->getKey(),
-                'wallet_id' => $wallet->getKey(),
+                'user_id' => $user->getKey(),
+                'account_id' => $account->getKey(),
                 'category_id' => $input->categoryId,
                 'type' => $input->type,
-                'status' => $input->status,
                 'amount' => $input->signedAmount(),
                 'occurred_on' => $input->occurredOn,
                 'note' => $input->note,
                 'client_id' => $input->clientId,
-                'created_by' => $actor->getKey(),
             ]);
 
-            if ($input->status === TransactionStatus::Posted) {
-                $wallet->increment('balance', $transaction->amount);
-            }
-
-            // Keputusan #8: cek ambang budget setelah commit (job ShouldQueueAfterCommit).
-            BudgetCheck::after($transaction, $wallet);
+            $account->increment('balance', $transaction->amount);
 
             return [$transaction, true];
         });
