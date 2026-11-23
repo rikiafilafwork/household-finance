@@ -2,6 +2,7 @@
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\PlanItem;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
@@ -58,6 +59,10 @@ final class IsolationContext
 
     public DatabaseNotification $victimNotification;
 
+    public PlanItem $victimPlanItem;
+
+    public int $myPlanItemId;
+
     public Account $myAccount;
 
     public Account $myAccount2;
@@ -91,6 +96,12 @@ final class IsolationContext
             'data' => ['mismatches' => [['name' => 'BCA Korban']], 'fixed' => false],
         ]);
 
+        // Rencana korban: bulan ini (dibaca) dan bulan lalu (sumber "salin dari bulan lalu").
+        $this->victimPlanItem = PlanItem::factory()->forUser($this->victim)->forMonth('2026-11')
+            ->create(['name' => 'Cicilan Rahasia', 'category_id' => $this->victimCategory->id, 'account_id' => $this->victimAccount->id, 'due_on' => '2026-11-05']);
+        PlanItem::factory()->forUser($this->victim)->forMonth('2026-10')
+            ->create(['name' => 'Cicilan Rahasia', 'category_id' => $this->victimCategory->id]);
+
         $this->attacker = User::factory()->create(['name' => 'Penyerang']);
         $this->myAccount = Account::factory()->forUser($this->attacker)->opening(500_000)->create(['name' => 'Akun Saya']);
         $this->myAccount2 = Account::factory()->forUser($this->attacker)->opening(0)->create(['name' => 'Akun Saya 2']);
@@ -99,6 +110,8 @@ final class IsolationContext
             'account_id' => $this->myAccount->id, 'type' => 'expense', 'amount' => 5_000,
             'occurred_on' => '2026-11-22', 'client_id' => (string) Str::uuid(),
         ])->assertCreated()->json('data.id');
+        $this->myPlanItemId = PlanItem::factory()->forUser($this->attacker)->forMonth('2026-11')
+            ->create(['name' => 'Item Saya', 'category_id' => $this->myCategory->id])->id;
     }
 
     /**
@@ -117,6 +130,7 @@ final class IsolationContext
             'categories' => $rows('categories'),
             'transactions' => $rows('transactions'),
             'notifications' => $rows('notifications', 'notifiable_id'),
+            'plan_items' => $rows('plan_items'),
         ];
     }
 
@@ -127,7 +141,7 @@ final class IsolationContext
      */
     public function leakMarkers(): array
     {
-        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', $this->victimTransferGroup, $this->victimNotification->id];
+        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', $this->victimTransferGroup, $this->victimNotification->id];
     }
 }
 
@@ -151,6 +165,9 @@ function isolationCases(): array
     $tx = fn (IsolationContext $c, array $overrides = []) => array_merge([
         'account_id' => $c->myAccount->id, 'type' => 'expense', 'amount' => 1_000,
         'occurred_on' => '2026-11-22', 'client_id' => (string) Str::uuid(),
+    ], $overrides);
+    $planItem = fn (IsolationContext $c, array $overrides = []) => array_merge([
+        'type' => 'expense', 'mode' => 'checklist', 'name' => 'Item baru', 'category_id' => $c->myCategory->id, 'planned_amount' => 10_000,
     ], $overrides);
     $transfer = fn (IsolationContext $c, array $overrides = []) => array_merge([
         'from_account_id' => $c->myAccount->id, 'to_account_id' => $c->myAccount2->id, 'amount' => 1_000,
@@ -202,6 +219,18 @@ function isolationCases(): array
         'list notifications' => ['GET api/notifications', fn ($c, $id) => ['GET', '/api/notifications']],
         'read the victim’s notification' => ['POST api/notifications/{notification}/read', fn ($c, $id) => ['POST', '/api/notifications/'.$id('notification').'/read']],
         'read all notifications' => ['POST api/notifications/read-all', fn ($c, $id) => ['POST', '/api/notifications/read-all']],
+
+        // ---------- Rencana ----------
+        'list the month the victim planned' => ['GET api/plan/{month}', fn ($c, $id) => ['GET', '/api/plan/2026-11']],
+        'add plan item with the victim’s category' => ['POST api/plan/{month}/items', fn ($c, $id) => ['POST', '/api/plan/2026-11/items', $planItem($c, ['category_id' => $id('category')])]],
+        'add plan item with the victim’s default account' => ['POST api/plan/{month}/items', fn ($c, $id) => ['POST', '/api/plan/2026-11/items', $planItem($c, ['account_id' => $id('account')])]],
+        'copy from the month the victim planned' => ['POST api/plan/{month}/copy-from-previous', fn ($c, $id) => ['POST', '/api/plan/2026-11/copy-from-previous']],
+        'show plan item' => ['GET api/plan-items/{planItem}', fn ($c, $id) => ['GET', '/api/plan-items/'.$id('plan_item')]],
+        'update plan item' => ['PATCH api/plan-items/{planItem}', fn ($c, $id) => ['PATCH', '/api/plan-items/'.$id('plan_item'), ['planned_amount' => 1]]],
+        'point own plan item at the victim’s category' => ['PATCH api/plan-items/{planItem}', fn ($c, $id) => ['PATCH', '/api/plan-items/'.$c->myPlanItemId, ['category_id' => $id('category')]]],
+        'delete plan item' => ['DELETE api/plan-items/{planItem}', fn ($c, $id) => ['DELETE', '/api/plan-items/'.$id('plan_item')]],
+        'skip plan item' => ['POST api/plan-items/{planItem}/skip', fn ($c, $id) => ['POST', '/api/plan-items/'.$id('plan_item').'/skip']],
+        'unskip plan item' => ['POST api/plan-items/{planItem}/unskip', fn ($c, $id) => ['POST', '/api/plan-items/'.$id('plan_item').'/unskip']],
     ];
 
     return array_map(fn (array $case) => new IsolationCase($case[0], $case[1]), $cases);
@@ -221,6 +250,7 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'transfer' => $c->victimTransferGroup,
         'client_id' => $c->victimClientId,
         'notification' => $c->victimNotification->id,
+        'plan_item' => $c->victimPlanItem->id,
         'own_transaction' => $ownTransaction,
     ];
     $missing = [
@@ -230,6 +260,7 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'transfer' => (string) Str::uuid(),
         'client_id' => (string) Str::uuid(),
         'notification' => (string) Str::uuid(),
+        'plan_item' => 999_999_999,
         'own_transaction' => $ownTransaction,
     ];
     $ids = $mode === 'foreign' ? $foreign : $missing;
@@ -288,4 +319,6 @@ it('really exercises the victim’s data (sanity check of the fixture)', functio
     actingAs($c->victim)->getJson('/api/transfers/'.$c->victimTransferGroup)->assertOk();
     actingAs($c->victim)->getJson('/api/transactions?q=rahasia')->assertJsonCount(1, 'data');
     actingAs($c->victim)->getJson('/api/notifications')->assertJsonCount(1, 'data');
+    actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.0.name', 'Cicilan Rahasia');
+    actingAs($c->victim)->getJson('/api/plan-items/'.$c->victimPlanItem->id)->assertOk();
 });

@@ -3,6 +3,7 @@
 use App\Enums\CategoryKind;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\PlanItem;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\DefaultCategories;
@@ -68,10 +69,11 @@ it('allows the same client_id for different users and repeated NULLs', function 
 
 it('allows at most one transaction per plan item (soft-deleted rows included)', function () {
     $account = Account::factory()->create();
-    $first = Transaction::factory()->forAccount($account)->create(['plan_item_id' => 7]);
+    $item = PlanItem::factory()->forUser($account->user)->create();
+    $first = Transaction::factory()->forAccount($account)->create(['plan_item_id' => $item->id]);
     $first->delete();
 
-    Transaction::factory()->forAccount($account)->create(['plan_item_id' => 7]);
+    Transaction::factory()->forAccount($account)->create(['plan_item_id' => $item->id]);
 })->throws(QueryException::class, 'uq_tx_plan_item');
 
 it('cascades accounts and categories when a user is deleted', function () {

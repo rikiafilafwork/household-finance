@@ -2,6 +2,7 @@
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\PlanItem;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -230,15 +231,16 @@ describe('delete', function () {
 
     it('releases plan_item_id so the checklist item can be checked again (Keputusan #8)', function () {
         $s = ledgerSetup();
-        $linked = Transaction::factory()->forAccount($s['account'])->expense(100_000)->create(['plan_item_id' => 12]);
+        $item = PlanItem::factory()->forUser($s['user'])->create(['category_id' => $s['food']->id]);
+        $linked = Transaction::factory()->forAccount($s['account'])->expense(100_000)->create(['plan_item_id' => $item->id]);
         $s['account']->update(['balance' => 900_000]);
 
         actingAs($s['user'])->deleteJson(txUrl($linked))->assertNoContent();
 
         expect(Transaction::withTrashed()->findOrFail($linked->id)->plan_item_id)->toBeNull();
         // Item yang sama bisa terhubung ke transaksi baru tanpa melanggar uq_tx_plan_item.
-        Transaction::factory()->forAccount($s['account'])->expense(100_000)->create(['plan_item_id' => 12]);
-        expect(Transaction::where('plan_item_id', 12)->count())->toBe(1);
+        Transaction::factory()->forAccount($s['account'])->expense(100_000)->create(['plan_item_id' => $item->id]);
+        expect(Transaction::where('plan_item_id', $item->id)->count())->toBe(1);
     });
 });
 
