@@ -7,7 +7,7 @@ import { ApiError } from '@/api/client';
 import { qk } from '@/api/keys';
 import type { PlanComparison, PlanItem } from '@/api/plan';
 import type { Account, Category } from '@/api/types';
-import { monthIn, shiftMonth, todayIn } from '@/lib/dates';
+import { defaultDateIn, monthIn, shiftMonth, todayIn } from '@/lib/dates';
 
 const TZ = 'Asia/Jakarta';
 const MONTH = monthIn(TZ);
@@ -59,6 +59,8 @@ const categoriesApi = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock('@/api/plan', () => ({ planApi }));
 vi.mock('@/api/accounts', () => ({ accountsApi }));
 vi.mock('@/api/categories', () => ({ categoriesApi }));
+const transactionsApi = vi.hoisted(() => ({ create: vi.fn(), list: vi.fn() }));
+vi.mock('@/api/transactions', () => ({ transactionsApi, transfersApi: { get: vi.fn(), create: vi.fn() } }));
 
 const { PlanPage } = await import('./PlanPage');
 
@@ -268,5 +270,44 @@ describe('PlanPage — bulan & item', () => {
     await userEvent.click(within(row(3)).getByRole('button', { name: 'Aksi Listrik' }));
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Lewati bulan ini' }));
     expect(planApi.skip).toHaveBeenCalledWith(3);
+  });
+});
+
+describe('PlanPage — catat dari amplop', () => {
+  it('opens the expense form with the envelope category and today, and books it as a normal transaction', async () => {
+    transactionsApi.create.mockResolvedValue({ id: 70 });
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Catat pengeluaran Transport' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Catat pengeluaran — Transport' });
+    expect(within(dialog).getByLabelText('Kategori')).toHaveValue('3');
+    expect(within(dialog).getByLabelText('Tanggal')).toHaveValue(todayIn(TZ));
+    await userEvent.type(within(dialog).getByLabelText('Nominal'), '25000');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Simpan' }));
+
+    await waitFor(() => expect(transactionsApi.create).toHaveBeenCalledTimes(1));
+    expect(transactionsApi.create.mock.calls[0]![0]).toMatchObject({ type: 'expense', category_id: 3, amount: 25_000, occurred_on: todayIn(TZ) });
+    expect(transactionsApi.create.mock.calls[0]![0]).not.toHaveProperty('plan_item_id');
+    await waitFor(() => expect(planApi.get).toHaveBeenCalledTimes(2)); // angka amplop dimuat ulang
+  });
+
+  it('dates a transaction recorded from a past month inside that month', async () => {
+    const past = shiftMonth(MONTH, -1);
+    planApi.get.mockResolvedValue({ ...plan, month: past, items: plan.items.map((i) => ({ ...i, month: past })) });
+    renderPage(`/plan?month=${past}`);
+    await userEvent.click(await screen.findByRole('button', { name: 'Catat pengeluaran Makan' }));
+
+    expect(await screen.findByLabelText('Tanggal')).toHaveValue(defaultDateIn(past, todayIn(TZ)));
+    expect((screen.getByLabelText('Tanggal') as HTMLInputElement).value.startsWith(past)).toBe(true);
+  });
+
+  it('has no record button on checklist items or skipped envelopes, and explains how envelopes fill', async () => {
+    planApi.get.mockResolvedValue({ ...plan, items: plan.items.map((i) => (i.id === 7 ? { ...i, status: 'skipped' as const, skipped_at: '2026-11-02T00:00:00Z' } : i)) });
+    renderPage();
+    await screen.findByText('Makan');
+
+    expect(within(row(3)).queryByRole('button', { name: /^Catat/ })).not.toBeInTheDocument();
+    expect(within(row(7)).queryByRole('button', { name: /^Catat/ })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Amplop' })).getByText(/berkurang dari transaksi pengeluaran berkategori sama/)).toBeInTheDocument();
   });
 });

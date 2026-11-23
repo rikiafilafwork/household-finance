@@ -14,7 +14,7 @@ import { TransactionForm } from './TransactionForm';
 import { TransferForm } from './TransferForm';
 
 export type DialogState =
-  | { mode: 'new'; kind: 'expense' | 'income' | 'transfer' }
+  | { mode: 'new'; kind: 'expense' | 'income' | 'transfer'; preset?: { category_id?: Category['id']; occurred_on?: string }; title?: string }
   | { mode: 'edit'; transaction: Transaction }
   | null;
 
@@ -45,11 +45,12 @@ export function TransactionDialog({ state, onClose, accounts, categories, today 
   let body: React.ReactNode = null;
 
   if (state?.mode === 'new' && state.kind !== 'transfer') {
-    title = titles[state.kind];
+    title = state.title ?? titles[state.kind];
     body = (
       <TransactionForm
         key={state.kind}
         defaultType={state.kind}
+        preset={state.preset}
         accounts={accounts}
         categories={categories}
         today={today}

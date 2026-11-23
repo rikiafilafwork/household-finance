@@ -46,6 +46,7 @@ export function TransactionForm({
   onSubmit,
   onDelete,
   submitLabel,
+  preset,
 }: {
   initial?: Transaction;
   defaultType?: 'expense' | 'income';
@@ -55,6 +56,8 @@ export function TransactionForm({
   onSubmit: (payload: TransactionPayload, clientId: string) => Promise<unknown>;
   onDelete?: () => Promise<unknown>;
   submitLabel?: string;
+  /** Isian awal transaksi baru (mis. dari tombol "Catat" amplop: kategori + tanggal di bulan rencana). */
+  preset?: { category_id?: Category['id']; occurred_on?: string };
 }) {
   const [clientId] = useState(newClientId);
   const [message, setMessage] = useState<string | null>(null);
@@ -72,7 +75,7 @@ export function TransactionForm({
           occurred_on: initial.occurred_on,
           note: initial.note ?? '',
         }
-      : { type: defaultType, amount: null, account_id: accounts.find((a) => !a.archived_at)?.id ?? 0, category_id: null, occurred_on: today, note: '' },
+      : { type: defaultType, amount: null, account_id: accounts.find((a) => !a.archived_at)?.id ?? 0, category_id: preset?.category_id ?? null, occurred_on: preset?.occurred_on ?? today, note: '' },
   });
   const { errors, isSubmitting } = form.formState;
   const type = useWatch({ control: form.control, name: 'type' });

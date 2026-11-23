@@ -1,4 +1,4 @@
-import { Check, EllipsisVertical } from 'lucide-react';
+import { Check, EllipsisVertical, Plus } from 'lucide-react';
 import type { PlanItem } from '@/api/plan';
 import type { Category } from '@/api/types';
 import { CategoryIcon } from '@/components/categories/categoryMeta';
@@ -12,7 +12,8 @@ import { formatDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { checklistDiff, envelopeTone, isBadDiff } from './planMeta';
 
-export type RowAction = 'check' | 'uncheck' | 'edit' | 'skip' | 'unskip' | 'delete';
+/** `record`: catat transaksi untuk amplop (kategori terisi). */
+export type RowAction = 'check' | 'uncheck' | 'edit' | 'skip' | 'unskip' | 'delete' | 'record';
 
 function RowMenu({ item, onAction }: { item: PlanItem; onAction: (a: RowAction) => void }) {
   const done = item.status === 'done';
@@ -132,6 +133,11 @@ export function EnvelopeRow({ item, category, onAction }: { item: PlanItem; cate
           </>
         )}
       </div>
+      {!skipped && (
+        <Button variant="outline" size="sm" className="h-8 shrink-0 px-2.5" onClick={() => onAction('record')} aria-label={`Catat ${item.type === 'income' ? 'pemasukan' : 'pengeluaran'} ${item.name}`}>
+          <Plus className="size-3.5" /> Catat
+        </Button>
+      )}
       <RowMenu item={item} onAction={onAction} />
     </li>
   );
