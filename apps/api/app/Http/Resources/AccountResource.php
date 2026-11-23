@@ -2,14 +2,14 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Wallet;
+use App\Models\Account;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin Wallet
+ * @mixin Account
  */
-class WalletResource extends JsonResource
+class AccountResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -20,10 +20,9 @@ class WalletResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'type' => $this->type->value,
-            'visibility' => $this->visibility->value,
-            'is_mine' => $this->isPrivate() && $this->owner_user_id === $request->user()?->getAuthIdentifier(),
             'opening_balance' => $this->opening_balance, // integer rupiah
-            'balance' => $this->balance,                 // integer rupiah
+            'balance' => $this->balance,                 // integer rupiah; negatif boleh, UI memberi peringatan
+            'sort_order' => $this->sort_order,
             'archived_at' => $this->archived_at?->toIso8601String(),
         ];
     }

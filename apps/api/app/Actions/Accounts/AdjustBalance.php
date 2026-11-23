@@ -1,12 +1,11 @@
 <?php
 
-namespace App\Actions\Wallets;
+namespace App\Actions\Accounts;
 
-use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
+use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Models\Wallet;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -19,18 +18,18 @@ use Illuminate\Validation\ValidationException;
  */
 class AdjustBalance
 {
-    public function __construct(private readonly LockWallets $lockWallets) {}
+    public function __construct(private readonly LockAccounts $lockAccounts) {}
 
     /**
-     * @return array{0: Wallet, 1: Transaction|null}
+     * @return array{0: Account, 1: Transaction|null}
      */
-    public function handle(User $actor, Wallet $wallet, int $actualBalance, string $occurredOn, ?string $note = null): array
+    public function handle(User $user, Account $account, int $actualBalance, string $occurredOn, ?string $note = null): array
     {
-        return DB::transaction(function () use ($actor, $wallet, $actualBalance, $occurredOn, $note) {
-            $locked = $this->lockWallets->one($wallet->getKey());
+        return DB::transaction(function () use ($user, $account, $actualBalance, $occurredOn, $note) {
+            $locked = $this->lockAccounts->one($user, $account->getKey());
 
             if ($locked->isArchived()) {
-                throw ValidationException::withMessages(['wallet' => 'Wallet ini sudah diarsip.']);
+                throw ValidationException::withMessages(['account' => 'Akun ini sudah diarsip.']);
             }
 
             $delta = $actualBalance - $locked->balance;
@@ -39,15 +38,13 @@ class AdjustBalance
             }
 
             $transaction = Transaction::create([
-                'household_id' => $locked->household_id,
-                'wallet_id' => $locked->getKey(),
+                'user_id' => $user->getKey(),
+                'account_id' => $locked->getKey(),
                 'category_id' => null,
                 'type' => TransactionType::Adjustment,
-                'status' => TransactionStatus::Posted,
                 'amount' => $delta,
                 'occurred_on' => $occurredOn,
                 'note' => $note ?? 'Penyesuaian saldo',
-                'created_by' => $actor->getKey(),
             ]);
 
             $locked->increment('balance', $delta);
