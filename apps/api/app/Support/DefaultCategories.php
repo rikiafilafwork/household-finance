@@ -17,25 +17,20 @@ final class DefaultCategories
      */
     public static function all(): array
     {
+        // Architecture.md § Minggu 1: sedikit tapi cukup; sisanya ditambah sendiri di Pengaturan.
         $expense = [
-            ['Makan & Minum', '#F97316', 'utensils'],
-            ['Belanja Harian', '#EAB308', 'shopping-basket'],
+            ['Makan', '#F97316', 'utensils'],
             ['Transport', '#3B82F6', 'car'],
-            ['Listrik', '#FACC15', 'zap'],
-            ['Air', '#06B6D4', 'droplet'],
-            ['Internet & Pulsa', '#8B5CF6', 'wifi'],
+            ['Tagihan', '#8B5CF6', 'receipt'],
+            ['Hiburan', '#EC4899', 'popcorn'],
+            ['Belanja', '#EAB308', 'shopping-bag'],
             ['Kesehatan', '#EF4444', 'heart-pulse'],
             ['Pendidikan', '#14B8A6', 'graduation-cap'],
-            ['Rumah Tangga', '#A16207', 'house'],
-            ['Cicilan', '#64748B', 'landmark'],
-            ['Hiburan', '#EC4899', 'popcorn'],
-            ['Sedekah & Hadiah', '#22C55E', 'gift'],
             ['Lainnya', '#9CA3AF', 'circle-ellipsis'],
         ];
 
         $income = [
             ['Gaji', '#16A34A', 'wallet'],
-            ['Bonus', '#65A30D', 'sparkles'],
             ['Freelance', '#0EA5E9', 'laptop'],
             ['Lainnya', '#9CA3AF', 'circle-ellipsis'],
         ];

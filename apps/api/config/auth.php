@@ -15,6 +15,12 @@ return [
     |
     */
 
+    /*
+    | Registrasi akun baru (Keputusan #5). Matikan (false) setelah akun dibuat kalau di-deploy
+    | publik; lupa password lewat `php artisan user:reset-password`, tanpa email.
+    */
+    'registration_enabled' => (bool) env('REGISTRATION_ENABLED', true),
+
     'defaults' => [
         'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),

@@ -46,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
             'color' => 'warna',
             'icon' => 'ikon',
             'timezone' => 'zona waktu',
+            'current_password' => 'password saat ini',
         ])->mapWithKeys(fn (string $name, string $field) => ["validation.attributes.{$field}" => $name])->all(), 'id');
     }
 

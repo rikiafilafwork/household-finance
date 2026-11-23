@@ -19,6 +19,7 @@ const SCOPE_BYPASS_ALLOWLIST = [
     'Actions/Accounts/ReconcileAccounts.php' => 'internal (command/scheduler) lintas user; notifikasi per pemilik',
     'Actions/Categories/DeleteCategory.php' => 'exists() termasuk soft-deleted, tidak mengembalikan data',
     'Support/DefaultCategories.php' => 'insertOrIgnore kategori bawaan untuk satu user eksplisit',
+    'Console/Commands/ResetUserPassword.php' => 'hapus baris sessions milik satu user (bukan data keuangan)',
 ];
 
 it('only bypasses the user scope in allow-listed files', function () {
