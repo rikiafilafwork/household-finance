@@ -17,7 +17,7 @@ function storedNotification(User $user, array $data = [], ?string $readAt = null
         'type' => 'budget_threshold_reached',
         'notifiable_type' => $user->getMorphClass(),
         'notifiable_id' => $user->id,
-        'data' => ['household_id' => 1, 'threshold' => 80, ...$data],
+        'data' => ['threshold' => 80, ...$data],
         'read_at' => $readAt,
         'created_at' => $createdAt,
         'updated_at' => $createdAt,
@@ -46,16 +46,14 @@ it('lists only my notifications, newest first, with the unread count', function 
         ->assertDontSee('punya orang lain');
 });
 
-it('filters unread and by household', function () {
+it('filters unread', function () {
     $me = User::factory()->create();
-    storedNotification($me, ['household_id' => 1], readAt: '2026-11-21 11:00:00');
-    $unreadA = storedNotification($me, ['household_id' => 1]);
-    $unreadB = storedNotification($me, ['household_id' => 2]);
+    storedNotification($me, readAt: '2026-11-21 11:00:00');
+    $unreadA = storedNotification($me);
+    storedNotification($me);
 
     actingAs($me)->getJson('/api/notifications?unread=1')->assertJsonCount(2, 'data');
-    actingAs($me)->getJson('/api/notifications?unread=1&household_id=2')
-        ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $unreadB->id);
-    actingAs($me)->getJson('/api/notifications?household_id=1')->assertJsonCount(2, 'data');
+    actingAs($me)->getJson('/api/notifications')->assertJsonCount(3, 'data');
     expect($unreadA->fresh()?->read_at)->toBeNull();
 });
 

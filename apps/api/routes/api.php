@@ -1,18 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\HouseholdController;
-use App\Http\Controllers\Api\InvitationAcceptController;
-use App\Http\Controllers\Api\InvitationController;
-use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
-use App\Http\Controllers\Api\WalletController;
-use App\Support\BudgetMonth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,53 +27,29 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-// Penerima undangan: token dari link email. Pratinjau boleh tanpa login.
-Route::get('invitations/{token}', [InvitationAcceptController::class, 'show'])->middleware('throttle:invitation-token');
-Route::post('invitations/{token}/accept', [InvitationAcceptController::class, 'accept'])
-    ->middleware(['auth:sanctum', 'throttle:invitation-token']);
-
+/*
+| Semua data milik user login (Keputusan #5). Route model binding memakai global scope
+| BelongsToUser, jadi id milik user lain = 404, bukan 403 (tidak membocorkan keberadaannya).
+*/
 Route::middleware('auth:sanctum')->group(function () {
-    // Lonceng notifikasi (milik user, lintas household)
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification');
 
-    Route::get('households', [HouseholdController::class, 'index']);
-    Route::post('households', [HouseholdController::class, 'store']);
+    Route::apiResource('accounts', AccountController::class);
+    Route::post('accounts/{account}/archive', [AccountController::class, 'archive']);
+    Route::post('accounts/{account}/unarchive', [AccountController::class, 'unarchive']);
+    Route::post('accounts/{account}/adjust', [AccountController::class, 'adjust']);
 
-    // Semua resource milik household ada di bawah /households/{household}/... dengan scoped binding,
-    // supaya mis. /households/1/wallets/9 gagal (404) kalau wallet 9 bukan milik household 1.
-    Route::prefix('households/{household}')->scopeBindings()->group(function () {
-        Route::get('/', [HouseholdController::class, 'show']);
+    Route::apiResource('categories', CategoryController::class);
+    Route::post('categories/{category}/archive', [CategoryController::class, 'archive']);
+    Route::post('categories/{category}/unarchive', [CategoryController::class, 'unarchive']);
 
-        Route::get('members', [MemberController::class, 'index']);
-        Route::patch('members/{member}', [MemberController::class, 'update']);
-        Route::delete('members/{member}', [MemberController::class, 'destroy']);
+    Route::apiResource('transactions', TransactionController::class);
 
-        Route::apiResource('wallets', WalletController::class);
-        Route::post('wallets/{wallet}/archive', [WalletController::class, 'archive']);
-        Route::post('wallets/{wallet}/unarchive', [WalletController::class, 'unarchive']);
-        Route::post('wallets/{wallet}/adjust', [WalletController::class, 'adjust']);
-
-        Route::apiResource('categories', CategoryController::class);
-        Route::post('categories/{category}/archive', [CategoryController::class, 'archive']);
-        Route::post('categories/{category}/unarchive', [CategoryController::class, 'unarchive']);
-
-        // {month} = YYYY-MM (Keputusan #8: budget per kategori per bulan)
-        Route::get('budgets/{month}', [BudgetController::class, 'show'])->where('month', BudgetMonth::ROUTE_PATTERN);
-        Route::put('budgets/{month}', [BudgetController::class, 'update'])->where('month', BudgetMonth::ROUTE_PATTERN);
-        Route::post('budgets/{month}/copy-from-previous', [BudgetController::class, 'copyFromPrevious'])->where('month', BudgetMonth::ROUTE_PATTERN);
-
-        Route::apiResource('transactions', TransactionController::class);
-
-        // {transfer} = transfer_group_id (UUID); dua baris berpasangan (Keputusan #4)
-        Route::post('transfers', [TransferController::class, 'store']);
-        Route::get('transfers/{transfer}', [TransferController::class, 'show'])->whereUuid('transfer');
-        Route::patch('transfers/{transfer}', [TransferController::class, 'update'])->whereUuid('transfer');
-        Route::delete('transfers/{transfer}', [TransferController::class, 'destroy'])->whereUuid('transfer');
-
-        Route::get('invitations', [InvitationController::class, 'index']);
-        Route::post('invitations', [InvitationController::class, 'store'])->middleware('throttle:invitations');
-        Route::delete('invitations/{invitation}', [InvitationController::class, 'destroy']);
-    });
+    // {transfer} = transfer_group_id (UUID); dua baris berpasangan (Keputusan #4)
+    Route::post('transfers', [TransferController::class, 'store']);
+    Route::get('transfers/{transfer}', [TransferController::class, 'show'])->whereUuid('transfer');
+    Route::patch('transfers/{transfer}', [TransferController::class, 'update'])->whereUuid('transfer');
+    Route::delete('transfers/{transfer}', [TransferController::class, 'destroy'])->whereUuid('transfer');
 });

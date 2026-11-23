@@ -34,23 +34,18 @@ class AppServiceProvider extends ServiceProvider
             'amount' => 'nominal',
             'opening_balance' => 'saldo awal',
             'actual_balance' => 'saldo sebenarnya',
-            'limit_amount' => 'limit',
-            'wallet_id' => 'wallet',
-            'from_wallet_id' => 'wallet asal',
-            'to_wallet_id' => 'wallet tujuan',
+            'sort_order' => 'urutan',
+            'account_id' => 'akun',
+            'from_account_id' => 'akun asal',
+            'to_account_id' => 'akun tujuan',
             'category_id' => 'kategori',
             'occurred_on' => 'tanggal',
             'note' => 'catatan',
             'type' => 'jenis',
             'kind' => 'jenis',
-            'visibility' => 'visibilitas',
             'color' => 'warna',
             'icon' => 'ikon',
-            'role' => 'peran',
-            'household_name' => 'nama household',
-            'items' => 'daftar budget',
-            'items.*.category_id' => 'kategori',
-            'items.*.limit_amount' => 'limit',
+            'timezone' => 'zona waktu',
         ])->mapWithKeys(fn (string $name, string $field) => ["validation.attributes.{$field}" => $name])->all(), 'id');
     }
 
@@ -67,11 +62,5 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('register', fn (Request $request) => Limit::perHour(10)->by($request->ip()));
-
-        // Token undangan tidak bisa ditebak (48 char), limiter ini hanya pagar tambahan.
-        RateLimiter::for('invitation-token', fn (Request $request) => Limit::perMinute(30)->by($request->ip()));
-
-        // Mencegah household dipakai untuk spam email.
-        RateLimiter::for('invitations', fn (Request $request) => Limit::perHour(20)->by((string) $request->user()?->getAuthIdentifier()));
     }
 }

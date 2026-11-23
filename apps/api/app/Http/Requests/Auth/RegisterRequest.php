@@ -9,7 +9,7 @@ class RegisterRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        // Email dinormalisasi supaya undangan (terikat email) cocok tanpa peduli huruf besar.
+        // Email dinormalisasi supaya login tidak peka huruf besar.
         $this->merge(['email' => mb_strtolower(trim((string) $this->input('email')))]);
     }
 
@@ -22,9 +22,6 @@ class RegisterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
-            'household_name' => ['sometimes', 'nullable', 'string', 'max:100'],
-            // false = daftar lewat link undangan: jangan buatkan household kosong.
-            'create_household' => ['sometimes', 'boolean'],
         ];
     }
 }
