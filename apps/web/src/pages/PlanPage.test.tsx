@@ -21,9 +21,10 @@ const item = (id: number, name: string, extra: Partial<PlanItem>): PlanItem => (
 const plan: PlanComparison = {
   month: MONTH,
   totals: {
-    income: { planned: 9_500_000, actual: 8_000_000, unplanned: 0, unpaid: 0 },
-    expense: { planned: 5_100_000, actual: 4_075_000, unplanned: 180_000, unpaid: 500_000 },
+    income: { planned: 9_500_000, actual: 8_000_000, unplanned: 0, unpaid: 0, envelope_remaining: 1_500_000 },
+    expense: { planned: 5_100_000, actual: 4_075_000, unplanned: 180_000, unpaid: 500_000, envelope_remaining: 740_000 },
     remaining_budget: 1_025_000,
+    still_to_spend: 1_240_000,
   },
   categories: [],
   items: [
@@ -84,8 +85,23 @@ describe('PlanPage — tampilan', () => {
     expect(screen.getByTestId('summary-income')).toHaveTextContent('dari rencana Rp9.500.000');
     expect(screen.getByTestId('summary-expense')).toHaveTextContent('Rp4.075.000');
     expect(screen.getByTestId('summary-expense')).toHaveTextContent('belum dibayar Rp500.000');
-    expect(screen.getByTestId('summary-remaining')).toHaveTextContent('Rp1.025.000');
+    expect(screen.getByTestId('summary-remaining')).toHaveTextContent('Sisa rencanaRp1.025.000');
     expect(planApi.get).toHaveBeenCalledWith(MONTH);
+  });
+
+  it('shows free money for the current month: all balances minus what the plan still has to spend', async () => {
+    renderPage();
+    const free = await screen.findByTestId('summary-free');
+
+    expect(free).toHaveTextContent('Uang bebasRp4.760.000'); // 6.000.000 − 1.240.000
+    expect(free).toHaveTextContent('Saldo semua akun Rp6.000.000 − masih akan keluar Rp1.240.000');
+  });
+
+  it('hides free money for other months, because balances are today\'s', async () => {
+    renderPage(`/plan?month=${shiftMonth(MONTH, -1)}`);
+    await screen.findByTestId('summary-remaining');
+
+    expect(screen.queryByTestId('summary-free')).not.toBeInTheDocument();
   });
 
   it('splits items into income, fixed expenses and envelopes, with the unplanned row', async () => {

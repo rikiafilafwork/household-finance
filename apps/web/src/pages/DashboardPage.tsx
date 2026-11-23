@@ -7,7 +7,7 @@ import type { Account, AccountType, Category, Transaction } from '@/api/types';
 import { accountTypeIcon, accountTypeLabel } from '@/components/accounts/accountMeta';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MoneyText } from '@/components/money/MoneyText';
-import { envelopeTone } from '@/components/plan/planMeta';
+import { envelopeTone, freeMoney, type FreeMoney } from '@/components/plan/planMeta';
 import { transactionLabel } from '@/components/transactions/TransactionList';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,11 +76,33 @@ function PlanStat({ label, actual, planned, testId }: { label: string; actual: n
   );
 }
 
+/** Saldo semua akun vs yang masih akan keluar menurut rencana bulan ini. */
+function FreeMoneyBlock({ free, unpaid, envelopes }: { free: FreeMoney; unpaid: number; envelopes: number }) {
+  return (
+    <div data-testid="plan-free" className="grid gap-2 rounded-lg bg-muted/50 p-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-0.5">
+          <span className="text-xs text-muted-foreground">Saldo semua akun</span>
+          <MoneyText amount={free.balance} tone="balance" className="text-base font-semibold" />
+        </div>
+        <div className="grid gap-0.5">
+          <span className="text-xs text-muted-foreground">Uang bebas</span>
+          <MoneyText amount={free.free} tone="balance" className="text-base font-semibold" />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Saldo − masih akan keluar <MoneyText amount={free.stillToSpend} /> (tagihan belum dibayar <MoneyText amount={unpaid} /> + sisa amplop <MoneyText amount={envelopes} />).
+        {free.free < 0 && <span className="font-medium text-destructive"> Saldo tidak cukup untuk menutup rencana bulan ini.</span>}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Ringkasan rencana bulan ini. Angka total langsung dari GET /plan/{month} (PlanComparisonQuery) —
  * cache yang sama dengan halaman Rencana, jadi angkanya tidak mungkin berbeda.
  */
-function PlanCard({ month, today }: { month: string; today: string }) {
+function PlanCard({ month, today, accounts }: { month: string; today: string; accounts: Account[] | undefined }) {
   const { data: plan, isPending, isError } = useQuery({ queryKey: qk.plan(month), queryFn: () => planApi.get(month) });
   const pending = (plan?.items ?? [])
     .filter((i) => i.mode === 'checklist' && i.status === 'planned')
@@ -113,10 +135,12 @@ function PlanCard({ month, today }: { month: string; today: string }) {
               <PlanStat testId="plan-income" label="Pemasukan" actual={plan.totals.income.actual} planned={plan.totals.income.planned} />
               <PlanStat testId="plan-expense" label="Pengeluaran" actual={plan.totals.expense.actual} planned={plan.totals.expense.planned} />
               <div data-testid="plan-remaining" className="grid content-start gap-0.5">
-                <span className="text-xs text-muted-foreground">Sisa anggaran</span>
+                <span className="text-xs text-muted-foreground">Sisa rencana</span>
                 <MoneyText amount={plan.totals.remaining_budget} tone="balance" className="text-base font-semibold" />
               </div>
             </div>
+
+            {accounts && <FreeMoneyBlock free={freeMoney(accounts, plan)} unpaid={plan.totals.expense.unpaid} envelopes={plan.totals.expense.envelope_remaining} />}
 
             <div data-testid="plan-pending" className="grid gap-1">
               <p className="text-xs font-medium text-muted-foreground">
@@ -222,7 +246,7 @@ export function DashboardPage() {
       />
       <div className="grid gap-4 md:grid-cols-2">
         {isPending ? <Skeleton className="h-64" /> : <BalancesCard accounts={active} />}
-        <PlanCard month={monthIn(timezone)} today={todayIn(timezone)} />
+        <PlanCard month={monthIn(timezone)} today={todayIn(timezone)} accounts={accounts} />
         <RecentCard accounts={accounts ?? []} />
       </div>
     </>

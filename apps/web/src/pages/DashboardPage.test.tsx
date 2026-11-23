@@ -20,9 +20,10 @@ const item = (id: number, name: string, extra: Partial<PlanItem>): PlanItem => (
 const plan: PlanComparison = {
   month: MONTH,
   totals: {
-    income: { planned: 9_500_000, actual: 8_000_000, unplanned: 0, unpaid: 0 },
-    expense: { planned: 5_100_000, actual: 4_075_000, unplanned: 180_000, unpaid: 500_000 },
+    income: { planned: 9_500_000, actual: 8_000_000, unplanned: 0, unpaid: 0, envelope_remaining: 1_500_000 },
+    expense: { planned: 5_100_000, actual: 4_075_000, unplanned: 180_000, unpaid: 500_000, envelope_remaining: 740_000 },
     remaining_budget: 1_025_000,
+    still_to_spend: 1_240_000,
   },
   categories: [],
   items: [
@@ -73,8 +74,8 @@ beforeEach(() => {
 describe('DashboardPage — Beranda sederhana', () => {
   it('totals active balances per account type, ignoring archived accounts', async () => {
     renderPage();
-    expect(await screen.findByText('Rp5.400.000')).toBeInTheDocument();
-    expect(screen.getByText('Rp5.400.000').closest('[data-slot="card-header"]'))
+    const [total] = await screen.findAllByText('Rp5.400.000');
+    expect(total!.closest('[data-slot="card-header"]'))
       .toHaveTextContent('Rekening Rp5.000.000 · E-wallet Rp250.000 · Tunai Rp150.000');
     expect(screen.queryByText('Lama')).not.toBeInTheDocument();
   });
@@ -87,6 +88,27 @@ describe('DashboardPage — Beranda sederhana', () => {
     expect(await within(card).findByTestId('plan-income')).toHaveTextContent('Rp8.000.000dari Rp9.500.000');
     expect(within(card).getByTestId('plan-expense')).toHaveTextContent('Rp4.075.000dari Rp5.100.000');
     expect(within(card).getByTestId('plan-remaining')).toHaveTextContent('Rp1.025.000');
+  });
+
+  it('shows the remaining plan next to all account balances and the free money', async () => {
+    renderPage();
+    const block = await screen.findByTestId('plan-free');
+
+    expect(screen.getByTestId('plan-remaining')).toHaveTextContent('Sisa rencanaRp1.025.000');
+    // 5.000.000 + 250.000 + 150.000 (arsip tidak dihitung) − 1.240.000 dari server
+    expect(block).toHaveTextContent('Saldo semua akunRp5.400.000');
+    expect(block).toHaveTextContent('Uang bebasRp4.160.000');
+    expect(block).toHaveTextContent('masih akan keluar Rp1.240.000 (tagihan belum dibayar Rp500.000 + sisa amplop Rp740.000)');
+    expect(block).not.toHaveTextContent('tidak cukup');
+  });
+
+  it('warns in red when the balance cannot cover the rest of the plan', async () => {
+    accountsApi.list.mockResolvedValue([{ ...accounts[0]!, balance: 1_000_000 }]);
+    renderPage();
+    const block = await screen.findByTestId('plan-free');
+
+    expect(await within(block).findByText('−Rp240.000')).toHaveClass('text-destructive');
+    expect(block).toHaveTextContent('Saldo tidak cukup untuk menutup rencana bulan ini.');
   });
 
   it('shares the plan cache with the Rencana page (same query key)', async () => {

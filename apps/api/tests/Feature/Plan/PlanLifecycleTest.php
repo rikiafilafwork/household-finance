@@ -35,7 +35,7 @@ it('does not leak an unchecked or deleted checklist transaction into the envelop
     $plan = $f->comparison();
     expect($plan->item($f->item['Makan']->id)?->actual)->toBe(200_000)
         ->and($plan->item($f->item['Katering kantor']->id)?->status())->toBe('planned')
-        ->and($plan->totals['expense'])->toBe(['planned' => 1_300_000, 'actual' => 200_000, 'unplanned' => 0, 'unpaid' => 300_000]);
+        ->and($plan->totals['expense'])->toBe(['planned' => 1_300_000, 'actual' => 200_000, 'unplanned' => 0, 'unpaid' => 300_000, 'envelope_remaining' => 800_000]);
     assertLedgerBalanced();
 })->with(['uncheck', 'delete']);
 
@@ -76,7 +76,7 @@ it('takes a skipped checklist item out of the plan and puts it back on unskip', 
 
     $skip('skip');
     $plan = $f->comparison();
-    expect($plan->totals['expense'])->toBe(['planned' => 500_000, 'actual' => 0, 'unplanned' => 0, 'unpaid' => 500_000])
+    expect($plan->totals['expense'])->toBe(['planned' => 500_000, 'actual' => 0, 'unplanned' => 0, 'unpaid' => 500_000, 'envelope_remaining' => 0])
         ->and($plan->remainingBudget())->toBe(500_000)
         ->and($plan->item($f->item['Asuransi tahunan']->id)?->status())->toBe('skipped');
 
@@ -86,7 +86,7 @@ it('takes a skipped checklist item out of the plan and puts it back on unskip', 
 
     $skip('unskip');
     $plan = $f->comparison();
-    expect($plan->totals['expense'])->toBe(['planned' => 1_500_000, 'actual' => 950_000, 'unplanned' => 950_000, 'unpaid' => 1_500_000])
+    expect($plan->totals['expense'])->toBe(['planned' => 1_500_000, 'actual' => 950_000, 'unplanned' => 950_000, 'unpaid' => 1_500_000, 'envelope_remaining' => 0])
         ->and($plan->item($f->item['Asuransi tahunan']->id)?->status())->toBe('planned');
 });
 
@@ -98,7 +98,7 @@ it('counts a manual expense in a checklist-only category as unplanned, not as th
 
     $plan = $f->comparison();
     expect($plan->item($f->item['Internet']->id)?->actual)->toBe(350_000)
-        ->and($plan->totals['expense'])->toBe(['planned' => 350_000, 'actual' => 375_000, 'unplanned' => 25_000, 'unpaid' => 0])
+        ->and($plan->totals['expense'])->toBe(['planned' => 350_000, 'actual' => 375_000, 'unplanned' => 25_000, 'unpaid' => 0, 'envelope_remaining' => 0])
         ->and($plan->remainingBudget())->toBe(-25_000);
 });
 
