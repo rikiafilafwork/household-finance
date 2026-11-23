@@ -31,11 +31,20 @@ export interface PlanTotals {
   actual: number;
   unplanned: number;
   unpaid: number;
+  /** Σ max(0, rencana − terpakai) amplop yang tidak di-skip. */
+  envelope_remaining: number;
 }
 
 export interface PlanComparison {
   month: string;
-  totals: { income: PlanTotals; expense: PlanTotals; remaining_budget: number };
+  totals: {
+    income: PlanTotals;
+    expense: PlanTotals;
+    /** Rencana pengeluaran − aktual pengeluaran. */
+    remaining_budget: number;
+    /** Checklist pengeluaran belum dibayar + sisa ruang amplop pengeluaran. */
+    still_to_spend: number;
+  };
   categories: { type: PlanItemType; category_id: Id | null; name: string; planned: number; actual: number }[];
   items: PlanItem[];
 }

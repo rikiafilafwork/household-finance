@@ -82,7 +82,7 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #129 Test plan: centang/batal paralel, amplop tidak dobel, di luar rencana `test`
 - [x] #130 Properti: reconcile 0 setelah rangkaian centang/batal/hapus acak `test`
 
-## Minggu 4 — Web Inti + Dogfooding (8/12)
+## Minggu 4 — Web Inti + Dogfooding (10/12)
 
 > **Done kalau:** kamu mencatat plan dan transaksi asli selama seminggu lewat web, dan reconcile harian tetap 0.
 
@@ -94,8 +94,8 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #36 Dashboard: saldo per wallet + progres budget bulan ini `web`
 - [x] #37 Halaman transaksi: tabel, filter, tambah/edit, transfer `web`
 - [x] #38 Halaman Akun & Kategori `web`
-- [ ] #39 Halaman Rencana (checklist + amplop + form centang) `web`
-- [ ] #40 Beranda sederhana + lonceng notifikasi in-app `web`
+- [x] #39 Halaman Rencana (checklist + amplop + form centang) `web`
+- [x] #40 Beranda sederhana + lonceng notifikasi in-app `web`
 - [ ] #41 Deploy minimal + backup MySQL harian `infra`
 - [ ] #42 Mulai dogfooding + `docs/dogfooding-log.md` `docs` `dogfooding`
 

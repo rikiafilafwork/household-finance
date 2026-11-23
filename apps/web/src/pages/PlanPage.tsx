@@ -13,6 +13,7 @@ import { MoneyText } from '@/components/money/MoneyText';
 import { CheckForm } from '@/components/plan/CheckForm';
 import { PlanItemForm } from '@/components/plan/PlanItemForm';
 import { ChecklistRow, EnvelopeRow, UnplannedRow, type RowAction } from '@/components/plan/PlanRows';
+import { freeMoney, type FreeMoney } from '@/components/plan/planMeta';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -41,10 +42,10 @@ function SummaryCard({ label, children, footer, testId }: { label: string; child
   );
 }
 
-function Summary({ plan }: { plan: PlanComparison }) {
+function Summary({ plan, free }: { plan: PlanComparison; free: FreeMoney | null }) {
   const { income, expense, remaining_budget } = plan.totals;
   return (
-    <div className="mb-6 grid gap-3 sm:grid-cols-3">
+    <div className={cn('mb-6 grid gap-3', free ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3')}>
       <SummaryCard testId="summary-income" label="Pemasukan" footer={<>dari rencana <MoneyText amount={income.planned} /></>}>
         <MoneyText amount={income.actual} />
       </SummaryCard>
@@ -55,9 +56,18 @@ function Summary({ plan }: { plan: PlanComparison }) {
       >
         <MoneyText amount={expense.actual} />
       </SummaryCard>
-      <SummaryCard testId="summary-remaining" label="Sisa anggaran" footer="Rencana pengeluaran − aktual pengeluaran">
+      <SummaryCard testId="summary-remaining" label="Sisa rencana" footer="Rencana pengeluaran − aktual pengeluaran">
         <MoneyText amount={remaining_budget} tone="balance" />
       </SummaryCard>
+      {free && (
+        <SummaryCard
+          testId="summary-free"
+          label="Uang bebas"
+          footer={<>Saldo semua akun <MoneyText amount={free.balance} tone="balance" /> − masih akan keluar <MoneyText amount={free.stillToSpend} /></>}
+        >
+          <MoneyText amount={free.free} tone="balance" />
+        </SummaryCard>
+      )}
     </div>
   );
 }
@@ -108,7 +118,7 @@ export function PlanPage() {
   const setMonth = (m: string) => setParams(m === current ? {} : { month: m });
 
   const planQuery = useQuery({ queryKey: qk.plan(month), queryFn: () => planApi.get(month) });
-  const { data: accounts = [] } = useAccounts();
+  const { data: accounts = [], isSuccess: accountsLoaded } = useAccounts();
   const { data: categories = [] } = useCategories();
   const m = usePlanMutations();
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -225,7 +235,8 @@ export function PlanPage() {
 
       {plan && (
         <>
-          <Summary plan={plan} />
+          {/* Saldo = hari ini, jadi uang bebas hanya bermakna untuk bulan berjalan. */}
+          <Summary plan={plan} free={month === current && accountsLoaded ? freeMoney(accounts, plan) : null} />
 
           {items.length === 0 && (
             <div className="mb-6 rounded-lg border border-dashed bg-background p-8 text-center">

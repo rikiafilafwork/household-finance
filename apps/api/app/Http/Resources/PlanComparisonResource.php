@@ -27,6 +27,7 @@ class PlanComparisonResource extends JsonResource
                 'income' => $plan->totals['income'],
                 'expense' => $plan->totals['expense'],
                 'remaining_budget' => $plan->remainingBudget(),
+                'still_to_spend' => $plan->stillToSpend(),
             ],
             'categories' => $plan->categories,
             'items' => $plan->items->map(fn (PlanItemComparison $row) => [

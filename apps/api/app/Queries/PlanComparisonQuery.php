@@ -25,7 +25,11 @@ use Illuminate\Support\Collection;
  *  - Aktual = checklist + amplop + di luar rencana (tanpa dobel hitung: transaksi centang tidak
  *    masuk amplop kategorinya; transaksi terhubung ke item bulan LAIN tidak dihitung di bulan ini).
  *  - Belum dibayar = rencana item checklist pengeluaran yang belum dicentang (dan tidak di-skip).
+ *  - Sisa ruang amplop = Σ max(0, rencana − aktual) amplop yang tidak di-skip (amplop yang
+ *                   jebol tidak mengurangi ruang amplop lain).
  *  - Sisa anggaran = rencana pengeluaran − aktual pengeluaran (boleh negatif).
+ *  - Masih akan keluar = belum dibayar + sisa ruang amplop pengeluaran (dasar "uang bebas" di web:
+ *                   saldo akun − masih akan keluar).
  * Transfer & adjustment tidak pernah dihitung.
  */
 final class PlanComparisonQuery
@@ -105,7 +109,7 @@ final class PlanComparisonQuery
     /**
      * @param  Collection<int, PlanItemComparison>  $rows
      * @param  Collection<string, int>  $unplanned
-     * @return array{planned: int, actual: int, unplanned: int, unpaid: int}
+     * @return array{planned: int, actual: int, unplanned: int, unpaid: int, envelope_remaining: int}
      */
     private function totals(Collection $rows, Collection $unplanned, PlanItemType $type): array
     {
@@ -119,6 +123,9 @@ final class PlanComparisonQuery
             'unpaid' => (int) $ofType
                 ->filter(fn (PlanItemComparison $r) => $r->item->mode === PlanMode::Checklist && $r->transaction === null)
                 ->sum(fn (PlanItemComparison $r) => $r->item->planned_amount),
+            'envelope_remaining' => (int) $ofType
+                ->filter(fn (PlanItemComparison $r) => $r->item->mode === PlanMode::Envelope)
+                ->sum(fn (PlanItemComparison $r) => max(0, $r->item->planned_amount - $r->actual)),
         ];
     }
 

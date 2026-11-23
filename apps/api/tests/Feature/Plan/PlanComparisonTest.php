@@ -61,9 +61,11 @@ function architectureFixture(): PlanFixture
 it('matches the hand-computed fixture from Architecture.md #11', function () {
     $plan = architectureFixture()->comparison();
 
-    expect($plan->totals['expense'])->toBe(['planned' => 5_100_000, 'actual' => 4_075_000, 'unplanned' => 180_000, 'unpaid' => 500_000])
+    expect($plan->totals['expense'])->toBe(['planned' => 5_100_000, 'actual' => 4_075_000, 'unplanned' => 180_000, 'unpaid' => 500_000, 'envelope_remaining' => 740_000])
         ->and($plan->remainingBudget())->toBe(1_025_000)
-        ->and($plan->totals['income'])->toBe(['planned' => 9_500_000, 'actual' => 8_000_000, 'unplanned' => 0, 'unpaid' => 0]);
+        // listrik 500.000 + ruang amplop makan 650.000 + transport 90.000 (hiburan jebol = 0)
+        ->and($plan->stillToSpend())->toBe(1_240_000)
+        ->and($plan->totals['income'])->toBe(['planned' => 9_500_000, 'actual' => 8_000_000, 'unplanned' => 0, 'unpaid' => 0, 'envelope_remaining' => 1_500_000]);
 });
 
 it('reports per-item actuals, statuses and envelope percentages', function () {
@@ -103,7 +105,8 @@ it('serves the same numbers from GET /api/plan/{month}', function () {
     actingAs($f->user)->getJson('/api/plan/2026-11')
         ->assertOk()
         ->assertJsonPath('data.month', '2026-11')
-        ->assertJsonPath('data.totals.expense', ['planned' => 5_100_000, 'actual' => 4_075_000, 'unplanned' => 180_000, 'unpaid' => 500_000])
+        ->assertJsonPath('data.totals.expense', ['planned' => 5_100_000, 'actual' => 4_075_000, 'unplanned' => 180_000, 'unpaid' => 500_000, 'envelope_remaining' => 740_000])
+        ->assertJsonPath('data.totals.still_to_spend', 1_240_000)
         ->assertJsonPath('data.totals.income.actual', 8_000_000)
         ->assertJsonPath('data.totals.remaining_budget', 1_025_000)
         ->assertJsonCount(10, 'data.items')
@@ -137,7 +140,7 @@ it('counts the transactions of a skipped envelope as unplanned', function () {
 
     $plan = $f->comparison();
 
-    expect($plan->totals['expense'])->toBe(['planned' => 0, 'actual' => 120_000, 'unplanned' => 120_000, 'unpaid' => 0])
+    expect($plan->totals['expense'])->toBe(['planned' => 0, 'actual' => 120_000, 'unplanned' => 120_000, 'unpaid' => 0, 'envelope_remaining' => 0])
         ->and($plan->item($f->item['Hiburan']->id)?->actual)->toBe(0);
 });
 
@@ -147,7 +150,7 @@ it('attributes a checked bill to its plan month even when paid in another month'
     $f->check('Cicilan motor', 1_200_000, '2026-10-30'); // tagihan November dibayar akhir Oktober
 
     expect($f->comparison('2026-11')->totals['expense']['actual'])->toBe(1_200_000)
-        ->and($f->comparison('2026-10')->totals['expense'])->toBe(['planned' => 0, 'actual' => 0, 'unplanned' => 0, 'unpaid' => 0]);
+        ->and($f->comparison('2026-10')->totals['expense'])->toBe(['planned' => 0, 'actual' => 0, 'unplanned' => 0, 'unpaid' => 0, 'envelope_remaining' => 0]);
 });
 
 it('treats uncategorized income and expense as unplanned', function () {
@@ -189,4 +192,27 @@ it('returns zeros for an empty month', function () {
     expect($plan->items)->toHaveCount(0)
         ->and($plan->remainingBudget())->toBe(0)
         ->and($plan->categories)->toBe([]);
+});
+
+it('does not let an overspent envelope eat into the room of the others', function () {
+    $f = new PlanFixture;
+    $f->envelope('Makan', 1_000_000);
+    $f->envelope('Hiburan', 200_000);
+    $f->spend('Makan', 400_000);
+    $f->spend('Hiburan', 500_000); // jebol 300.000
+
+    $plan = $f->comparison();
+
+    expect($plan->totals['expense']['envelope_remaining'])->toBe(600_000)
+        ->and($plan->stillToSpend())->toBe(600_000)
+        ->and($plan->remainingBudget())->toBe(300_000); // sisa anggaran tetap netto
+});
+
+it('leaves skipped envelopes out of the remaining room', function () {
+    $f = new PlanFixture;
+    $f->envelope('Makan', 1_000_000);
+    $f->envelope('Transport', 3_000_000);
+    actingAs($f->user)->postJson("/api/plan-items/{$f->item['Transport']->id}/skip")->assertOk();
+
+    expect($f->comparison()->stillToSpend())->toBe(1_000_000);
 });
