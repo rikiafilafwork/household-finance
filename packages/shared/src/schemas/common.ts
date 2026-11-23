@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { CLIENT_ID_PATTERN } from '../client-id';
 
-/** Batas aman uang, sama dengan StoreWalletRequest::MAX_AMOUNT di Laravel. */
+/** Batas aman uang, sama dengan StoreAccountRequest::MAX_AMOUNT di Laravel. */
 export const MAX_AMOUNT = 1_000_000_000_000_000;
 
 /** Magnitudo uang: integer rupiah positif (tanda diberikan server sesuai tipe). */
@@ -18,7 +18,7 @@ export const balanceSchema = z
   .min(-MAX_AMOUNT)
   .max(MAX_AMOUNT);
 
-/** Tanggal lokal household, YYYY-MM-DD (Keputusan #7). */
+/** Tanggal lokal user, YYYY-MM-DD (Keputusan #12). */
 export const localDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal YYYY-MM-DD.')

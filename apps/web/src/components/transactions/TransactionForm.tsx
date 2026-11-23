@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import type { Category, Transaction, Wallet } from '@/api/types';
+import type { Account, Category, Transaction } from '@/api/types';
 import { Field, FormMessage } from '@/components/form/Field';
 import { NativeSelect } from '@/components/form/NativeSelect';
 import { MoneyInput } from '@/components/money/MoneyInput';
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 const schema = z.object({
   type: z.enum(['expense', 'income']),
   amount: amountSchema.nullable().refine((v) => v !== null, 'Nominal wajib diisi.').transform((v) => v as number),
-  wallet_id: z.number({ error: 'Pilih wallet.' }).int().positive('Pilih wallet.'),
+  account_id: z.number({ error: 'Pilih akun.' }).int().positive('Pilih akun.'),
   category_id: z.number().int().positive().nullable(),
   occurred_on: localDateSchema,
   note: z.string().max(255, 'Catatan maksimal 255 karakter.'),
@@ -26,7 +26,7 @@ type Output = z.output<typeof schema>;
 export interface TransactionPayload {
   type: 'expense' | 'income';
   amount: number;
-  wallet_id: number;
+  account_id: number;
   category_id: number | null;
   occurred_on: string;
   note: string | null;
@@ -35,12 +35,12 @@ export interface TransactionPayload {
 /**
  * Form pemasukan/pengeluaran. `client_id` dibuat SEKALI saat form dibuka dan dipakai ulang
  * kalau submit gagal lalu diulang (mis. koneksi putus setelah server menyimpan): server
- * menjawab 200 dengan transaksi yang sama, tidak dobel (Keputusan #11). Form berikutnya = id baru.
+ * menjawab 200 dengan transaksi yang sama, tidak dobel (Keputusan #15). Form berikutnya = id baru.
  */
 export function TransactionForm({
   initial,
   defaultType = 'expense',
-  wallets,
+  accounts,
   categories,
   today,
   onSubmit,
@@ -49,7 +49,7 @@ export function TransactionForm({
 }: {
   initial?: Transaction;
   defaultType?: 'expense' | 'income';
-  wallets: Wallet[];
+  accounts: Account[];
   categories: Category[];
   today: string;
   onSubmit: (payload: TransactionPayload, clientId: string) => Promise<unknown>;
@@ -67,29 +67,29 @@ export function TransactionForm({
       ? {
           type: initial.type === 'income' ? 'income' : 'expense',
           amount: Math.abs(initial.amount),
-          wallet_id: initial.wallet_id,
+          account_id: initial.account_id,
           category_id: initial.category_id,
           occurred_on: initial.occurred_on,
           note: initial.note ?? '',
         }
-      : { type: defaultType, amount: null, wallet_id: wallets.find((w) => !w.archived_at)?.id ?? 0, category_id: null, occurred_on: today, note: '' },
+      : { type: defaultType, amount: null, account_id: accounts.find((a) => !a.archived_at)?.id ?? 0, category_id: null, occurred_on: today, note: '' },
   });
   const { errors, isSubmitting } = form.formState;
   const type = useWatch({ control: form.control, name: 'type' });
 
   // Kategori aktif sesuai jenis; kategori lama yang sudah diarsip tetap boleh dipertahankan saat edit.
   const categoryOptions = categories.filter((c) => c.kind === type && (!c.archived_at || c.id === initial?.category_id));
-  const walletOptions = wallets.filter((w) => !w.archived_at || w.id === initial?.wallet_id);
+  const accountOptions = accounts.filter((a) => !a.archived_at || a.id === initial?.account_id);
 
   const submit = form.handleSubmit(async (values) => {
     setMessage(null);
     try {
       await onSubmit(
-        { type: values.type, amount: values.amount, wallet_id: values.wallet_id, category_id: values.category_id, occurred_on: values.occurred_on, note: values.note.trim() || null },
+        { type: values.type, amount: values.amount, account_id: values.account_id, category_id: values.category_id, occurred_on: values.occurred_on, note: values.note.trim() || null },
         clientId,
       );
     } catch (error) {
-      setMessage(applyServerErrors(error, form.setError, ['type', 'amount', 'wallet_id', 'category_id', 'occurred_on', 'note']));
+      setMessage(applyServerErrors(error, form.setError, ['type', 'amount', 'account_id', 'category_id', 'occurred_on', 'note']));
     }
   });
 
@@ -126,11 +126,11 @@ export function TransactionForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Wallet" htmlFor="wallet_id" error={errors.wallet_id?.message}>
-          <NativeSelect id="wallet_id" aria-invalid={!!errors.wallet_id} {...form.register('wallet_id', { valueAsNumber: true })}>
-            {walletOptions.length === 0 && <option value={0}>Belum ada wallet</option>}
-            {walletOptions.map((w) => (
-              <option key={w.id} value={w.id}>{w.name}{w.visibility === 'private' ? ' (pribadi)' : ''}</option>
+        <Field label="Akun" htmlFor="account_id" error={errors.account_id?.message}>
+          <NativeSelect id="account_id" aria-invalid={!!errors.account_id} {...form.register('account_id', { valueAsNumber: true })}>
+            {accountOptions.length === 0 && <option value={0}>Belum ada akun</option>}
+            {accountOptions.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
             ))}
           </NativeSelect>
         </Field>
@@ -170,7 +170,7 @@ export function TransactionForm({
             <Button type="button" variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)}>Hapus</Button>
           )
         ) : <span />}
-        <Button type="submit" disabled={isSubmitting || walletOptions.length === 0}>
+        <Button type="submit" disabled={isSubmitting || accountOptions.length === 0}>
           {isSubmitting ? 'Menyimpan…' : (submitLabel ?? 'Simpan')}
         </Button>
       </div>

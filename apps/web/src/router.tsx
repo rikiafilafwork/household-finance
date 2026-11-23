@@ -1,19 +1,17 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { onUnauthorized } from '@/api/client';
 import { qk } from '@/api/keys';
 import { GuestOnly, RequireAuth } from '@/auth/guards';
 import { AppShell } from '@/components/layout/AppShell';
 import { queryClient } from '@/lib/query-client';
 import { withNext } from '@/lib/redirect';
-import { AcceptInvitationPage } from '@/pages/auth/AcceptInvitationPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ComingSoon } from '@/pages/ComingSoon';
 import { DashboardPage } from '@/pages/DashboardPage';
-import { HomeRedirect } from '@/pages/HomeRedirect';
-import { OnboardingPage } from '@/pages/OnboardingPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 
+/** Rute datar: satu user = satu pemilik data (tanpa /h/:householdId). */
 export const router = createBrowserRouter([
   {
     element: <GuestOnly />,
@@ -22,25 +20,23 @@ export const router = createBrowserRouter([
       { path: '/register', element: <RegisterPage /> },
     ],
   },
-  { path: '/invitations/:token', element: <AcceptInvitationPage /> },
   {
     element: <RequireAuth />,
     children: [
-      { path: '/', element: <HomeRedirect /> },
-      { path: '/onboarding', element: <OnboardingPage /> },
       {
-        path: '/h/:householdId',
         element: <AppShell />,
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: 'transactions', element: <TransactionsPage /> },
-          { path: 'wallets', element: <ComingSoon title="Wallet" issue={38} /> },
-          { path: 'categories', element: <ComingSoon title="Kategori" issue={38} /> },
-          { path: 'budgets', element: <ComingSoon title="Budget" issue={39} /> },
-          { path: 'members', element: <ComingSoon title="Anggota & undangan" issue={40} /> },
+          { path: '/', element: <DashboardPage /> },
+          { path: '/plan', element: <ComingSoon title="Rencana" issue={39} /> },
+          { path: '/transactions', element: <TransactionsPage /> },
+          { path: '/accounts', element: <ComingSoon title="Akun" issue={38} /> },
+          { path: '/settings', element: <Navigate to="/settings/categories" replace /> },
+          { path: '/settings/categories', element: <ComingSoon title="Kategori" issue={38} /> },
+          { path: '/settings/templates', element: <ComingSoon title="Template bulanan" issue={48} /> },
+          { path: '/settings/profile', element: <ComingSoon title="Profil & zona waktu" issue={40} /> },
         ],
       },
-      { path: '*', element: <HomeRedirect /> },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ]);

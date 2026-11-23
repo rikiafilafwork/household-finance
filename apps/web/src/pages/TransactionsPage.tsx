@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { qk } from '@/api/keys';
 import { cleanFilters, transactionsApi, type TransactionFilters } from '@/api/transactions';
-import type { Transaction, TransactionType } from '@/api/types';
-import { useMe } from '@/auth/useAuth';
+import type { TransactionType } from '@/api/types';
+import { useTimezone } from '@/auth/useAuth';
 import { NativeSelect } from '@/components/form/NativeSelect';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { TransactionDialog, type DialogState } from '@/components/transactions/TransactionDialog';
@@ -13,16 +13,15 @@ import { TransactionList } from '@/components/transactions/TransactionList';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCurrentHousehold, useIsOwner } from '@/hooks/useHouseholds';
-import { useCategories, useWallets } from '@/hooks/useMoneyData';
+import { useAccounts, useCategories } from '@/hooks/useMoneyData';
 import { todayIn } from '@/lib/dates';
 
-const FILTER_KEYS = ['wallet_id', 'category_id', 'type', 'from', 'to', 'q'] as const;
+const FILTER_KEYS = ['account_id', 'category_id', 'type', 'from', 'to', 'q'] as const;
 
 function filtersFrom(params: URLSearchParams): TransactionFilters {
   const num = (k: string) => (params.get(k) ? Number(params.get(k)) : undefined);
   return cleanFilters({
-    wallet_id: num('wallet_id'),
+    account_id: num('account_id'),
     category_id: num('category_id'),
     type: (params.get('type') as TransactionType | null) ?? undefined,
     from: params.get('from') ?? undefined,
@@ -32,16 +31,14 @@ function filtersFrom(params: URLSearchParams): TransactionFilters {
 }
 
 export function TransactionsPage() {
-  const household = useCurrentHousehold();
-  const isOwner = useIsOwner();
-  const { data: me } = useMe();
+  const timezone = useTimezone();
   const [params, setParams] = useSearchParams();
   const filters = useMemo(() => filtersFrom(params), [params]);
-  const { data: wallets = [] } = useWallets(household.id);
-  const { data: categories = [] } = useCategories(household.id);
-  const walletMap = useMemo(() => new Map(wallets.map((w) => [w.id, w])), [wallets]);
+  const { data: accounts = [] } = useAccounts();
+  const { data: categories = [] } = useCategories();
+  const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
-  const today = todayIn(household.timezone);
+  const today = todayIn(timezone);
 
   // `?new=expense|income|transfer` (dari tombol "Catat" di beranda) membuka dialog.
   const initialNew = params.get('new');
@@ -73,15 +70,13 @@ export function TransactionsPage() {
   }
 
   const query = useInfiniteQuery({
-    queryKey: qk.transactions(household.id, filters),
-    queryFn: ({ pageParam }) => transactionsApi.list(household.id, filters, pageParam),
+    queryKey: qk.transactions(filters),
+    queryFn: ({ pageParam }) => transactionsApi.list(filters, pageParam),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.meta.next_cursor,
   });
   const transactions = query.data?.pages.flatMap((p) => p.data) ?? [];
   const hasFilters = FILTER_KEYS.some((k) => params.get(k));
-
-  const canManage = (tx: Transaction) => isOwner || tx.created_by === me?.id;
 
   return (
     <>
@@ -101,9 +96,9 @@ export function TransactionsPage() {
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input aria-label="Cari catatan" placeholder="Cari catatan…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
         </div>
-        <NativeSelect aria-label="Filter wallet" value={params.get('wallet_id') ?? ''} onChange={(e) => setFilter('wallet_id', e.target.value)}>
-          <option value="">Semua wallet</option>
-          {wallets.map((w) => <option key={w.id} value={w.id}>{w.name}{w.archived_at ? ' (arsip)' : ''}</option>)}
+        <NativeSelect aria-label="Filter akun" value={params.get('account_id') ?? ''} onChange={(e) => setFilter('account_id', e.target.value)}>
+          <option value="">Semua akun</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.archived_at ? ' (arsip)' : ''}</option>)}
         </NativeSelect>
         <NativeSelect aria-label="Filter kategori" value={params.get('category_id') ?? ''} onChange={(e) => setFilter('category_id', e.target.value)}>
           <option value="">Semua kategori</option>
@@ -138,7 +133,7 @@ export function TransactionsPage() {
         </div>
       )}
       {transactions.length > 0 && (
-        <TransactionList transactions={transactions} wallets={walletMap} categories={categoryMap} onSelect={(tx) => setDialog({ mode: 'edit', transaction: tx, canManage: canManage(tx) })} />
+        <TransactionList transactions={transactions} accounts={accountMap} categories={categoryMap} onSelect={(tx) => setDialog({ mode: 'edit', transaction: tx })} />
       )}
       {query.hasNextPage && (
         <div className="mt-4 flex justify-center">
@@ -151,8 +146,7 @@ export function TransactionsPage() {
       <TransactionDialog
         state={dialog}
         onClose={() => setDialog(null)}
-        householdId={household.id}
-        wallets={wallets.filter((w) => w.visibility === 'shared' || w.is_mine)}
+        accounts={accounts}
         categories={categories}
         today={today}
       />

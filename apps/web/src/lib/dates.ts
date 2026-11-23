@@ -1,5 +1,5 @@
 /**
- * Tanggal lokal household (Keputusan #7): `occurred_on` = DATE di timezone household,
+ * Tanggal lokal user (Keputusan #12): `occurred_on` = DATE di `users.timezone`,
  * bukan di zona perangkat dan bukan UTC. Belanja 23.30 WIB tetap "hari ini".
  */
 function parts(date: Date, timeZone: string) {
@@ -8,13 +8,13 @@ function parts(date: Date, timeZone: string) {
   return { y: get('year'), m: get('month'), d: get('day') };
 }
 
-/** YYYY-MM-DD hari ini di timezone household. */
+/** YYYY-MM-DD hari ini di zona waktu user. */
 export function todayIn(timeZone: string, now: Date = new Date()): string {
   const { y, m, d } = parts(now, timeZone);
   return `${y}-${m}-${d}`;
 }
 
-/** YYYY-MM bulan ini di timezone household. */
+/** YYYY-MM bulan ini di zona waktu user. */
 export function monthIn(timeZone: string, now: Date = new Date()): string {
   return todayIn(timeZone, now).slice(0, 7);
 }

@@ -3,7 +3,7 @@ import { safeNext } from './redirect';
 
 describe('safeNext', () => {
   it.each([
-    ['/h/1/transactions?wallet_id=2', '/h/1/transactions?wallet_id=2'],
+    ['/h/1/transactions?account_id=2', '/h/1/transactions?account_id=2'],
     ['/invitations/abc', '/invitations/abc'],
     [null, '/'],
     ['', '/'],

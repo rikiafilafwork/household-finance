@@ -1,18 +1,15 @@
 import type { CreateTransactionInput, CreateTransferInput, UpdateTransactionInput, UpdateTransferInput } from '@personal-finance/shared';
 import { api, unwrap } from './client';
-import type { CursorPage, Id, Transaction, TransactionStatus, TransactionType, Transfer } from './types';
+import type { CursorPage, Id, Transaction, TransactionType, Transfer } from './types';
 
 export interface TransactionFilters {
-  wallet_id?: Id;
+  account_id?: Id;
   category_id?: Id;
   type?: TransactionType;
-  status?: TransactionStatus;
   from?: string;
   to?: string;
   q?: string;
 }
-
-const base = (h: Id) => `/households/${h}`;
 
 /** Buang filter kosong supaya URL & query key stabil. */
 export function cleanFilters(filters: TransactionFilters): TransactionFilters {
@@ -20,21 +17,20 @@ export function cleanFilters(filters: TransactionFilters): TransactionFilters {
 }
 
 export const transactionsApi = {
-  list: async (h: Id, filters: TransactionFilters, cursor?: string | null, perPage = 50) =>
-    (await api.get<CursorPage<Transaction>>(`${base(h)}/transactions`, {
+  list: async (filters: TransactionFilters, cursor?: string | null, perPage = 50) =>
+    (await api.get<CursorPage<Transaction>>('/transactions', {
       params: { ...cleanFilters(filters), per_page: perPage, ...(cursor ? { cursor } : {}) },
     })).data,
-  get: (h: Id, id: Id) => unwrap(api.get<{ data: Transaction }>(`${base(h)}/transactions/${id}`)),
-  /** 201 = baru, 200 = retry client_id yang sama (Keputusan #11). Keduanya sukses. */
-  create: (h: Id, body: CreateTransactionInput) => unwrap(api.post<{ data: Transaction }>(`${base(h)}/transactions`, body)),
-  update: (h: Id, id: Id, body: UpdateTransactionInput) => unwrap(api.patch<{ data: Transaction }>(`${base(h)}/transactions/${id}`, body)),
-  remove: (h: Id, id: Id) => api.delete(`${base(h)}/transactions/${id}`),
+  get: (id: Id) => unwrap(api.get<{ data: Transaction }>(`/transactions/${id}`)),
+  /** 201 = baru, 200 = retry client_id yang sama (Keputusan #15). Keduanya sukses. */
+  create: (body: CreateTransactionInput) => unwrap(api.post<{ data: Transaction }>('/transactions', body)),
+  update: (id: Id, body: UpdateTransactionInput) => unwrap(api.patch<{ data: Transaction }>(`/transactions/${id}`, body)),
+  remove: (id: Id) => api.delete(`/transactions/${id}`),
 };
 
 export const transfersApi = {
-  /** silent: 403 (melibatkan wallet pribadi orang lain) ditangani dialog, tanpa toast. */
-  get: (h: Id, groupId: string) => unwrap(api.get<{ data: Transfer }>(`${base(h)}/transfers/${groupId}`, { silent: true })),
-  create: (h: Id, body: CreateTransferInput) => unwrap(api.post<{ data: Transfer }>(`${base(h)}/transfers`, body)),
-  update: (h: Id, groupId: string, body: UpdateTransferInput) => unwrap(api.patch<{ data: Transfer }>(`${base(h)}/transfers/${groupId}`, body)),
-  remove: (h: Id, groupId: string) => api.delete(`${base(h)}/transfers/${groupId}`),
+  get: (groupId: string) => unwrap(api.get<{ data: Transfer }>(`/transfers/${groupId}`)),
+  create: (body: CreateTransferInput) => unwrap(api.post<{ data: Transfer }>('/transfers', body)),
+  update: (groupId: string, body: UpdateTransferInput) => unwrap(api.patch<{ data: Transfer }>(`/transfers/${groupId}`, body)),
+  remove: (groupId: string) => api.delete(`/transfers/${groupId}`),
 };
