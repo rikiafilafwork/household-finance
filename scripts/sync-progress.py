@@ -13,7 +13,7 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-REPO = "rikiafilafwork/household-finance"
+REPO = "rikiafilafwork/personal-finance"
 ROOT = Path(__file__).resolve().parent.parent
 TASKS = ROOT / "TASKS.md"
 PROGRESS = ROOT / "PROGRESS.md"
@@ -30,8 +30,13 @@ def bar(done, total, width=20):
 
 
 def week_no(title):
+    # Urutan: Minggu 1–2, Minggu 3 (lama, riwayat sebelum pivot), Pivot, Minggu 3 baru, dst.
+    if title.startswith("Pivot"):
+        return 2.5
     m = re.search(r"Minggu (\d+)", title)
-    return int(m.group(1)) if m else 99
+    if not m:
+        return 99
+    return int(m.group(1)) - 0.6 if "(lama)" in title else int(m.group(1))
 
 
 def replace_block(text, name, content):

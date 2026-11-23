@@ -1,4 +1,4 @@
-import { formatThousands, MAX_AMOUNT, tryParseIDRInput } from '@household-finance/shared';
+import { formatThousands, MAX_AMOUNT, tryParseIDRInput } from '@personal-finance/shared';
 import { forwardRef, useLayoutEffect, useRef, useState, type ClipboardEvent, type ComponentProps, type FormEvent } from 'react';
 import { cn } from '@/lib/utils';
 

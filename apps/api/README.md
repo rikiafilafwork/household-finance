@@ -1,4 +1,4 @@
-# Household Finance API
+# Personal Finance API
 
 Laravel 13 + MySQL 8 + Sanctum. Desain lengkap ada di [`Architecture.md`](../../Architecture.md).
 

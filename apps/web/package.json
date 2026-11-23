@@ -1,5 +1,5 @@
 {
-  "name": "@household-finance/web",
+  "name": "@personal-finance/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.7",
-    "@household-finance/shared": "workspace:*",
+    "@personal-finance/shared": "workspace:*",
     "@tanstack/react-query": "^5.108.1",
     "axios": "^1.21.1",
     "class-variance-authority": "^0.7.1",

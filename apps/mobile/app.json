@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Household Finance",
-    "slug": "household-finance",
+    "name": "Personal Finance",
+    "slug": "personal-finance",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

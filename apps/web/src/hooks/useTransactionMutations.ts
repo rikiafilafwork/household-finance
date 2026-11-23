@@ -1,4 +1,4 @@
-import type { CreateTransactionInput, CreateTransferInput, UpdateTransactionInput, UpdateTransferInput } from '@household-finance/shared';
+import type { CreateTransactionInput, CreateTransferInput, UpdateTransactionInput, UpdateTransferInput } from '@personal-finance/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invalidateMoney } from '@/api/keys';
 import { transactionsApi, transfersApi } from '@/api/transactions';

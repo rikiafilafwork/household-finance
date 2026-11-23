@@ -1,5 +1,5 @@
 {
-  "name": "@household-finance/mobile",
+  "name": "@personal-finance/mobile",
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
@@ -7,7 +7,7 @@
     "expo-status-bar": "~58.0.5",
     "react": "19.3.0",
     "react-native": "0.88.1",
-    "@household-finance/shared": "workspace:*"
+    "@personal-finance/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "~19.3.0",

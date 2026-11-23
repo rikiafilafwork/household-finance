@@ -1,4 +1,4 @@
-import { formatIDR } from '@household-finance/shared';
+import { formatIDR } from '@personal-finance/shared';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from 'react-native';
 export default function App() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Household Finance</Text>
+      <Text style={styles.title}>Personal Finance</Text>
       <Text testID="shared-money">{formatIDR(1_250_000)}</Text>
       <StatusBar style="auto" />
     </View>

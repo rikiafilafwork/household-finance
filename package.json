@@ -1,7 +1,7 @@
 {
-  "name": "household-finance",
+  "name": "personal-finance",
   "private": true,
-  "description": "Keuangan rumah tangga: Laravel + React + Expo monorepo",
+  "description": "Keuangan pribadi + budget planner: Laravel + React + Expo monorepo",
   "packageManager": "pnpm@11.21.0",
   "engines": {
     "node": ">=22"

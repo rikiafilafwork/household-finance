@@ -1,4 +1,4 @@
-import type { CreateTransactionInput, CreateTransferInput, UpdateTransactionInput, UpdateTransferInput } from '@household-finance/shared';
+import type { CreateTransactionInput, CreateTransferInput, UpdateTransactionInput, UpdateTransferInput } from '@personal-finance/shared';
 import { api, unwrap } from './client';
 import type { CursorPage, Id, Transaction, TransactionStatus, TransactionType, Transfer } from './types';
 
