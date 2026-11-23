@@ -10,6 +10,7 @@ import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ComingSoon } from '@/pages/ComingSoon';
 import { AccountsPage } from '@/pages/AccountsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { PlanPage } from '@/pages/PlanPage';
 import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { SettingsLayout } from '@/pages/settings/SettingsLayout';
 import { TransactionsPage } from '@/pages/TransactionsPage';
@@ -30,7 +31,7 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { path: '/', element: <DashboardPage /> },
-          { path: '/plan', element: <ComingSoon title="Rencana" issue={39} /> },
+          { path: '/plan', element: <PlanPage /> },
           { path: '/transactions', element: <TransactionsPage /> },
           { path: '/accounts', element: <AccountsPage /> },
           { path: '/settings', element: <Navigate to="/settings/categories" replace /> },
