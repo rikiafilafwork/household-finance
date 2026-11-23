@@ -8,7 +8,10 @@ import { withNext } from '@/lib/redirect';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ComingSoon } from '@/pages/ComingSoon';
+import { AccountsPage } from '@/pages/AccountsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { CategoriesPage } from '@/pages/settings/CategoriesPage';
+import { SettingsLayout } from '@/pages/settings/SettingsLayout';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 
 /** Rute datar: satu user = satu pemilik data (tanpa /h/:householdId). */
@@ -29,11 +32,16 @@ export const router = createBrowserRouter([
           { path: '/', element: <DashboardPage /> },
           { path: '/plan', element: <ComingSoon title="Rencana" issue={39} /> },
           { path: '/transactions', element: <TransactionsPage /> },
-          { path: '/accounts', element: <ComingSoon title="Akun" issue={38} /> },
+          { path: '/accounts', element: <AccountsPage /> },
           { path: '/settings', element: <Navigate to="/settings/categories" replace /> },
-          { path: '/settings/categories', element: <ComingSoon title="Kategori" issue={38} /> },
-          { path: '/settings/templates', element: <ComingSoon title="Template bulanan" issue={48} /> },
-          { path: '/settings/profile', element: <ComingSoon title="Profil & zona waktu" issue={40} /> },
+          {
+            element: <SettingsLayout />,
+            children: [
+              { path: '/settings/categories', element: <CategoriesPage /> },
+              { path: '/settings/templates', element: <ComingSoon title="Template bulanan" issue={48} bare /> },
+              { path: '/settings/profile', element: <ComingSoon title="Profil & zona waktu" issue={40} bare /> },
+            ],
+          },
         ],
       },
       { path: '*', element: <Navigate to="/" replace /> },

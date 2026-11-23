@@ -7,7 +7,7 @@ Roadmap keuangan pribadi + budget planner (~10–12 jam/minggu), mulai 23 Nov 20
 Tabel di bawah diperbarui oleh `python3 scripts/sync-progress.py` (jangan diedit manual).
 
 <!-- auto:progress:start -->
-**Total: 49/91 issue selesai (54%)** `████████████████░░░░░░░░░░░░░░`
+**Total: 50/91 issue selesai (55%)** `████████████████░░░░░░░░░░░░░░`
 
 _Terakhir disinkronkan: 2026-11-23_
 
@@ -17,7 +17,7 @@ _Terakhir disinkronkan: 2026-11-23_
 | [Minggu 2 — Akun, Transaksi, Saldo](https://github.com/rikiafilafwork/personal-finance/milestone/2) | 2026-12-06 | `████████████` 10/10 | 100% | ✅ Selesai |
 | [Minggu 3 (lama) — Kategori, Budget, Policy](https://github.com/rikiafilafwork/personal-finance/milestone/3) | 2026-12-13 | `████████████` 7/7 | 100% | ✅ Selesai |
 | [Pivot — Keuangan Pribadi](https://github.com/rikiafilafwork/personal-finance/milestone/10) | 2026-12-13 | `████████████` 7/7 | 100% | ✅ Selesai |
-| [Minggu 3 — Plan: Checklist dan Amplop](https://github.com/rikiafilafwork/personal-finance/milestone/11) | 2026-12-20 | `██████████░░` 5/6 | 83% | 🟡 Berjalan |
+| [Minggu 3 — Plan: Checklist dan Amplop](https://github.com/rikiafilafwork/personal-finance/milestone/11) | 2026-12-20 | `████████████` 6/6 | 100% | ✅ Selesai |
 | [Minggu 4 — Web Inti + Dogfooding](https://github.com/rikiafilafwork/personal-finance/milestone/4) | 2026-12-27 | `███████░░░░░` 7/12 | 58% | 🟡 Berjalan |
 | [Minggu 5 — Template Bulanan + Dashboard](https://github.com/rikiafilafwork/personal-finance/milestone/5) | 2027-01-03 | `░░░░░░░░░░░░` 0/10 | 0% | ⚪ Belum mulai |
 | [Minggu 6 — Import CSV Mutasi Rekening](https://github.com/rikiafilafwork/personal-finance/milestone/6) | 2027-01-10 | `░░░░░░░░░░░░` 0/8 | 0% | ⚪ Belum mulai |
