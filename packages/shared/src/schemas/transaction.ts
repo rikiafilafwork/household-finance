@@ -3,7 +3,7 @@ import { amountSchema, clientIdSchema, idSchema, localDateSchema, noteSchema } f
 
 /** Padanan StoreTransactionRequest. Hanya income/expense; transfer & adjustment punya endpoint sendiri. */
 export const createTransactionSchema = z.object({
-  wallet_id: idSchema,
+  account_id: idSchema,
   type: z.enum(['income', 'expense']),
   amount: amountSchema,
   occurred_on: localDateSchema,

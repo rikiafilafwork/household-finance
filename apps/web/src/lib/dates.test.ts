@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatDate, formatMonth, monthIn, shiftMonth, todayIn } from './dates';
 
-describe('household-local dates (Keputusan #7)', () => {
+describe('user-local dates (Keputusan #12)', () => {
   it('keeps 23:30 WIB on the same day even though UTC is still that day afternoon', () => {
     // 2026-11-21 23:30 WIB = 16:30 UTC
     expect(todayIn('Asia/Jakarta', new Date('2026-11-21T16:30:00Z'))).toBe('2026-11-21');

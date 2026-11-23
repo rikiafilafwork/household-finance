@@ -5,7 +5,7 @@ export function Brand() {
   return (
     <div className="flex items-center gap-2 font-semibold">
       <img src="/favicon.svg" alt="" className="size-7" />
-      <span>Keuangan Rumah</span>
+      <span>Keuangan Pribadi</span>
     </div>
   );
 }

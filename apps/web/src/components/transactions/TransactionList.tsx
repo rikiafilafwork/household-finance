@@ -1,5 +1,5 @@
 import { ArrowLeftRight, Scale } from 'lucide-react';
-import type { Category, Transaction, Wallet } from '@/api/types';
+import type { Account, Category, Transaction } from '@/api/types';
 import { MoneyText } from '@/components/money/MoneyText';
 import { formatDate } from '@/lib/dates';
 
@@ -11,9 +11,9 @@ export function transactionLabel(tx: Transaction, categories: Map<number, Catego
 }
 
 /** Daftar dikelompokkan per tanggal (DESC), dengan jumlah bersih harian. */
-export function TransactionList({ transactions, wallets, categories, onSelect }: {
+export function TransactionList({ transactions, accounts, categories, onSelect }: {
   transactions: Transaction[];
-  wallets: Map<number, Wallet>;
+  accounts: Map<number, Account>;
   categories: Map<number, Category>;
   onSelect: (tx: Transaction) => void;
 }) {
@@ -38,7 +38,7 @@ export function TransactionList({ transactions, wallets, categories, onSelect }:
             <ul className="divide-y">
               {group.items.map((tx) => {
                 const category = tx.category ?? (tx.category_id ? categories.get(tx.category_id) : undefined);
-                const wallet = wallets.get(tx.wallet_id);
+                const account = accounts.get(tx.account_id);
                 return (
                   <li key={tx.id}>
                     <button type="button" onClick={() => onSelect(tx)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none">
@@ -53,7 +53,7 @@ export function TransactionList({ transactions, wallets, categories, onSelect }:
                           {category?.archived_at && <span className="ml-1 text-xs font-normal text-muted-foreground">(diarsip)</span>}
                         </span>
                         <span className="truncate text-xs text-muted-foreground">
-                          {wallet?.name ?? 'Wallet'}{tx.note ? ` · ${tx.note}` : ''}{tx.status === 'pending' ? ' · menunggu konfirmasi' : ''}
+                          {account?.name ?? 'Akun'}{tx.plan_item_id ? ' · dari rencana' : ''}{tx.note ? ` · ${tx.note}` : ''}
                         </span>
                       </span>
                       <MoneyText amount={tx.amount} tone="signed" className="text-sm font-medium" />

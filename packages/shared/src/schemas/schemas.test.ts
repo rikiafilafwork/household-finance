@@ -3,7 +3,7 @@ import { newClientId } from '../client-id';
 import { createTransactionSchema, createTransferSchema, updateTransactionSchema, updateTransferSchema } from './index';
 
 const tx = () => ({
-  wallet_id: 1,
+  account_id: 1,
   type: 'expense' as const,
   amount: 25_000,
   occurred_on: '2026-11-21',
@@ -55,8 +55,8 @@ describe('updateTransactionSchema', () => {
 
 describe('transfer schemas', () => {
   const transfer = () => ({
-    from_wallet_id: 1,
-    to_wallet_id: 2,
+    from_account_id: 1,
+    to_account_id: 2,
     amount: 500_000,
     occurred_on: '2026-11-21',
     client_id: newClientId(),
@@ -66,14 +66,14 @@ describe('transfer schemas', () => {
     expect(createTransferSchema.safeParse(transfer()).success).toBe(true);
   });
 
-  it('rejects the same wallet on both ends, on create and update', () => {
-    const create = createTransferSchema.safeParse({ ...transfer(), to_wallet_id: 1 });
+  it('rejects the same account on both ends, on create and update', () => {
+    const create = createTransferSchema.safeParse({ ...transfer(), to_account_id: 1 });
     expect(create.success).toBe(false);
-    expect(create.error?.issues[0]?.path).toEqual(['to_wallet_id']);
-    expect(updateTransferSchema.safeParse({ from_wallet_id: 4, to_wallet_id: 4 }).success).toBe(false);
+    expect(create.error?.issues[0]?.path).toEqual(['to_account_id']);
+    expect(updateTransferSchema.safeParse({ from_account_id: 4, to_account_id: 4 }).success).toBe(false);
   });
 
   it('allows a partial update of one end', () => {
-    expect(updateTransferSchema.safeParse({ to_wallet_id: 3 }).success).toBe(true);
+    expect(updateTransferSchema.safeParse({ to_account_id: 3 }).success).toBe(true);
   });
 });

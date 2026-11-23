@@ -10,7 +10,7 @@ describe('applyServerErrors', () => {
       client_id: ['client_id sudah dipakai. Buat client_id baru.'],
     });
 
-    const general = applyServerErrors(error, setError, ['amount', 'wallet_id']);
+    const general = applyServerErrors(error, setError, ['amount', 'account_id']);
 
     expect(setError).toHaveBeenCalledWith('amount', { type: 'server', message: 'Nominal harus angka bulat.' });
     expect(setError).toHaveBeenCalledTimes(1);

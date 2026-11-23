@@ -45,7 +45,7 @@ export function LoginPage() {
   return (
     <AuthLayout
       title="Masuk"
-      description="Catat pengeluaran keluarga bersama."
+      description="Rencanakan dan catat keuangan pribadi Anda."
       footer={<>Belum punya akun? <Link className="font-medium text-primary underline-offset-4 hover:underline" to={params.get('next') ? withNext('/register', next) : '/register'}>Daftar</Link></>}
     >
       <form onSubmit={onSubmit} noValidate className="grid gap-4">

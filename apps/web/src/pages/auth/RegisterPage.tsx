@@ -17,10 +17,17 @@ const schema = z
     email: z.string().trim().min(1, 'Email wajib diisi.').email('Format email tidak valid.'),
     password: z.string().min(8, 'Kata sandi minimal 8 karakter.'),
     password_confirmation: z.string(),
-    household_name: z.string().trim().max(100, 'Maksimal 100 karakter.'),
   })
   .refine((v) => v.password === v.password_confirmation, { path: ['password_confirmation'], message: 'Konfirmasi kata sandi tidak sama.' });
 type Values = z.infer<typeof schema>;
+
+function browserTimezone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export function RegisterPage() {
   const [params] = useSearchParams();
@@ -28,33 +35,28 @@ export function RegisterPage() {
   const register = useRegister();
   const [message, setMessage] = useState<string | null>(null);
   const next = safeNext(params.get('next'));
-  // Daftar dari link undangan: household-nya sudah ada, jangan buat household kosong.
-  const fromInvitation = next.startsWith('/invitations/');
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', email: params.get('email') ?? '', password: '', password_confirmation: '', household_name: '' },
+    defaultValues: { name: '', email: params.get('email') ?? '', password: '', password_confirmation: '' },
   });
   const { errors, isSubmitting } = form.formState;
 
   const onSubmit = form.handleSubmit(async (values) => {
     setMessage(null);
     try {
-      await register.mutateAsync({
-        ...values,
-        household_name: fromInvitation ? undefined : values.household_name || undefined,
-        create_household: !fromInvitation,
-      });
+      // Zona waktu perangkat sebagai awal; bisa diubah di Pengaturan → Profil (Keputusan #12).
+      await register.mutateAsync({ ...values, timezone: browserTimezone() });
       navigate(next, { replace: true });
     } catch (error) {
-      setMessage(applyServerErrors(error, form.setError, ['name', 'email', 'password', 'password_confirmation', 'household_name']));
+      setMessage(applyServerErrors(error, form.setError, ['name', 'email', 'password', 'password_confirmation']));
     }
   });
 
   return (
     <AuthLayout
       title="Daftar"
-      description={fromInvitation ? 'Buat akun untuk menerima undangan.' : 'Buat akun dan household pertama Anda.'}
+      description="Buat akun untuk mencatat keuangan pribadi Anda."
       footer={<>Sudah punya akun? <Link className="font-medium text-primary underline-offset-4 hover:underline" to={params.get('next') ? withNext('/login', next) : '/login'}>Masuk</Link></>}
     >
       <form onSubmit={onSubmit} noValidate className="grid gap-4">
@@ -71,11 +73,6 @@ export function RegisterPage() {
         <Field label="Ulangi kata sandi" htmlFor="password_confirmation" error={errors.password_confirmation?.message}>
           <Input id="password_confirmation" type="password" autoComplete="new-password" aria-invalid={!!errors.password_confirmation} {...form.register('password_confirmation')} />
         </Field>
-        {!fromInvitation && (
-          <Field label="Nama household" htmlFor="household_name" error={errors.household_name?.message} hint="Opsional, mis. “Keluarga Riki”. Bisa diubah nanti.">
-            <Input id="household_name" aria-invalid={!!errors.household_name} {...form.register('household_name')} />
-          </Field>
-        )}
         <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? 'Memproses…' : 'Daftar'}
         </Button>

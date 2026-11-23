@@ -1,31 +1,26 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { TransactionFilters } from './transactions';
-import type { Id } from './types';
 
-/** Query key TanStack Query. Semua yang milik household diawali ['households', id]. */
+/** Query key TanStack Query. Semua data milik user yang login; dihapus saat logout. */
 export const qk = {
   me: ['me'] as const,
-  households: ['households'] as const,
-  household: (h: Id) => ['households', h] as const,
-  members: (h: Id) => ['households', h, 'members'] as const,
-  invitations: (h: Id) => ['households', h, 'invitations'] as const,
-  wallets: (h: Id) => ['households', h, 'wallets'] as const,
-  categories: (h: Id) => ['households', h, 'categories'] as const,
-  transactions: (h: Id, filters?: TransactionFilters) =>
-    (filters ? ['households', h, 'transactions', filters] : ['households', h, 'transactions']) as readonly unknown[],
-  budgets: (h: Id, month?: string) => (month ? ['households', h, 'budgets', month] : ['households', h, 'budgets']) as readonly unknown[],
+  accounts: ['accounts'] as const,
+  categories: ['categories'] as const,
+  transactions: (filters?: TransactionFilters) =>
+    (filters ? ['transactions', filters] : ['transactions']) as readonly unknown[],
+  transfer: (groupId: string) => ['transfers', groupId] as const,
   notifications: ['notifications'] as const,
 };
 
 /**
- * Setelah uang bergerak (transaksi, transfer, sesuaikan saldo): saldo wallet, daftar transaksi,
- * dan budget (terpakai) semuanya berubah. Notifikasi ikut, karena bisa ada alert budget baru.
+ * Setelah uang bergerak (transaksi, transfer, sesuaikan saldo): saldo akun dan daftar transaksi
+ * berubah. Notifikasi ikut (mis. alert amplop nanti). Plan & dashboard menyusul di Minggu 3/5.
  */
-export function invalidateMoney(queryClient: QueryClient, h: Id) {
+export function invalidateMoney(queryClient: QueryClient) {
   return Promise.all([
-    queryClient.invalidateQueries({ queryKey: qk.wallets(h) }),
-    queryClient.invalidateQueries({ queryKey: qk.transactions(h) }),
-    queryClient.invalidateQueries({ queryKey: qk.budgets(h) }),
+    queryClient.invalidateQueries({ queryKey: qk.accounts }),
+    queryClient.invalidateQueries({ queryKey: qk.transactions() }),
+    queryClient.invalidateQueries({ queryKey: ['transfers'] }),
     queryClient.invalidateQueries({ queryKey: qk.notifications }),
   ]);
 }

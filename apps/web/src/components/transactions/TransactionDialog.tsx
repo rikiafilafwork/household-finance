@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { ApiError } from '@/api/client';
 import { transfersApi } from '@/api/transactions';
-import type { Category, Transaction, Wallet } from '@/api/types';
+import { qk } from '@/api/keys';
+import type { Account, Category, Transaction } from '@/api/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTransactionMutations } from '@/hooks/useTransactionMutations';
 import { formatDate } from '@/lib/dates';
@@ -13,20 +15,19 @@ import { TransferForm } from './TransferForm';
 
 export type DialogState =
   | { mode: 'new'; kind: 'expense' | 'income' | 'transfer' }
-  | { mode: 'edit'; transaction: Transaction; canManage: boolean }
+  | { mode: 'edit'; transaction: Transaction }
   | null;
 
-const titles = { expense: 'Catat pengeluaran', income: 'Catat pemasukan', transfer: 'Transfer antar wallet' } as const;
+const titles = { expense: 'Catat pengeluaran', income: 'Catat pemasukan', transfer: 'Transfer antar akun' } as const;
 
-export function TransactionDialog({ state, onClose, householdId, wallets, categories, today }: {
+export function TransactionDialog({ state, onClose, accounts, categories, today }: {
   state: DialogState;
   onClose: () => void;
-  householdId: number;
-  wallets: Wallet[];
+  accounts: Account[];
   categories: Category[];
   today: string;
 }) {
-  const m = useTransactionMutations(householdId);
+  const m = useTransactionMutations();
   const done = (message: string) => {
     toast.success(message);
     onClose();
@@ -34,8 +35,8 @@ export function TransactionDialog({ state, onClose, householdId, wallets, catego
 
   const editing = state?.mode === 'edit' ? state.transaction : null;
   const transferQuery = useQuery({
-    queryKey: ['transfer', householdId, editing?.transfer_group_id],
-    queryFn: () => transfersApi.get(householdId, editing!.transfer_group_id!),
+    queryKey: qk.transfer(editing?.transfer_group_id ?? ''),
+    queryFn: () => transfersApi.get(editing!.transfer_group_id!),
     enabled: !!editing?.transfer_group_id,
     retry: false,
   });
@@ -49,7 +50,7 @@ export function TransactionDialog({ state, onClose, householdId, wallets, catego
       <TransactionForm
         key={state.kind}
         defaultType={state.kind}
-        wallets={wallets}
+        accounts={accounts}
         categories={categories}
         today={today}
         submitLabel="Simpan"
@@ -63,7 +64,7 @@ export function TransactionDialog({ state, onClose, householdId, wallets, catego
     title = titles.transfer;
     body = (
       <TransferForm
-        wallets={wallets}
+        accounts={accounts}
         today={today}
         onSubmit={async (payload, client_id) => {
           await m.createTransfer.mutateAsync({ ...payload, client_id });
@@ -72,11 +73,11 @@ export function TransactionDialog({ state, onClose, householdId, wallets, catego
       />
     );
   } else if (editing && (editing.type === 'income' || editing.type === 'expense')) {
-    title = state?.mode === 'edit' && state.canManage ? 'Ubah transaksi' : 'Detail transaksi';
-    body = state?.mode === 'edit' && state.canManage ? (
+    title = 'Ubah transaksi';
+    body = (
       <TransactionForm
         initial={editing}
-        wallets={wallets}
+        accounts={accounts}
         categories={categories}
         today={today}
         onSubmit={async (payload) => {
@@ -88,19 +89,18 @@ export function TransactionDialog({ state, onClose, householdId, wallets, catego
           done('Transaksi dihapus.');
         }}
       />
-    ) : <ReadOnly tx={editing} wallets={wallets} categories={categories} note="Hanya pencatat atau owner household yang bisa mengubah transaksi ini." />;
+    );
   } else if (editing && editing.type === 'transfer') {
     title = 'Transfer';
     if (transferQuery.isPending) body = <Skeleton className="h-48" />;
     else if (transferQuery.isError) {
-      const forbidden = transferQuery.error instanceof ApiError && transferQuery.error.status === 403;
-      body = <ReadOnly tx={editing} wallets={wallets} categories={categories} note={forbidden ? 'Transfer ini melibatkan wallet pribadi anggota lain, jadi detailnya tidak ditampilkan.' : 'Transfer tidak bisa dimuat.'} />;
-    } else if (state?.mode === 'edit' && state.canManage) {
+      body = <ReadOnly tx={editing} accounts={accounts} categories={categories} note="Transfer tidak bisa dimuat. Coba lagi sebentar." />;
+    } else {
       const transfer = transferQuery.data;
       body = (
         <TransferForm
           initial={transfer}
-          wallets={wallets}
+          accounts={accounts}
           today={today}
           onSubmit={async (payload) => {
             await m.updateTransfer.mutateAsync({ groupId: transfer.transfer_group_id, body: payload });
@@ -112,10 +112,13 @@ export function TransactionDialog({ state, onClose, householdId, wallets, catego
           }}
         />
       );
-    } else body = <ReadOnly tx={editing} wallets={wallets} categories={categories} note="Hanya pencatat atau owner household yang bisa mengubah transfer ini." />;
+    }
   } else if (editing) {
     title = 'Penyesuaian saldo';
-    body = <ReadOnly tx={editing} wallets={wallets} categories={categories} note="Penyesuaian saldo dibuat dari halaman Wallet (Sesuaikan saldo) dan tidak diubah di sini." />;
+    body = <ReadOnly tx={editing} accounts={accounts} categories={categories} note="Penyesuaian saldo dibuat dari halaman Akun (Sesuaikan saldo) dan tidak diubah di sini. Hapus untuk membatalkannya." onDelete={async () => {
+      await m.remove.mutateAsync(editing.id);
+      done('Penyesuaian saldo dibatalkan.');
+    }} />;
   }
 
   return (
@@ -131,19 +134,33 @@ export function TransactionDialog({ state, onClose, householdId, wallets, catego
   );
 }
 
-function ReadOnly({ tx, wallets, categories, note }: { tx: Transaction; wallets: Wallet[]; categories: Category[]; note: string }) {
-  const wallet = wallets.find((w) => w.id === tx.wallet_id);
+function ReadOnly({ tx, accounts, categories, note, onDelete }: { tx: Transaction; accounts: Account[]; categories: Category[]; note: string; onDelete?: () => Promise<unknown> }) {
+  const account = accounts.find((a) => a.id === tx.account_id);
   const category = tx.category ?? categories.find((c) => c.id === tx.category_id);
   return (
     <div className="grid gap-3 text-sm">
       <MoneyText amount={tx.amount} tone="signed" className="text-2xl font-semibold" />
       <dl className="grid grid-cols-[6rem_1fr] gap-y-1.5">
         <dt className="text-muted-foreground">Tanggal</dt><dd>{formatDate(tx.occurred_on, { dateStyle: 'long' })}</dd>
-        <dt className="text-muted-foreground">Wallet</dt><dd>{wallet?.name ?? '—'}</dd>
+        <dt className="text-muted-foreground">Akun</dt><dd>{account?.name ?? '—'}</dd>
         {category && (<><dt className="text-muted-foreground">Kategori</dt><dd>{category.name}</dd></>)}
         {tx.note && (<><dt className="text-muted-foreground">Catatan</dt><dd>{tx.note}</dd></>)}
       </dl>
       <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">{note}</p>
+      {onDelete && <ConfirmDelete onDelete={onDelete} />}
+    </div>
+  );
+}
+
+/** Hapus dua langkah, sama seperti di form transaksi. */
+function ConfirmDelete({ onDelete }: { onDelete: () => Promise<unknown> }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!confirming) return <Button type="button" variant="outline" className="text-destructive" onClick={() => setConfirming(true)}>Hapus</Button>;
+  return (
+    <div className="flex gap-2">
+      <Button type="button" variant="destructive" disabled={busy} onClick={async () => { setBusy(true); try { await onDelete(); } finally { setBusy(false); } }}>Ya, hapus</Button>
+      <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>Batal</Button>
     </div>
   );
 }

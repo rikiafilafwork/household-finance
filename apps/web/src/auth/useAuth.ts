@@ -13,7 +13,6 @@ export function useLogin() {
     mutationFn: authApi.login,
     onSuccess: (user) => {
       queryClient.setQueryData(qk.me, user);
-      void queryClient.invalidateQueries({ queryKey: qk.households });
     },
   });
 }
@@ -24,7 +23,6 @@ export function useRegister() {
     mutationFn: authApi.register,
     onSuccess: (user) => {
       queryClient.setQueryData(qk.me, user);
-      void queryClient.invalidateQueries({ queryKey: qk.households });
     },
   });
 }
@@ -35,9 +33,14 @@ export function useLogout() {
     mutationFn: authApi.logout,
     onSettled: () => {
       // `me` di-set null (bukan dihapus) supaya RequireAuth yang sedang mengamatinya langsung
-      // pindah ke /login; data household lain dihapus supaya tidak terlihat user berikutnya.
+      // pindah ke /login; data lain dihapus supaya tidak terlihat user berikutnya.
       queryClient.setQueryData(qk.me, null);
       queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== qk.me[0] });
     },
   });
+}
+
+/** Zona waktu user (Keputusan #12); fallback Asia/Jakarta sebelum `me` termuat. */
+export function useTimezone(): string {
+  return useMe().data?.timezone ?? 'Asia/Jakarta';
 }
