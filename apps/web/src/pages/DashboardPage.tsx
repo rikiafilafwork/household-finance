@@ -70,7 +70,7 @@ function PlanCard({ month }: { month: string }) {
       </CardHeader>
       <CardContent className="flex items-start gap-3 text-sm text-muted-foreground">
         <CalendarCheck className="mt-0.5 size-4 shrink-0" />
-        <p>Rencana bulanan (checklist tagihan dan amplop pengeluaran) segera hadir. Untuk sementara, catat transaksi seperti biasa.</p>
+        <p>Checklist tagihan dan amplop pengeluaran bulan ini. Centang tagihan saat dibayar; amplop terisi dari transaksi kategorinya.</p>
       </CardContent>
     </Card>
   );

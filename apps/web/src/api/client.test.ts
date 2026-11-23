@@ -87,6 +87,14 @@ describe('error handling', () => {
     expect(toastError).toHaveBeenCalledWith('Anda tidak punya akses untuk tindakan ini.');
   });
 
+  it('409 → toast with the server’s explanation (e.g. already checked on another device)', async () => {
+    const message = 'Item ini sudah dicentang. Muat ulang untuk melihat transaksinya.';
+    const { http } = client({ 'POST /api/plan-items/3/check': [{ status: 409, data: { message } }] });
+
+    await expect(http.post('/plan-items/3/check', {})).rejects.toMatchObject({ status: 409, message });
+    expect(toastError).toHaveBeenCalledWith(message);
+  });
+
   it('422 → ApiError with field errors, no toast', async () => {
     const errors = { amount: ['Nominal wajib diisi.'], 'items.0.limit_amount': ['Minimal 1.'] };
     const { http } = client({ 'POST /api/transactions': [{ status: 422, data: { message: 'Data tidak valid.', errors } }] });

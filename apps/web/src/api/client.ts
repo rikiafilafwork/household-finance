@@ -108,6 +108,8 @@ function toApiError(error: AxiosError<{ message?: string; errors?: Record<string
   if (status === 401) return new ApiError(401, 'Sesi Anda berakhir. Silakan masuk lagi.');
   if (status === 403) return new ApiError(403, 'Anda tidak punya akses untuk tindakan ini.', {}, body?.message);
   if (status === 404) return new ApiError(404, body?.message || 'Data tidak ditemukan.', {}, body?.message);
+  // 409: konflik keadaan (mis. item sudah dicentang di perangkat lain) — pesan server menjelaskan.
+  if (status === 409) return new ApiError(409, body?.message || 'Data sudah berubah. Muat ulang lalu coba lagi.', {}, body?.message);
   if (status === 410) return new ApiError(410, body?.message || 'Tautan ini sudah tidak berlaku.', {}, body?.message);
   if (status === 429) return new ApiError(429, 'Terlalu banyak percobaan. Coba lagi sebentar lagi.');
   return new ApiError(status, 'Terjadi kesalahan di server. Coba lagi.');
