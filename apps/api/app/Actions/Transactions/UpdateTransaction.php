@@ -5,6 +5,7 @@ namespace App\Actions\Transactions;
 use App\Actions\Accounts\LockAccounts;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Plan\EnvelopeCheck;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -59,6 +60,10 @@ class UpdateTransaction
 
             // Model akun di koleksi sama: refresh nilai supaya increment memakai angka terbaru.
             $newAccount->refresh()->increment('balance', $current->amount);
+
+            // Hanya keadaan baru yang bisa menembus ambang (kategori/bulan lama hanya turun),
+            // termasuk saat transaksi dipindah ke bulan lalu (backdate).
+            EnvelopeCheck::afterTransaction($current);
 
             return $current;
         });

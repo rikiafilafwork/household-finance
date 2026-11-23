@@ -5,6 +5,7 @@ namespace App\Actions\Transactions;
 use App\Actions\Accounts\LockAccounts;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Plan\EnvelopeCheck;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -74,6 +75,9 @@ class CreateTransaction
             ]);
 
             $account->increment('balance', $transaction->amount);
+
+            // Keputusan #10: cek ambang amplop setelah commit.
+            EnvelopeCheck::afterTransaction($transaction);
 
             return [$transaction, true];
         });

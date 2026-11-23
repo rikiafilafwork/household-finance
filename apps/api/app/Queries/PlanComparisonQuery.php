@@ -87,6 +87,22 @@ final class PlanComparisonQuery
     }
 
     /**
+     * Aktual SATU amplop dengan definisi yang sama persis dengan for(): transaksi bulan itu,
+     * jenis + kategori sama, tidak terhubung ke checklist. Dipakai job alert (tanpa hitung sebulan penuh).
+     */
+    public function envelopeActual(PlanItem $envelope): int
+    {
+        $month = PlanMonth::fromDate($envelope->month);
+
+        return abs((int) Transaction::ownedBy($envelope->user_id)
+            ->whereNull('plan_item_id')
+            ->where('type', $envelope->type->value)
+            ->where('category_id', $envelope->category_id)
+            ->whereBetween('occurred_on', [$month->firstDay(), $month->lastDay()])
+            ->sum('amount'));
+    }
+
+    /**
      * @param  Collection<int, PlanItemComparison>  $rows
      * @param  Collection<string, int>  $unplanned
      * @return array{planned: int, actual: int, unplanned: int, unpaid: int}

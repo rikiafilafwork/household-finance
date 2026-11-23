@@ -1,10 +1,12 @@
 <?php
 
 use App\Models\Account;
+use App\Models\BudgetAlert;
 use App\Models\Category;
 use App\Models\PlanItem;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
@@ -218,4 +220,37 @@ it('stays consistent when checks and unchecks of one item interleave in parallel
         ->and(Transaction::ownedBy($owner)->count())->toBeLessThanOrEqual(1)
         ->and($account->fresh()?->balance)->toBe(1_000_000 - 500_000 * Transaction::ownedBy($owner)->count());
     assertLedgerBalanced();
+});
+
+it('alerts an envelope threshold exactly once when 8 expenses cross it at the same time', function () {
+    [$owner, $account] = concurrencySetup();
+    $food = Category::factory()->forUser($owner)->create();
+    $envelope = PlanItem::factory()->forUser($owner)->envelope()->create(['category_id' => $food->id, 'planned_amount' => 800_000]);
+
+    // 8 × Rp90.000 = Rp720.000 = 90%: semua proses menyelesaikan transaksinya lalu menjalankan job
+    // (queue sync, afterCommit) hampir bersamaan; beberapa melihat ≥ 80% sekaligus.
+    $results = runConcurrently(array_map(fn () => [
+        'op' => 'transaction', 'user_id' => $owner->id, 'account_id' => $account->id, 'category_id' => $food->id,
+        'amount' => 90_000, 'client_id' => (string) Str::uuid(),
+    ], range(1, 8)));
+
+    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
+        ->and(BudgetAlert::where('plan_item_id', $envelope->id)->pluck('threshold')->all())->toBe([80])
+        ->and(DatabaseNotification::where('notifiable_id', $owner->id)->count())->toBe(1);
+    assertLedgerBalanced();
+});
+
+it('inserts each threshold once when 8 envelope checks race on an already-exceeded envelope', function () {
+    [$owner, $account] = concurrencySetup();
+    $food = Category::factory()->forUser($owner)->create();
+    $envelope = PlanItem::factory()->forUser($owner)->envelope()->create(['category_id' => $food->id, 'planned_amount' => 100_000]);
+    Transaction::factory()->forAccount($account)->expense(150_000)->create(['category_id' => $food->id, 'occurred_on' => '2026-11-10']);
+
+    $results = runConcurrently(array_fill(0, 8, [
+        'op' => 'envelope-check', 'user_id' => $owner->id, 'category_id' => $food->id, 'month' => '2026-11-01', 'amount' => 0, 'client_id' => '',
+    ]));
+
+    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
+        ->and(BudgetAlert::where('plan_item_id', $envelope->id)->orderBy('threshold')->pluck('threshold')->all())->toBe([80, 100])
+        ->and(DatabaseNotification::where('notifiable_id', $owner->id)->count())->toBe(1);
 });
