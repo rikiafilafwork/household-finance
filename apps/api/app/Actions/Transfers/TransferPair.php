@@ -3,10 +3,8 @@
 namespace App\Actions\Transfers;
 
 use App\Enums\TransactionType;
-use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Reports\VisibleWallets;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -19,10 +17,10 @@ final class TransferPair
         public readonly Transaction $in,
     ) {}
 
-    public static function find(Household $household, string $groupId, bool $lock = false): self
+    /** Transfer milik user lain diperlakukan sebagai tidak ada (404). */
+    public static function find(User $user, string $groupId, bool $lock = false): self
     {
-        $legs = Transaction::query()
-            ->where('household_id', $household->getKey())
+        $legs = Transaction::ownedBy($user)
             ->where('transfer_group_id', $groupId)
             ->where('type', TransactionType::Transfer->value)
             ->when($lock, fn ($q) => $q->lockForUpdate())
@@ -42,17 +40,5 @@ final class TransferPair
     public function groupId(): string
     {
         return (string) $this->out->transfer_group_id;
-    }
-
-    /** Transfer hanya boleh dilihat/diubah kalau KEDUA wallet terlihat user. */
-    public function visibleTo(User $user): bool
-    {
-        return VisibleWallets::canSee($user, $this->out->wallet) && VisibleWallets::canSee($user, $this->in->wallet);
-    }
-
-    public function manageableBy(User $user): bool
-    {
-        return $this->visibleTo($user)
-            && ($this->out->created_by === $user->getKey() || $this->out->household->isOwner($user));
     }
 }

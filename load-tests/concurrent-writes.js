@@ -1,8 +1,8 @@
-// k6: tulis paralel ke SATU wallet, sebagian dengan client_id duplikat (Architecture.md § Minggu 2).
+// k6: tulis paralel ke SATU akun, sebagian dengan client_id duplikat (Architecture.md § Minggu 2).
 //
 // Tujuan: membuktikan saldo tidak meleset dan retry tidak membuat transaksi dobel walau
-// 50 klien menulis bersamaan ke wallet yang sama. Setelah k6 selesai, `make load-test`
-// menjalankan `wallets:reconcile`, yang harus melaporkan selisih 0.
+// 50 klien menulis bersamaan ke akun yang sama. Setelah k6 selesai, `make load-test`
+// menjalankan `accounts:reconcile`, yang harus melaporkan selisih 0.
 //
 // Jalankan: make load-test   (atau lihat load-tests/README.md)
 
@@ -24,7 +24,7 @@ const replayed = new Counter('tx_replayed_200');
 
 export const options = {
   scenarios: {
-    same_wallet: { executor: 'constant-vus', vus: VUS, duration: DURATION },
+    same_account: { executor: 'constant-vus', vus: VUS, duration: DURATION },
   },
   thresholds: {
     // Hanya 201 (baru) atau 200 (retry client_id) yang boleh. Satu 4xx/5xx = gagal.
@@ -52,22 +52,17 @@ export function setup() {
   if (login.status !== 201) fail(`login gagal: ${login.status} ${login.body}`);
   const token = login.json('token');
 
-  const household = http.post(
-    `${BASE_URL}/api/households`,
-    JSON.stringify({ name: `Load test ${new Date().toISOString()}` }),
-    headers(token),
-  ).json('data.id');
-
-  const wallet = http.post(
-    `${BASE_URL}/api/households/${household}/wallets`,
-    JSON.stringify({ name: 'Wallet rebutan', type: 'bank', opening_balance: OPENING }),
+  // Nama akun unik per user: beri cap waktu supaya load test bisa diulang.
+  const account = http.post(
+    `${BASE_URL}/api/accounts`,
+    JSON.stringify({ name: `Akun rebutan ${new Date().toISOString()}`, type: 'bank', opening_balance: OPENING }),
     headers(token),
   ).json('data.id');
 
   // Kumpulan client_id yang sengaja dipakai ulang oleh banyak VU secara bersamaan.
   const duplicatePool = Array.from({ length: 200 }, () => crypto.randomUUID());
 
-  return { token, household, wallet, duplicatePool };
+  return { token, account, duplicatePool };
 }
 
 export default function (data) {
@@ -77,9 +72,9 @@ export default function (data) {
       : crypto.randomUUID();
 
   const res = http.post(
-    `${BASE_URL}/api/households/${data.household}/transactions`,
+    `${BASE_URL}/api/transactions`,
     JSON.stringify({
-      wallet_id: data.wallet,
+      account_id: data.account,
       type: 'expense',
       amount: AMOUNT,
       occurred_on: '2026-11-21',
@@ -97,14 +92,14 @@ export default function (data) {
 // Verifikasi akhir lewat API: jumlah baris, client_id unik, dan saldo cocok dengan baris.
 export function teardown(data) {
   const ids = [];
-  let url = `${BASE_URL}/api/households/${data.household}/transactions?per_page=100&wallet_id=${data.wallet}`;
+  let url = `${BASE_URL}/api/transactions?per_page=100&account_id=${data.account}`;
   while (url) {
     const page = http.get(url, headers(data.token));
     for (const tx of page.json('data')) ids.push(tx.client_id);
     url = page.json('links.next');
   }
 
-  const balance = http.get(`${BASE_URL}/api/households/${data.household}/wallets/${data.wallet}`, headers(data.token)).json('data.balance');
+  const balance = http.get(`${BASE_URL}/api/accounts/${data.account}`, headers(data.token)).json('data.balance');
   const unique = new Set(ids).size;
   const expectedBalance = OPENING - AMOUNT * ids.length;
 

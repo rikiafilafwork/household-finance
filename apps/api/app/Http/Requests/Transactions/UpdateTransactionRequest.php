@@ -4,7 +4,7 @@ namespace App\Http\Requests\Transactions;
 
 use App\Actions\Transactions\TransactionInput;
 use App\Enums\TransactionType;
-use App\Http\Requests\Wallets\StoreWalletRequest;
+use App\Http\Requests\Accounts\StoreAccountRequest;
 use App\Models\Transaction;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -20,13 +20,12 @@ class UpdateTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'wallet_id' => ['sometimes', 'integer'],
+            'account_id' => ['sometimes', 'integer'],
             'type' => ['sometimes', Rule::in([TransactionType::Income->value, TransactionType::Expense->value])],
-            'amount' => ['sometimes', 'integer:strict', 'min:1', 'max:'.StoreWalletRequest::MAX_AMOUNT],
+            'amount' => ['sometimes', 'integer:strict', 'min:1', 'max:'.StoreAccountRequest::MAX_AMOUNT],
             'occurred_on' => ['sometimes', 'date_format:Y-m-d'],
             'category_id' => ['sometimes', 'nullable', 'integer'],
             'note' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'status' => ['prohibited'], // konfirmasi pending lewat endpoint khusus (#46)
             'client_id' => ['prohibited'],
         ];
     }
@@ -36,7 +35,7 @@ class UpdateTransactionRequest extends FormRequest
         $type = $this->has('type') ? TransactionType::from($this->string('type')->toString()) : $current->type;
 
         return new TransactionInput(
-            walletId: $this->has('wallet_id') ? $this->integer('wallet_id') : $current->wallet_id,
+            accountId: $this->has('account_id') ? $this->integer('account_id') : $current->account_id,
             type: $type,
             amount: $this->has('amount') ? $this->integer('amount') : abs($current->amount),
             occurredOn: $this->has('occurred_on') ? $this->string('occurred_on')->toString() : $current->occurred_on->toDateString(),
@@ -45,7 +44,6 @@ class UpdateTransactionRequest extends FormRequest
                 ? ($this->filled('category_id') ? $this->integer('category_id') : null)
                 : ($type === $current->type ? $current->category_id : null),
             note: $this->has('note') ? ($this->filled('note') ? $this->string('note')->toString() : null) : $current->note,
-            status: $current->status,
         );
     }
 }

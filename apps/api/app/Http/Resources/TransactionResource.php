@@ -18,18 +18,17 @@ class TransactionResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'wallet_id' => $this->wallet_id,
+            'account_id' => $this->account_id,
             'category_id' => $this->category_id,
             // Ikut dikirim walau kategorinya sudah diarsip, supaya transaksi lama tetap tampil lengkap.
             'category' => new CategoryResource($this->whenLoaded('category')),
             'type' => $this->type->value,
-            'status' => $this->status->value,
-            'amount' => $this->amount, // integer ber-tanda, sudut pandang wallet
+            'amount' => $this->amount, // integer ber-tanda, sudut pandang akun
             'occurred_on' => $this->occurred_on->toDateString(),
             'note' => $this->note,
             'transfer_group_id' => $this->transfer_group_id,
             'client_id' => $this->client_id,
-            'created_by' => $this->created_by,
+            'plan_item_id' => $this->plan_item_id,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

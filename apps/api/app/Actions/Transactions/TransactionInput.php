@@ -2,7 +2,6 @@
 
 namespace App\Actions\Transactions;
 
-use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 
 /**
@@ -12,14 +11,13 @@ use App\Enums\TransactionType;
 final readonly class TransactionInput
 {
     public function __construct(
-        public int $walletId,
+        public int $accountId,
         public TransactionType $type,
         public int $amount,
         public string $occurredOn,
         public ?int $categoryId = null,
         public ?string $note = null,
         public ?string $clientId = null,
-        public TransactionStatus $status = TransactionStatus::Posted,
     ) {}
 
     public function signedAmount(): int

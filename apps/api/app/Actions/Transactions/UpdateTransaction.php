@@ -2,67 +2,55 @@
 
 namespace App\Actions\Transactions;
 
-use App\Actions\Wallets\LockWallets;
-use App\Enums\TransactionStatus;
-use App\Models\Household;
+use App\Actions\Accounts\LockAccounts;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Support\BudgetCheck;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Update = balikkan efek lama, terapkan efek baru (Keputusan #3).
- * Pindah wallet → dua wallet dikunci berurutan id.
+ * Pindah akun → dua akun dikunci berurutan id.
  */
 class UpdateTransaction
 {
     use ValidatesTransactionTarget;
 
-    public function __construct(private readonly LockWallets $lockWallets) {}
+    public function __construct(private readonly LockAccounts $lockAccounts) {}
 
-    public function handle(Household $household, User $actor, Transaction $transaction, TransactionInput $input): Transaction
+    public function handle(User $user, Transaction $transaction, TransactionInput $input): Transaction
     {
         if (! $transaction->type->isCategorized() || $transaction->transfer_group_id !== null) {
             throw ValidationException::withMessages(['type' => 'Transfer dan penyesuaian saldo tidak diubah lewat endpoint ini.']);
         }
 
-        return DB::transaction(function () use ($household, $actor, $transaction, $input) {
-            $wallets = $this->lockWallets->handle([$transaction->wallet_id, $input->walletId]);
+        return DB::transaction(function () use ($user, $transaction, $input) {
+            $accounts = $this->lockAccounts->handle($user, [$transaction->account_id, $input->accountId]);
 
             /** @var Transaction $current */
-            $current = Transaction::query()->whereKey($transaction->getKey())->lockForUpdate()->firstOrFail();
-            $oldWallet = $wallets->get($current->wallet_id);
-            $newWallet = $wallets->get($input->walletId);
-            assert($oldWallet !== null && $newWallet !== null);
+            $current = Transaction::ownedBy($user)->whereKey($transaction->getKey())->lockForUpdate()->firstOrFail();
+            $oldAccount = $accounts->get($current->account_id);
+            $newAccount = $accounts->get($input->accountId);
+            assert($oldAccount !== null && $newAccount !== null);
 
-            if ($newWallet->isNot($oldWallet)) {
-                $this->assertWalletWritable($newWallet, $household, $actor);
+            if ($newAccount->isNot($oldAccount)) {
+                $this->assertAccountWritable($newAccount);
             }
-            $this->assertCategoryMatches($input->categoryId, $input->type, $household, $current->category_id);
+            $this->assertCategoryMatches($user, $input->categoryId, $input->type, $current->category_id);
 
-            if ($current->status === TransactionStatus::Posted) {
-                $oldWallet->decrement('balance', $current->amount);
-            }
+            $oldAccount->decrement('balance', $current->amount);
 
             $current->fill([
-                'wallet_id' => $newWallet->getKey(),
+                'account_id' => $newAccount->getKey(),
                 'category_id' => $input->categoryId,
                 'type' => $input->type,
                 'amount' => $input->signedAmount(),
                 'occurred_on' => $input->occurredOn,
                 'note' => $input->note,
-                'updated_by' => $actor->getKey(),
             ])->save();
 
-            if ($current->status === TransactionStatus::Posted) {
-                // Model wallet di koleksi sama: refresh nilai supaya increment memakai angka terbaru.
-                $newWallet->refresh()->increment('balance', $current->amount);
-            }
-
-            // Hanya keadaan baru yang bisa menembus ambang (kategori/bulan lama hanya turun),
-            // termasuk saat transaksi dipindah ke bulan lalu (backdate).
-            BudgetCheck::after($current, $newWallet);
+            // Model akun di koleksi sama: refresh nilai supaya increment memakai angka terbaru.
+            $newAccount->refresh()->increment('balance', $current->amount);
 
             return $current;
         });

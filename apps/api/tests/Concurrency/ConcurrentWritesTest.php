@@ -1,20 +1,15 @@
 <?php
 
-use App\Models\Budget;
-use App\Models\BudgetAlert;
-use App\Models\Category;
-use App\Models\Household;
+use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Models\Wallet;
-use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
 /*
-| Bukti paralel sungguhan (Keputusan #11 & #3): N proses PHP terpisah, data ter-commit,
-| semua dilepas di titik waktu yang sama. Karena client_id dicek SETELAH wallet dikunci,
+| Bukti paralel sungguhan (Keputusan #15 & #3): N proses PHP terpisah, data ter-commit,
+| semua dilepas di titik waktu yang sama. Karena client_id dicek SETELAH akun dikunci,
 | retry yang bersamaan tersusun serial: tepat satu yang membuat, sisanya melihat hasilnya.
 */
 
@@ -54,26 +49,24 @@ function runConcurrently(array $jobs): array
 }
 
 /**
- * @return array{0: Household, 1: User, 2: Wallet, 3: Wallet}
+ * @return array{0: User, 1: Account, 2: Account}
  */
 function concurrencySetup(): array
 {
     $owner = User::factory()->create();
-    $household = Household::factory()->withOwner($owner)->create();
 
     return [
-        $household,
         $owner,
-        Wallet::factory()->for($household)->opening(1_000_000)->create(['name' => 'A']),
-        Wallet::factory()->for($household)->opening(1_000_000)->create(['name' => 'B']),
+        Account::factory()->forUser($owner)->opening(1_000_000)->create(['name' => 'A']),
+        Account::factory()->forUser($owner)->opening(1_000_000)->create(['name' => 'B']),
     ];
 }
 
 it('creates exactly one transaction when 8 retries with the same client_id race', function () {
-    [$household, $owner, $wallet] = concurrencySetup();
+    [$owner, $account] = concurrencySetup();
     $job = [
-        'op' => 'transaction', 'household_id' => $household->id, 'user_id' => $owner->id,
-        'wallet_id' => $wallet->id, 'amount' => 25_000, 'client_id' => (string) Str::uuid(),
+        'op' => 'transaction', 'user_id' => $owner->id,
+        'account_id' => $account->id, 'amount' => 25_000, 'client_id' => (string) Str::uuid(),
     ];
 
     $results = runConcurrently(array_fill(0, 8, $job));
@@ -82,15 +75,15 @@ it('creates exactly one transaction when 8 retries with the same client_id race'
         ->and(array_filter(array_column($results, 'created')))->toHaveCount(1)  // tepat satu yang membuat
         ->and(array_filter(array_column($results, 'created'), fn ($c) => ! $c))->toHaveCount(7) // tujuh melihat hasilnya
         ->and(array_unique(array_column($results, 'id')))->toHaveCount(1)
-        ->and(Transaction::count())->toBe(1)
-        ->and($wallet->fresh()?->balance)->toBe(975_000);
+        ->and(Transaction::ownedBy($owner)->count())->toBe(1)
+        ->and($account->fresh()?->balance)->toBe(975_000);
     assertLedgerBalanced();
 });
 
 it('creates exactly one transfer when 8 retries with the same client_id race', function () {
-    [$household, $owner, $a, $b] = concurrencySetup();
+    [$owner, $a, $b] = concurrencySetup();
     $job = [
-        'op' => 'transfer', 'household_id' => $household->id, 'user_id' => $owner->id,
+        'op' => 'transfer', 'user_id' => $owner->id,
         'from' => $a->id, 'to' => $b->id, 'amount' => 100_000, 'client_id' => (string) Str::uuid(),
     ];
 
@@ -99,19 +92,19 @@ it('creates exactly one transfer when 8 retries with the same client_id race', f
     expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
         ->and(array_filter(array_column($results, 'created')))->toHaveCount(1)
         ->and(array_unique(array_column($results, 'id')))->toHaveCount(1)
-        ->and(Transaction::count())->toBe(2)
+        ->and(Transaction::ownedBy($owner)->count())->toBe(2)
         ->and([$a->fresh()?->balance, $b->fresh()?->balance])->toBe([900_000, 1_100_000]);
     assertLedgerBalanced();
 });
 
 it('does not deadlock when transfers in opposite directions run at the same time', function () {
-    [$household, $owner, $a, $b] = concurrencySetup();
+    [$owner, $a, $b] = concurrencySetup();
 
     $jobs = [];
     foreach (range(1, 10) as $i) {
         [$from, $to] = $i % 2 ? [$a, $b] : [$b, $a];
         $jobs[] = [
-            'op' => 'transfer', 'household_id' => $household->id, 'user_id' => $owner->id,
+            'op' => 'transfer', 'user_id' => $owner->id,
             'from' => $from->id, 'to' => $to->id, 'amount' => $i * 1_000, 'client_id' => (string) Str::uuid(),
         ];
     }
@@ -120,22 +113,22 @@ it('does not deadlock when transfers in opposite directions run at the same time
 
     // A→B: 1+3+5+7+9 = 25 rb, B→A: 2+4+6+8+10 = 30 rb → A net +5 rb.
     expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
-        ->and(Transaction::count())->toBe(20)
+        ->and(Transaction::ownedBy($owner)->count())->toBe(20)
         ->and([$a->fresh()?->balance, $b->fresh()?->balance])->toBe([1_005_000, 995_000]);
     assertLedgerBalanced();
 });
 
-it('answers idempotently when retries with the same client_id target different wallets', function () {
-    // Kunci wallet A tidak menahan request yang mengunci wallet B, jadi keduanya bisa lolos cek.
+it('answers idempotently when retries with the same client_id target different accounts', function () {
+    // Kunci akun A tidak menahan request yang mengunci akun B, jadi keduanya bisa lolos cek.
     // Unique index uq_tx_client menolak yang kalah → harus dijawab "sudah ada", bukan 500.
-    [$household, $owner, $a, $b] = concurrencySetup();
+    [$owner, $a, $b] = concurrencySetup();
     $clientId = (string) Str::uuid();
 
     $jobs = [];
     foreach (range(1, 8) as $i) {
         $jobs[] = [
-            'op' => 'transaction', 'household_id' => $household->id, 'user_id' => $owner->id,
-            'wallet_id' => $i % 2 ? $a->id : $b->id, 'amount' => 10_000, 'client_id' => $clientId,
+            'op' => 'transaction', 'user_id' => $owner->id,
+            'account_id' => $i % 2 ? $a->id : $b->id, 'amount' => 10_000, 'client_id' => $clientId,
         ];
     }
 
@@ -144,61 +137,26 @@ it('answers idempotently when retries with the same client_id target different w
     expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
         ->and(array_filter(array_column($results, 'created')))->toHaveCount(1)
         ->and(array_unique(array_column($results, 'id')))->toHaveCount(1)
-        ->and(Transaction::count())->toBe(1);
+        ->and(Transaction::ownedBy($owner)->count())->toBe(1);
     assertLedgerBalanced();
 });
 
 it('keeps the ledger consistent under mixed concurrent writes with some duplicate client_ids', function () {
-    [$household, $owner, $a, $b] = concurrencySetup();
+    [$owner, $a, $b] = concurrencySetup();
     $dup = (string) Str::uuid();
 
     $jobs = [];
     foreach (range(1, 12) as $i) {
         $jobs[] = [
-            'op' => 'transaction', 'household_id' => $household->id, 'user_id' => $owner->id,
-            'wallet_id' => $i % 2 ? $a->id : $b->id, 'amount' => 10_000,
-            'client_id' => $i <= 4 ? $dup : (string) Str::uuid(), // 4 retry duplikat (semua ke wallet A/B bergantian)
+            'op' => 'transaction', 'user_id' => $owner->id,
+            'account_id' => $i % 2 ? $a->id : $b->id, 'amount' => 10_000,
+            'client_id' => $i <= 4 ? $dup : (string) Str::uuid(), // 4 retry duplikat (ke akun A/B bergantian)
         ];
     }
 
     $results = runConcurrently($jobs);
 
     expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
-        ->and(Transaction::count())->toBe(9); // 1 dari 4 duplikat + 8 unik
+        ->and(Transaction::ownedBy($owner)->count())->toBe(9); // 1 dari 4 duplikat + 8 unik
     assertLedgerBalanced();
-});
-
-it('alerts a budget threshold exactly once when 8 expenses cross it at the same time', function () {
-    [$household, $owner, $wallet] = concurrencySetup();
-    $food = Category::factory()->for($household)->create();
-    $budget = Budget::factory()->for($household)->forMonth('2026-11')->create(['category_id' => $food->id, 'limit_amount' => 800_000]);
-
-    // 8 × Rp90.000 = Rp720.000 = 90%: semua proses menyelesaikan transaksinya lalu menjalankan job
-    // (queue sync, afterCommit) hampir bersamaan; beberapa melihat ≥ 80% sekaligus.
-    $results = runConcurrently(array_map(fn () => [
-        'op' => 'transaction', 'household_id' => $household->id, 'user_id' => $owner->id,
-        'wallet_id' => $wallet->id, 'category_id' => $food->id, 'amount' => 90_000, 'client_id' => (string) Str::uuid(),
-    ], range(1, 8)));
-
-    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
-        ->and(BudgetAlert::where('budget_id', $budget->id)->pluck('threshold')->all())->toBe([80])
-        ->and(DatabaseNotification::where('notifiable_id', $owner->id)->count())->toBe(1);
-    assertLedgerBalanced();
-});
-
-it('inserts each threshold once when 8 budget checks race on an already-exceeded budget', function () {
-    [$household, $owner, $wallet] = concurrencySetup();
-    $food = Category::factory()->for($household)->create();
-    $budget = Budget::factory()->for($household)->forMonth('2026-11')->create(['category_id' => $food->id, 'limit_amount' => 100_000]);
-    Transaction::factory()->for($household)->forWallet($wallet)->expense(150_000)
-        ->create(['category_id' => $food->id, 'occurred_on' => '2026-11-10']);
-
-    $results = runConcurrently(array_fill(0, 8, [
-        'op' => 'budget-check', 'household_id' => $household->id, 'user_id' => $owner->id,
-        'category_id' => $food->id, 'month' => '2026-11-01', 'amount' => 0, 'client_id' => '',
-    ]));
-
-    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
-        ->and(BudgetAlert::where('budget_id', $budget->id)->orderBy('threshold')->pluck('threshold')->all())->toBe([80, 100])
-        ->and(DatabaseNotification::where('notifiable_id', $owner->id)->count())->toBe(1);
 });

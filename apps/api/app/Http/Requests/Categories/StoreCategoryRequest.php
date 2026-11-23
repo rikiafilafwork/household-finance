@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Categories;
 
 use App\Enums\CategoryKind;
-use App\Models\Household;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,15 +19,12 @@ class StoreCategoryRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var Household $household */
-        $household = $this->route('household');
-
         return [
             'kind' => ['required', Rule::enum(CategoryKind::class)],
             'name' => [
                 'required', 'string', 'max:60',
                 Rule::unique('categories')
-                    ->where('household_id', $household->getKey())
+                    ->where('user_id', $this->user()?->getAuthIdentifier())
                     ->where('kind', $this->string('kind')->toString()),
             ],
             'color' => ['nullable', 'string', 'regex:'.self::COLOR_REGEX],

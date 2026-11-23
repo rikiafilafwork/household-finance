@@ -1,86 +1,60 @@
 <?php
 
 use App\Enums\CategoryKind;
-use App\Enums\HouseholdRole;
+use App\Models\Account;
 use App\Models\Category;
-use App\Models\Household;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Models\Wallet;
 use Illuminate\Support\Str;
 
 use function Pest\Laravel\actingAs;
+use function Pest\Laravel\getJson;
 use function Pest\Laravel\travel;
 
-/**
- * @return array{0: Household, 1: User, 2: User}
- */
-function categoryHousehold(): array
+function categoriesUrl(?Category $category = null, string $suffix = ''): string
 {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $household = Household::factory()->withOwner($owner)->create();
-    $household->members()->attach($member, ['role' => HouseholdRole::Member, 'joined_at' => now()]);
-
-    return [$household, $owner, $member];
-}
-
-function categoriesUrl(Household $household, ?Category $category = null, string $suffix = ''): string
-{
-    return "/api/households/{$household->id}/categories".($category ? "/{$category->id}" : '').$suffix;
+    return '/api/categories'.($category ? "/{$category->id}" : '').$suffix;
 }
 
 describe('creating', function () {
-    it('lets the owner create a category with color and icon', function () {
-        [$household, $owner] = categoryHousehold();
+    it('creates a category with color and icon', function () {
+        $user = User::factory()->create();
 
-        actingAs($owner)->postJson(categoriesUrl($household), [
+        actingAs($user)->postJson(categoriesUrl(), [
             'kind' => 'expense',
-            'name' => '  Jajan Anak  ',
+            'name' => '  Jajan  ',
             'color' => '#F97316',
             'icon' => 'ice-cream-cone',
         ])
             ->assertCreated()
             ->assertJsonPath('data.kind', 'expense')
-            ->assertJsonPath('data.name', 'Jajan Anak')
+            ->assertJsonPath('data.name', 'Jajan')
             ->assertJsonPath('data.color', '#F97316')
             ->assertJsonPath('data.icon', 'ice-cream-cone')
             ->assertJsonPath('data.archived_at', null);
 
-        expect(Category::sole()->household_id)->toBe($household->id);
+        expect(Category::sole()->user_id)->toBe($user->id);
     });
 
-    it('forbids members from creating categories', function () {
-        [$household, , $member] = categoryHousehold();
-
-        actingAs($member)->postJson(categoriesUrl($household), ['kind' => 'expense', 'name' => 'X'])->assertForbidden();
-        expect(Category::count())->toBe(0);
+    it('requires login', function () {
+        getJson(categoriesUrl())->assertUnauthorized();
     });
 
-    it('forbids outsiders', function () {
-        [$household] = categoryHousehold();
+    it('rejects a duplicate name within the same kind but allows it across kinds and users', function () {
+        $user = User::factory()->create();
+        Category::factory()->forUser($user)->create(['kind' => CategoryKind::Expense, 'name' => 'Lainnya']);
+        Category::factory()->create(['kind' => CategoryKind::Expense, 'name' => 'Punya orang']);
 
-        actingAs(User::factory()->create())->getJson(categoriesUrl($household))->assertForbidden();
-    });
-
-    it('rejects a duplicate name within the same kind but allows it across kinds and households', function () {
-        [$household, $owner] = categoryHousehold();
-        Category::factory()->for($household)->create(['kind' => CategoryKind::Expense, 'name' => 'Lainnya']);
-
-        actingAs($owner)->postJson(categoriesUrl($household), ['kind' => 'expense', 'name' => 'Lainnya'])
+        actingAs($user)->postJson(categoriesUrl(), ['kind' => 'expense', 'name' => 'Lainnya'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['name' => 'sudah ada']);
 
-        actingAs($owner)->postJson(categoriesUrl($household), ['kind' => 'income', 'name' => 'Lainnya'])->assertCreated();
-
-        $other = Household::factory()->withOwner($owner)->create();
-        actingAs($owner)->postJson(categoriesUrl($other), ['kind' => 'expense', 'name' => 'Lainnya'])->assertCreated();
+        actingAs($user)->postJson(categoriesUrl(), ['kind' => 'income', 'name' => 'Lainnya'])->assertCreated();
+        actingAs($user)->postJson(categoriesUrl(), ['kind' => 'expense', 'name' => 'Punya orang'])->assertCreated();
     });
 
     it('validates kind, color, and icon', function (array $payload, string $field) {
-        [$household, $owner] = categoryHousehold();
-
-        actingAs($owner)->postJson(categoriesUrl($household), [...['kind' => 'expense', 'name' => 'Ok'], ...$payload])
+        actingAs(User::factory()->create())->postJson(categoriesUrl(), [...['kind' => 'expense', 'name' => 'Ok'], ...$payload])
             ->assertUnprocessable()
             ->assertJsonValidationErrors($field);
     })->with([
@@ -96,117 +70,106 @@ describe('creating', function () {
 
 describe('listing', function () {
     it('lists active categories by default, archived ones on request, filtered by kind', function () {
-        [$household, , $member] = categoryHousehold();
-        Category::factory()->for($household)->create(['name' => 'Makan']);
-        Category::factory()->for($household)->archived()->create(['name' => 'Rokok']);
-        Category::factory()->for($household)->income()->create(['name' => 'Gaji']);
-        Category::factory()->create(['name' => 'Household lain']);
+        $user = User::factory()->create();
+        Category::factory()->forUser($user)->create(['name' => 'Makan']);
+        Category::factory()->forUser($user)->archived()->create(['name' => 'Rokok']);
+        Category::factory()->forUser($user)->income()->create(['name' => 'Gaji']);
+        Category::factory()->create(['name' => 'Milik user lain']);
 
-        actingAs($member)->getJson(categoriesUrl($household))
+        actingAs($user)->getJson(categoriesUrl())
             ->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.*.name', ['Gaji', 'Makan']); // income dulu (urutan enum), lalu nama
 
-        actingAs($member)->getJson(categoriesUrl($household).'?include_archived=1&kind=expense')
+        actingAs($user)->getJson(categoriesUrl().'?include_archived=1&kind=expense')
             ->assertOk()
             ->assertJsonPath('data.*.name', ['Makan', 'Rokok']);
     });
 
-    it('returns 404 for a category of another household', function () {
-        [$household, $owner] = categoryHousehold();
-        $foreign = Category::factory()->create();
+    it('returns 404 for another user’s category on every action', function () {
+        $foreign = Category::factory()->create(['name' => 'Asli']);
+        $user = User::factory()->create();
 
-        actingAs($owner)->getJson(categoriesUrl($household, $foreign))->assertNotFound();
-        actingAs($owner)->patchJson(categoriesUrl($household, $foreign), ['name' => 'X'])->assertNotFound();
+        actingAs($user)->getJson(categoriesUrl($foreign))->assertNotFound();
+        actingAs($user)->patchJson(categoriesUrl($foreign), ['name' => 'X'])->assertNotFound();
+        actingAs($user)->postJson(categoriesUrl($foreign, '/archive'))->assertNotFound();
+        actingAs($user)->deleteJson(categoriesUrl($foreign))->assertNotFound();
+
+        $fresh = Category::ownedBy($foreign->user_id)->findOrFail($foreign->id);
+        expect($fresh->name)->toBe('Asli')->and($fresh->archived_at)->toBeNull();
     });
 });
 
 describe('updating', function () {
-    it('lets the owner rename and recolor', function () {
-        [$household, $owner] = categoryHousehold();
-        $category = Category::factory()->for($household)->create(['name' => 'Makan']);
+    it('renames and recolors', function () {
+        $category = Category::factory()->create(['name' => 'Makan']);
 
-        actingAs($owner)->patchJson(categoriesUrl($household, $category), ['name' => 'Makan & Minum', 'color' => null])
+        actingAs($category->user)->patchJson(categoriesUrl($category), ['name' => 'Makan & Minum', 'color' => null])
             ->assertOk()
             ->assertJsonPath('data.name', 'Makan & Minum')
             ->assertJsonPath('data.color', null);
     });
 
     it('allows keeping its own name but rejects another category name', function () {
-        [$household, $owner] = categoryHousehold();
-        $category = Category::factory()->for($household)->create(['name' => 'Makan']);
-        Category::factory()->for($household)->create(['name' => 'Transport']);
+        $category = Category::factory()->create(['name' => 'Makan']);
+        Category::factory()->forUser($category->user)->create(['name' => 'Transport']);
 
-        actingAs($owner)->patchJson(categoriesUrl($household, $category), ['name' => 'Makan'])->assertOk();
-        actingAs($owner)->patchJson(categoriesUrl($household, $category), ['name' => 'Transport'])
+        actingAs($category->user)->patchJson(categoriesUrl($category), ['name' => 'Makan'])->assertOk();
+        actingAs($category->user)->patchJson(categoriesUrl($category), ['name' => 'Transport'])
             ->assertJsonValidationErrors('name');
     });
 
     it('refuses to change kind', function () {
-        [$household, $owner] = categoryHousehold();
-        $category = Category::factory()->for($household)->create();
+        $category = Category::factory()->create();
 
-        actingAs($owner)->patchJson(categoriesUrl($household, $category), ['kind' => 'income'])
+        actingAs($category->user)->patchJson(categoriesUrl($category), ['kind' => 'income'])
             ->assertJsonValidationErrors('kind');
-        expect($category->fresh()->kind)->toBe(CategoryKind::Expense);
-    });
-
-    it('forbids members from updating, archiving, or deleting', function () {
-        [$household, , $member] = categoryHousehold();
-        $category = Category::factory()->for($household)->create();
-
-        actingAs($member)->patchJson(categoriesUrl($household, $category), ['name' => 'X'])->assertForbidden();
-        actingAs($member)->postJson(categoriesUrl($household, $category, '/archive'))->assertForbidden();
-        actingAs($member)->deleteJson(categoriesUrl($household, $category))->assertForbidden();
-        expect($category->fresh()->archived_at)->toBeNull();
+        expect($category->fresh()?->kind)->toBe(CategoryKind::Expense);
     });
 });
 
 describe('archiving and deleting', function () {
     it('deletes an unused category permanently', function () {
-        [$household, $owner] = categoryHousehold();
-        $category = Category::factory()->for($household)->create();
+        $category = Category::factory()->create();
 
-        actingAs($owner)->deleteJson(categoriesUrl($household, $category))->assertNoContent();
+        actingAs($category->user)->deleteJson(categoriesUrl($category))->assertNoContent();
         expect(Category::count())->toBe(0);
     });
 
     it('refuses to delete a used category (even by a soft-deleted transaction) and asks to archive', function () {
-        [$household, $owner] = categoryHousehold();
-        $category = Category::factory()->for($household)->create();
-        $wallet = Wallet::factory()->for($household)->create();
-        Transaction::factory()->for($household)->for($wallet)->create(['category_id' => $category->id])->delete();
+        $category = Category::factory()->create();
+        $account = Account::factory()->forUser($category->user)->create();
+        Transaction::factory()->forAccount($account)->create(['category_id' => $category->id])->delete();
 
-        actingAs($owner)->deleteJson(categoriesUrl($household, $category))
+        actingAs($category->user)->deleteJson(categoriesUrl($category))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['category' => 'Arsipkan']);
         expect($category->fresh())->not->toBeNull();
     });
 
     it('archives and unarchives idempotently', function () {
-        [$household, $owner] = categoryHousehold();
-        $category = Category::factory()->for($household)->create();
+        $category = Category::factory()->create();
 
-        $first = actingAs($owner)->postJson(categoriesUrl($household, $category, '/archive'))->assertOk()->json('data.archived_at');
+        $first = actingAs($category->user)->postJson(categoriesUrl($category, '/archive'))->assertOk()->json('data.archived_at');
         travel(1)->minutes();
-        actingAs($owner)->postJson(categoriesUrl($household, $category, '/archive'))->assertJsonPath('data.archived_at', $first);
+        actingAs($category->user)->postJson(categoriesUrl($category, '/archive'))->assertJsonPath('data.archived_at', $first);
 
-        actingAs($owner)->postJson(categoriesUrl($household, $category, '/unarchive'))->assertJsonPath('data.archived_at', null);
+        actingAs($category->user)->postJson(categoriesUrl($category, '/unarchive'))->assertJsonPath('data.archived_at', null);
     });
 });
 
 describe('archived category and transactions (acceptance)', function () {
     /**
-     * @return array{0: Household, 1: User, 2: Wallet, 3: Category, 4: Transaction}
+     * @return array{0: User, 1: Account, 2: Category, 3: Transaction}
      */
     function archivedCategoryWithOldTransaction(): array
     {
-        [$household, $owner] = categoryHousehold();
-        $wallet = Wallet::factory()->for($household)->create();
-        $category = Category::factory()->for($household)->create(['name' => 'Rokok']);
+        $user = User::factory()->create();
+        $account = Account::factory()->forUser($user)->create();
+        $category = Category::factory()->forUser($user)->create(['name' => 'Rokok']);
 
-        $tx = actingAs($owner)->postJson("/api/households/{$household->id}/transactions", [
-            'wallet_id' => $wallet->id,
+        $tx = actingAs($user)->postJson('/api/transactions', [
+            'account_id' => $account->id,
             'category_id' => $category->id,
             'type' => 'expense',
             'amount' => 25_000,
@@ -216,16 +179,16 @@ describe('archived category and transactions (acceptance)', function () {
 
         $category->update(['archived_at' => now()]);
 
-        return [$household, $owner, $wallet, $category, Transaction::findOrFail($tx)];
+        return [$user, $account, $category, Transaction::findOrFail($tx)];
     }
 
     it('hides an archived category from new choices', function () {
-        [$household, $owner, $wallet, $category] = archivedCategoryWithOldTransaction();
+        [$user, $account, $category] = archivedCategoryWithOldTransaction();
 
-        actingAs($owner)->getJson(categoriesUrl($household))->assertJsonMissing(['id' => $category->id]);
+        actingAs($user)->getJson(categoriesUrl())->assertJsonMissing(['id' => $category->id]);
 
-        actingAs($owner)->postJson("/api/households/{$household->id}/transactions", [
-            'wallet_id' => $wallet->id,
+        actingAs($user)->postJson('/api/transactions', [
+            'account_id' => $account->id,
             'category_id' => $category->id,
             'type' => 'expense',
             'amount' => 1_000,
@@ -235,35 +198,35 @@ describe('archived category and transactions (acceptance)', function () {
     });
 
     it('still shows the archived category on old transactions (list and detail)', function () {
-        [$household, $owner, , $category, $tx] = archivedCategoryWithOldTransaction();
+        [$user, , $category, $tx] = archivedCategoryWithOldTransaction();
 
-        actingAs($owner)->getJson("/api/households/{$household->id}/transactions")
+        actingAs($user)->getJson('/api/transactions')
             ->assertOk()
             ->assertJsonPath('data.0.category_id', $category->id)
             ->assertJsonPath('data.0.category.name', 'Rokok')
             ->assertJsonPath('data.0.category.archived_at', $category->archived_at?->toIso8601String());
 
-        actingAs($owner)->getJson("/api/households/{$household->id}/transactions/{$tx->id}")
+        actingAs($user)->getJson("/api/transactions/{$tx->id}")
             ->assertJsonPath('data.category.name', 'Rokok');
 
-        actingAs($owner)->getJson("/api/households/{$household->id}/transactions?category_id={$category->id}")
+        actingAs($user)->getJson("/api/transactions?category_id={$category->id}")
             ->assertJsonCount(1, 'data');
     });
 
     it('lets an old transaction be edited while keeping its archived category, but not move to another archived one', function () {
-        [$household, $owner, $wallet, $category, $tx] = archivedCategoryWithOldTransaction();
-        $otherArchived = Category::factory()->for($household)->archived()->create();
-        $url = "/api/households/{$household->id}/transactions/{$tx->id}";
+        [$user, $account, $category, $tx] = archivedCategoryWithOldTransaction();
+        $otherArchived = Category::factory()->forUser($user)->archived()->create();
+        $url = "/api/transactions/{$tx->id}";
 
-        actingAs($owner)->patchJson($url, ['note' => 'koreksi', 'amount' => 30_000])
+        actingAs($user)->patchJson($url, ['note' => 'koreksi', 'amount' => 30_000])
             ->assertOk()
             ->assertJsonPath('data.category_id', $category->id)
             ->assertJsonPath('data.amount', -30_000);
 
-        actingAs($owner)->patchJson($url, ['category_id' => $otherArchived->id])
+        actingAs($user)->patchJson($url, ['category_id' => $otherArchived->id])
             ->assertJsonValidationErrors(['category_id' => 'diarsip']);
 
-        expect($wallet->fresh()->balance)->toBe($wallet->opening_balance - 30_000);
+        expect($account->fresh()?->balance)->toBe($account->opening_balance - 30_000);
         assertLedgerBalanced();
     });
 });

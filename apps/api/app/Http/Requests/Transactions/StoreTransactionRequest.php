@@ -4,7 +4,7 @@ namespace App\Http\Requests\Transactions;
 
 use App\Actions\Transactions\TransactionInput;
 use App\Enums\TransactionType;
-use App\Http\Requests\Wallets\StoreWalletRequest;
+use App\Http\Requests\Accounts\StoreAccountRequest;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,13 +19,13 @@ class StoreTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'wallet_id' => ['required', 'integer'],
+            'account_id' => ['required', 'integer'],
             'type' => ['required', Rule::in([TransactionType::Income->value, TransactionType::Expense->value])],
-            'amount' => ['required', 'integer:strict', 'min:1', 'max:'.StoreWalletRequest::MAX_AMOUNT],
+            'amount' => ['required', 'integer:strict', 'min:1', 'max:'.StoreAccountRequest::MAX_AMOUNT],
             'occurred_on' => ['required', 'date_format:Y-m-d'],
             'category_id' => ['nullable', 'integer'],
             'note' => ['nullable', 'string', 'max:255'],
-            // Wajib (Keputusan #11): web membuatnya per submit, mobile per item antrean.
+            // Wajib (Keputusan #15): web membuatnya per submit, mobile per item antrean.
             'client_id' => ['required', 'uuid'],
         ];
     }
@@ -33,7 +33,7 @@ class StoreTransactionRequest extends FormRequest
     public function toInput(): TransactionInput
     {
         return new TransactionInput(
-            walletId: $this->integer('wallet_id'),
+            accountId: $this->integer('account_id'),
             type: TransactionType::from($this->string('type')->toString()),
             amount: $this->integer('amount'),
             occurredOn: $this->string('occurred_on')->toString(),
