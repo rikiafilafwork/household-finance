@@ -16,8 +16,10 @@ use App\Actions\Transactions\TransactionInput;
 use App\Actions\Transfers\CreateTransfer;
 use App\Actions\Transfers\TransferInput;
 use App\Enums\TransactionType;
+use App\Jobs\CheckEnvelopeThresholds;
 use App\Models\PlanItem;
 use App\Models\User;
+use App\Queries\PlanComparisonQuery;
 use Illuminate\Contracts\Console\Kernel;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -25,7 +27,7 @@ require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, plan_item_id?: int, from?: int, to?: int, amount: int, client_id: string} $job */
+/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, plan_item_id?: int, month?: string, from?: int, to?: int, amount: int, client_id: string} $job */
 $job = json_decode($argv[1] ?? '{}', true, flags: JSON_THROW_ON_ERROR);
 
 while (microtime(true) < $job['start_at']) {
@@ -70,6 +72,11 @@ try {
             app(UncheckPlanItem::class)->handle($user, PlanItem::ownedBy($user)->findOrFail((int) $job['plan_item_id']));
 
             return ['id' => 'uncheck', 'created' => false];
+        })(),
+        'envelope-check' => (function () use ($user, $job) {
+            (new CheckEnvelopeThresholds($user->getKey(), (int) $job['category_id'], (string) $job['month']))->handle(app(PlanComparisonQuery::class));
+
+            return ['id' => 'envelope-check', 'created' => true];
         })(),
         default => throw new InvalidArgumentException("op tidak dikenal: {$job['op']}"),
     };

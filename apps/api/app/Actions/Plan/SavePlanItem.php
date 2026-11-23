@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\PlanItem;
 use App\Models\User;
+use App\Plan\EnvelopeCheck;
 use App\Plan\PlanMonth;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ class SavePlanItem
     {
         $this->assertValid($user, $month, $input);
 
-        return $this->guardEnvelope(fn () => PlanItem::create([
+        $item = $this->guardEnvelope(fn () => PlanItem::create([
             'user_id' => $user->getKey(),
             'month' => $month->firstDay(),
             'type' => $input->type,
@@ -38,6 +39,9 @@ class SavePlanItem
             'source' => PlanItemSource::Manual,
             'sort_order' => $input->sortOrder,
         ]));
+        EnvelopeCheck::afterEnvelopeSaved($item);
+
+        return $item;
     }
 
     public function update(User $user, PlanItem $item, PlanItemInput $input): PlanItem
@@ -74,6 +78,7 @@ class SavePlanItem
                     'due_on' => $input->mode === PlanMode::Checklist ? $input->dueOn : null,
                     'sort_order' => $input->sortOrder,
                 ])->save();
+                EnvelopeCheck::afterEnvelopeSaved($locked);
 
                 return $locked;
             });
