@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Actions\Wallets;
+namespace App\Actions\Accounts;
 
-final readonly class WalletMismatch
+final readonly class AccountMismatch
 {
     public function __construct(
-        public int $walletId,
-        public int $householdId,
+        public int $accountId,
+        public int $userId,
         public string $name,
         public int $balance,
         public int $expected,
@@ -18,12 +18,12 @@ final readonly class WalletMismatch
     }
 
     /**
-     * @return array{wallet_id: int, name: string, balance: int, expected: int, diff: int}
+     * @return array{account_id: int, name: string, balance: int, expected: int, diff: int}
      */
     public function toArray(): array
     {
         return [
-            'wallet_id' => $this->walletId,
+            'account_id' => $this->accountId,
             'name' => $this->name,
             'balance' => $this->balance,
             'expected' => $this->expected,

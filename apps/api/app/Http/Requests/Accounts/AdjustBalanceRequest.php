@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Wallets;
+namespace App\Http\Requests\Accounts;
 
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -11,7 +11,7 @@ class AdjustBalanceRequest extends FormRequest
      */
     public function rules(): array
     {
-        $max = StoreWalletRequest::MAX_AMOUNT;
+        $max = StoreAccountRequest::MAX_AMOUNT;
 
         return [
             // Saldo riil boleh negatif (mis. kartu kredit / overdraft).
