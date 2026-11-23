@@ -1,5 +1,5 @@
-import { ArrowLeftRight, CalendarCheck, LayoutDashboard, LogOut, Settings, Wallet } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router';
+import { ArrowLeftRight, CalendarCheck, LayoutDashboard, LogOut, Settings, UserRound, Wallet } from 'lucide-react';
+import { Link, NavLink, Outlet } from 'react-router';
 import { useLogout, useMe } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { cn } from '@/lib/utils';
 import { Brand } from './AuthLayout';
 
@@ -20,7 +21,6 @@ const NAV = [
   { to: '/accounts', label: 'Akun', icon: Wallet },
   { to: '/settings', label: 'Pengaturan', icon: Settings },
 ] as const;
-
 
 function UserMenu() {
   const { data: user } = useMe();
@@ -40,6 +40,9 @@ function UserMenu() {
           <span className="truncate text-xs font-normal text-muted-foreground">{user?.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/settings/profile"><UserRound className="size-4" /> Profil & zona waktu</Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => logout.mutate()}>
           <LogOut className="size-4" /> Keluar
         </DropdownMenuItem>
@@ -74,7 +77,7 @@ export function AppShell() {
           <div className="md:hidden"><Brand /></div>
           <div className="hidden md:block" />
           <div className="flex items-center gap-1">
-            <div id="notification-bell-slot" />
+            <NotificationBell />
             <UserMenu />
           </div>
         </header>
