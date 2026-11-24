@@ -21,3 +21,10 @@ Schedule::command('plan:generate --scheduled')
     ->hourlyAt(10)
     ->withoutOverlapping()
     ->onOneServer();
+
+// Auto-post (Keputusan #9): item auto_post yang jatuh tempo dicentang lewat CheckPlanItem.
+// Tiap jam (zona waktu user beragam); sekali per item, jadi aman diulang. Setelah generate (:10).
+Schedule::command('plan:auto-post')
+    ->hourlyAt(20)
+    ->withoutOverlapping()
+    ->onOneServer();

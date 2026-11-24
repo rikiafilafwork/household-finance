@@ -14,7 +14,7 @@ const YESTERDAY_DUE = TODAY.endsWith('-01') ? null : `${MONTH}-01`;
 
 const item = (id: number, name: string, extra: Partial<PlanItem>): PlanItem => ({
   id, month: MONTH, type: 'expense', mode: 'checklist', name, category_id: 1, planned_amount: 100_000, account_id: 1, due_on: null,
-  template_id: null, source: 'manual', sort_order: 0, skipped_at: null, status: 'planned', transaction: null, actual: 0, percent: null, ...extra,
+  template_id: null, source: 'manual', sort_order: 0, skipped_at: null, auto_posted_at: null, status: 'planned', transaction: null, actual: 0, percent: null, ...extra,
 });
 
 const plan: PlanComparison = {

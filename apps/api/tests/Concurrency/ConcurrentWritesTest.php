@@ -275,3 +275,28 @@ it('creates each template item once when plan:generate runs 8 times at the same 
         ->and(PlanItem::ownedBy($owner)->forMonth('2026-12-01')->count())->toBe(4)
         ->and(PlanItem::ownedBy($owner)->forMonth('2026-12-01')->where('name', 'Cicilan')->value('due_on')?->toDateString())->toBe('2026-12-31');
 });
+
+it('posts each due auto-post item once when plan:auto-post runs 8 times at the same moment', function () {
+    $owner = User::factory()->create(['timezone' => 'Asia/Jakarta']);
+    $bca = Account::factory()->forUser($owner)->opening(1_000_000)->create();
+    $bills = Category::factory()->forUser($owner)->create(['name' => 'Tagihan']);
+    foreach (['Internet' => 350_000, 'Cicilan' => 400_000] as $name => $amount) {
+        $template = PlanTemplate::factory()->forUser($owner)->create([
+            'name' => $name, 'category_id' => $bills->id, 'planned_amount' => $amount, 'day_of_month' => 5, 'account_id' => $bca->id, 'auto_post' => true,
+        ]);
+        PlanItem::factory()->forUser($owner)->forMonth('2026-11')->create([
+            'name' => $name, 'category_id' => $bills->id, 'planned_amount' => $amount, 'due_on' => '2026-11-05',
+            'account_id' => $bca->id, 'template_id' => $template->id, 'source' => 'template',
+        ]);
+    }
+
+    $results = runConcurrently(array_fill(0, 8, [
+        'op' => 'auto-post', 'user_id' => $owner->id, 'now' => '2026-11-06 03:00:00', 'amount' => 0, 'client_id' => '',
+    ]));
+
+    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
+        ->and(array_sum(array_map('intval', array_column($results, 'id'))))->toBe(2)
+        ->and(Transaction::ownedBy($owner)->count())->toBe(2)
+        ->and($bca->fresh()?->balance)->toBe(250_000);
+    assertLedgerBalanced();
+});
