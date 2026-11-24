@@ -31,7 +31,8 @@ scripts/tunnel.sh             # Ctrl+C untuk berhenti
 
 - Cloudflare Quick Tunnel: URL acak `https://*.trycloudflare.com` muncul di log, tanpa akun Cloudflare.
   URL berganti setiap kali dijalankan. Hostname baru kadang butuh ±30 detik sebelum bisa di-resolve.
-- Selama tunnel hidup `APP_DEBUG=false` dan `REGISTRATION_ENABLED=false` (URL publik); dipulihkan saat berhenti.
+- Selama tunnel hidup `APP_DEBUG=false` (URL publik); dipulihkan saat berhenti. Registrasi tetap mengikuti
+  `.env` supaya alur Daftar bisa diuji; `scripts/tunnel.sh --closed` menutupnya selama tunnel hidup.
 - `SANCTUM_STATEFUL_DOMAINS` ditambah `*.trycloudflare.com` (permanen) supaya login cookie SPA jalan.
 - URL bisa dibuka siapa pun yang tahu alamatnya. Jangan biarkan hidup lama, dan ingat data dogfooding asli
   ada di DB yang sama (hanya bisa dibaca dengan login akun itu).
