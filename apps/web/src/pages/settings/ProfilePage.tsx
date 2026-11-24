@@ -6,6 +6,7 @@ import { z } from 'zod';
 import type { User } from '@/api/types';
 import { useChangePassword, useMe, useUpdateProfile } from '@/auth/useAuth';
 import { Field, FormMessage } from '@/components/form/Field';
+import { PasswordInput } from '@/components/form/PasswordInput';
 import { NativeSelect } from '@/components/form/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,13 +136,13 @@ function PasswordForm() {
     <form onSubmit={onSubmit} noValidate className="grid gap-4">
       <FormMessage message={message} />
       <Field label="Kata sandi saat ini" htmlFor="current_password" error={errors.current_password?.message}>
-        <Input id="current_password" type="password" autoComplete="current-password" aria-invalid={!!errors.current_password} {...form.register('current_password')} />
+        <PasswordInput id="current_password" autoComplete="current-password" aria-invalid={!!errors.current_password} {...form.register('current_password')} />
       </Field>
       <Field label="Kata sandi baru" htmlFor="password" error={errors.password?.message} hint="Minimal 8 karakter.">
-        <Input id="password" type="password" autoComplete="new-password" aria-invalid={!!errors.password} {...form.register('password')} />
+        <PasswordInput id="password" autoComplete="new-password" aria-invalid={!!errors.password} {...form.register('password')} />
       </Field>
       <Field label="Ulangi kata sandi baru" htmlFor="password_confirmation" error={errors.password_confirmation?.message}>
-        <Input id="password_confirmation" type="password" autoComplete="new-password" aria-invalid={!!errors.password_confirmation} {...form.register('password_confirmation')} />
+        <PasswordInput id="password_confirmation" autoComplete="new-password" aria-invalid={!!errors.password_confirmation} {...form.register('password_confirmation')} />
       </Field>
       <Button type="submit" variant="outline" disabled={isSubmitting} className="justify-self-start">
         {isSubmitting ? 'Memproses…' : 'Ganti kata sandi'}

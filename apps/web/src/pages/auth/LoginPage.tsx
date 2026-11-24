@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { z } from 'zod';
 import { useLogin } from '@/auth/useAuth';
 import { Field, FormMessage } from '@/components/form/Field';
+import { PasswordInput } from '@/components/form/PasswordInput';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +55,7 @@ export function LoginPage() {
           <Input id="email" type="email" autoComplete="email" autoFocus aria-invalid={!!errors.email} {...form.register('email')} />
         </Field>
         <Field label="Kata sandi" htmlFor="password" error={errors.password?.message}>
-          <Input id="password" type="password" autoComplete="current-password" aria-invalid={!!errors.password} {...form.register('password')} />
+          <PasswordInput id="password" autoComplete="current-password" aria-invalid={!!errors.password} {...form.register('password')} />
         </Field>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="size-4 accent-primary" {...form.register('remember')} />

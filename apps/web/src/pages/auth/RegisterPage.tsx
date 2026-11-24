@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { z } from 'zod';
 import { useRegister } from '@/auth/useAuth';
 import { Field, FormMessage } from '@/components/form/Field';
+import { PasswordInput } from '@/components/form/PasswordInput';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,10 +69,10 @@ export function RegisterPage() {
           <Input id="email" type="email" autoComplete="email" aria-invalid={!!errors.email} {...form.register('email')} />
         </Field>
         <Field label="Kata sandi" htmlFor="password" error={errors.password?.message} hint="Minimal 8 karakter.">
-          <Input id="password" type="password" autoComplete="new-password" aria-invalid={!!errors.password} {...form.register('password')} />
+          <PasswordInput id="password" autoComplete="new-password" aria-invalid={!!errors.password} {...form.register('password')} />
         </Field>
         <Field label="Ulangi kata sandi" htmlFor="password_confirmation" error={errors.password_confirmation?.message}>
-          <Input id="password_confirmation" type="password" autoComplete="new-password" aria-invalid={!!errors.password_confirmation} {...form.register('password_confirmation')} />
+          <PasswordInput id="password_confirmation" autoComplete="new-password" aria-invalid={!!errors.password_confirmation} {...form.register('password_confirmation')} />
         </Field>
         <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? 'Memproses…' : 'Daftar'}

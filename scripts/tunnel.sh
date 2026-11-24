@@ -2,19 +2,26 @@
 # Buka stack lokal (nginx :8080) ke internet lewat Cloudflare Quick Tunnel untuk testing
 # (mis. dari HP). URL acak *.trycloudflare.com, tanpa akun Cloudflare.
 #
-# Selama tunnel hidup, apps/api/.env dibuat aman untuk akses publik:
+# Selama tunnel hidup, apps/api/.env diubah sementara (dipulihkan saat Ctrl+C / kill):
 #   APP_DEBUG=false            stack trace / env tidak tampil ke pengunjung
-#   REGISTRATION_ENABLED=false orang asing tidak bisa daftar; pakai akun demo (php artisan demo:user)
-# dan dipulihkan otomatis saat tunnel dihentikan (Ctrl+C / kill).
+#   REGISTRATION_ENABLED=false hanya dengan --closed (default: registrasi mengikuti .env, supaya
+#                              penguji bisa mencoba alur Daftar)
 # SANCTUM_STATEFUL_DOMAINS ditambah *.trycloudflare.com (permanen; tidak berbahaya di lokal).
 #
-# Pakai: scripts/tunnel.sh            (port default 8080, atau APP_PORT)
+# Pakai: scripts/tunnel.sh [--closed]   (port default 8080, atau APP_PORT)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT/apps/api/.env"
 PORT="${APP_PORT:-8080}"
 BACKUP="$(mktemp -t pf-env-backup)"
+CLOSED=false
+for arg in "$@"; do
+  case "$arg" in
+    --closed) CLOSED=true ;;
+    *) echo "Opsi tidak dikenal: $arg (pakai --closed untuk menutup registrasi)" >&2; exit 2 ;;
+  esac
+done
 
 command -v cloudflared >/dev/null || { echo "cloudflared belum terpasang: brew install cloudflared" >&2; exit 1; }
 curl -fsS -o /dev/null "http://localhost:${PORT}/" || { echo "Stack lokal tidak menjawab di :${PORT}. Jalankan: docker compose up -d" >&2; exit 1; }
@@ -47,7 +54,8 @@ case ",$stateful," in
   *) set_env SANCTUM_STATEFUL_DOMAINS "${stateful:+$stateful,}*.trycloudflare.com" ;;
 esac
 set_env APP_DEBUG false
-set_env REGISTRATION_ENABLED false
+if $CLOSED; then set_env REGISTRATION_ENABLED false; fi
+echo "Registrasi: $(grep '^REGISTRATION_ENABLED=' "$ENV_FILE" | cut -d= -f2- || echo true) (ubah dengan --closed)"
 
 echo "Tunnel ke http://localhost:${PORT} … (URL https://*.trycloudflare.com muncul di log di bawah; Ctrl+C untuk berhenti)"
 cloudflared tunnel --no-autoupdate --url "http://localhost:${PORT}"
