@@ -28,7 +28,8 @@ type Output = z.output<typeof schema>;
  * jaringan putus memakai id yang sama → server menjawab 200 dengan transaksi yang sama, bukan dobel.
  */
 export function CheckForm({ item, accounts, today, onSubmit }: {
-  item: PlanItem;
+  /** Item rencana, atau baris "perlu dicentang" Beranda (cukup bidang ini). */
+  item: Pick<PlanItem, 'type' | 'name' | 'planned_amount' | 'account_id'>;
   accounts: Account[];
   today: string;
   onSubmit: (body: CheckBody) => Promise<unknown>;

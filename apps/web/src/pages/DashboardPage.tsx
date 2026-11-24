@@ -1,254 +1,375 @@
+import { percentOf } from '@personal-finance/shared';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CalendarCheck, Circle, Plus } from 'lucide-react';
+import { AlertTriangle, CalendarCheck, Check, CircleCheck, Clock, Plus, Repeat } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
+import { dashboardApi, type Dashboard } from '@/api/dashboard';
 import { qk } from '@/api/keys';
-import { planApi } from '@/api/plan';
-import type { Account, AccountType, Category, Transaction } from '@/api/types';
-import { accountTypeIcon, accountTypeLabel } from '@/components/accounts/accountMeta';
+import type { Account, Category } from '@/api/types';
+import { useTimezone } from '@/auth/useAuth';
+import { accountTypeGroupLabel, accountTypeIcon, accountTypeLabel, ACCOUNT_TYPES } from '@/components/accounts/accountMeta';
+import { CategoryChart, TrendChart } from '@/components/dashboard/DashboardCharts';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MoneyText } from '@/components/money/MoneyText';
-import { envelopeTone, freeMoney, type FreeMoney } from '@/components/plan/planMeta';
+import { CheckForm } from '@/components/plan/CheckForm';
+import { MonthPicker, useMonthParam } from '@/components/plan/MonthPicker';
+import { envelopeTone } from '@/components/plan/planMeta';
 import { transactionLabel } from '@/components/transactions/TransactionList';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMe, useTimezone } from '@/auth/useAuth';
-import { useAccounts, useCategories, useRecentTransactions } from '@/hooks/useMoneyData';
+import { useAccounts, useCategories } from '@/hooks/useMoneyData';
+import { usePlanMutations } from '@/hooks/usePlanMutations';
 import { formatDate, formatMonth, monthIn, todayIn } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
-const TYPE_ORDER: AccountType[] = ['bank', 'ewallet', 'cash'];
+type DueItem = Dashboard['due_items'][number];
 
-function BalancesCard({ accounts }: { accounts: Account[] }) {
-  const total = accounts.reduce((sum, a) => sum + a.balance, 0);
-  const byType = TYPE_ORDER.map((type) => ({ type, sum: accounts.filter((a) => a.type === type).reduce((s, a) => s + a.balance, 0) }))
-    .filter((row) => accounts.some((a) => a.type === row.type));
+const linkClass = 'font-medium text-primary underline-offset-4 hover:underline';
 
+/** Progress aktual terhadap rencana; > 100% tetap penuh. */
+function Progress({ actual, planned, label, className }: { actual: number; planned: number; label: string; className?: string }) {
+  const percent = planned > 0 ? percentOf(actual, planned) : 0;
   return (
-    <Card>
-      <CardHeader>
-        <CardDescription>Total saldo</CardDescription>
-        <CardTitle className="text-2xl md:text-3xl"><MoneyText amount={total} tone="balance" /></CardTitle>
-        {byType.length > 1 && (
-          <p className="text-sm text-muted-foreground">
-            {byType.map((row, i) => (
-              <span key={row.type}>{i > 0 && ' · '}{accountTypeLabel[row.type]} <MoneyText amount={row.sum} tone="balance" className="text-foreground" /></span>
-            ))}
-          </p>
-        )}
-      </CardHeader>
-      <CardContent className="grid gap-1">
-        {accounts.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Belum ada akun. <Link to="/accounts" className="font-medium text-primary underline-offset-4 hover:underline">Tambah rekening, e-wallet, atau dompet</Link>.
-          </p>
-        )}
-        {accounts.map((a) => {
-          const Icon = accountTypeIcon[a.type];
-          return (
-            <div key={a.id} className="flex items-center justify-between gap-3 rounded-md py-1.5">
-              <span className="flex min-w-0 items-center gap-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted"><Icon className="size-4 text-muted-foreground" /></span>
-                <span className="grid min-w-0">
-                  <span className="truncate text-sm font-medium">{a.name}</span>
-                  <span className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</span>
-                </span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                {a.balance < 0 && <AlertTriangle className="size-3.5 text-amber-600" aria-label="Saldo negatif" />}
-                <MoneyText amount={a.balance} tone="balance" className="text-sm font-medium" />
-              </span>
-            </div>
-          );
-        })}
-      </CardContent>
-    </Card>
-  );
-}
-
-function PlanStat({ label, actual, planned, testId }: { label: string; actual: number; planned: number; testId: string }) {
-  return (
-    <div data-testid={testId} className="grid gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <MoneyText amount={actual} className="text-base font-semibold" />
-      <span className="text-xs text-muted-foreground">dari <MoneyText amount={planned} /></span>
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.min(percent, 100)}
+      className="h-1.5 overflow-hidden rounded-full bg-muted"
+    >
+      <div className={cn('h-full rounded-full', className)} style={{ width: `${Math.min(percent, 100)}%` }} />
     </div>
   );
 }
 
-/** Saldo semua akun vs yang masih akan keluar menurut rencana bulan ini. */
-function FreeMoneyBlock({ free, unpaid, envelopes }: { free: FreeMoney; unpaid: number; envelopes: number }) {
+function Kpi({ label, testId, value, children }: { label: string; testId: string; value: ReactNode; children?: ReactNode }) {
   return (
-    <div data-testid="plan-free" className="grid gap-2 rounded-lg bg-muted/50 p-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-0.5">
-          <span className="text-xs text-muted-foreground">Saldo semua akun</span>
-          <MoneyText amount={free.balance} tone="balance" className="text-base font-semibold" />
-        </div>
-        <div className="grid gap-0.5">
-          <span className="text-xs text-muted-foreground">Uang bebas</span>
-          <MoneyText amount={free.free} tone="balance" className="text-base font-semibold" />
-        </div>
+    <Card data-testid={testId} className="gap-2">
+      <CardHeader>
+        <CardDescription>{label}</CardDescription>
+        <CardTitle className="text-xl md:text-2xl">{value}</CardTitle>
+      </CardHeader>
+      {children && <CardContent className="grid gap-1.5 text-xs text-muted-foreground">{children}</CardContent>}
+    </Card>
+  );
+}
+
+function KpiCards({ d }: { d: Dashboard }) {
+  const { balances, income, expense } = d;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <Kpi testId="kpi-balance" label="Total saldo" value={<MoneyText amount={balances.total} tone="balance" />}>
+        <dl className="grid gap-0.5">
+          {ACCOUNT_TYPES.map((type) => (
+            <div key={type} className="flex justify-between gap-2">
+              <dt>{accountTypeGroupLabel[type]}</dt>
+              <dd><MoneyText amount={balances[type]} tone="balance" className="text-foreground" /></dd>
+            </div>
+          ))}
+        </dl>
+      </Kpi>
+      <Kpi testId="kpi-income" label="Pemasukan" value={<MoneyText amount={income.actual} />}>
+        <Progress actual={income.actual} planned={income.planned} label="Pemasukan diterima dari rencana" className="bg-success" />
+        <p>dari rencana <MoneyText amount={income.planned} /></p>
+      </Kpi>
+      <Kpi testId="kpi-expense" label="Pengeluaran" value={<MoneyText amount={expense.actual} />}>
+        <Progress
+          actual={expense.actual}
+          planned={expense.planned}
+          label="Pengeluaran terhadap rencana"
+          className={{ normal: 'bg-primary', warning: 'bg-amber-500', over: 'bg-destructive' }[expense.planned > 0 ? envelopeTone(percentOf(expense.actual, expense.planned)) : 'normal']}
+        />
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span>dari rencana <MoneyText amount={expense.planned} /></span>
+          {expense.unplanned > 0 && (
+            <Badge data-testid="kpi-unplanned" variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">
+              di luar rencana <MoneyText amount={expense.unplanned} />
+            </Badge>
+          )}
+        </p>
+      </Kpi>
+      <Kpi testId="kpi-remaining" label="Sisa anggaran" value={<MoneyText amount={d.remaining_budget} tone="balance" />}>
+        <p>{expense.unpaid > 0 ? <><MoneyText amount={expense.unpaid} /> belum dibayar</> : 'Semua tagihan sudah dibayar'}</p>
+        {d.free_money !== null && (
+          <p data-testid="kpi-free">
+            Uang bebas <MoneyText amount={d.free_money} tone="balance" className="font-medium text-foreground" />
+            {d.free_money < 0 && <span className="text-destructive"> — saldo tidak cukup menutup rencana</span>}
+          </p>
+        )}
+      </Kpi>
+    </div>
+  );
+}
+
+function IncomeSources({ sources }: { sources: Dashboard['income_sources'] }) {
+  if (sources.length === 0) {
+    return <p className="text-sm text-muted-foreground">Belum ada rencana pemasukan bulan ini.</p>;
+  }
+  return (
+    <ul data-testid="income-sources" className="grid divide-y">
+      {sources.map((s) => (
+        <li key={s.id} data-testid={`income-${s.id}`} className={cn('flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2', s.skipped && 'opacity-60')}>
+          <span className="flex min-w-0 items-center gap-2 text-sm">
+            <span className="truncate font-medium">{s.name}</span>
+            {s.skipped
+              ? <Badge variant="secondary">Dilewati</Badge>
+              : s.done
+                ? <Badge variant="outline" className="border-success/40 text-success"><CircleCheck /> Diterima</Badge>
+                : <Badge variant="outline" className="text-muted-foreground"><Clock /> Belum</Badge>}
+          </span>
+          <span className="ml-auto whitespace-nowrap text-sm">
+            <MoneyText amount={s.actual} className="font-medium" /> <span className="text-muted-foreground">/ <MoneyText amount={s.planned} /></span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DueList({ items, today, onCheck }: { items: Dashboard['due_items']; today: string; onCheck: (item: DueItem) => void }) {
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground">Tidak ada tagihan jatuh tempo dalam 7 hari.</p>;
+  }
+  return (
+    <ul data-testid="due-items" className="grid divide-y">
+      {items.map((i) => (
+        <li key={i.id} data-testid={`due-${i.id}`} className="flex items-center gap-3 py-2">
+          <div className="grid min-w-0 flex-1">
+            <span className="truncate text-sm font-medium">{i.name}</span>
+            <span className={cn('text-xs', i.overdue ? 'font-medium text-destructive' : 'text-muted-foreground')}>
+              {i.overdue ? 'Terlambat · ' : i.due_on === today ? 'Hari ini · ' : ''}{formatDate(i.due_on, { day: 'numeric', month: 'short' })}
+            </span>
+          </div>
+          <MoneyText amount={i.planned} className={cn('text-sm', i.type === 'income' && 'text-success')} />
+          <Button variant="outline" size="sm" className="h-8 shrink-0 px-2.5" onClick={() => onCheck(i)} aria-label={`Centang ${i.name}`}>
+            <Check className="size-3.5" /> Centang
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function EnvelopeWarnings({ envelopes }: { envelopes: Dashboard['envelopes_warning'] }) {
+  if (envelopes.length === 0) {
+    return <p className="text-sm text-muted-foreground">Semua amplop masih di bawah 80%.</p>;
+  }
+  return (
+    <ul data-testid="envelopes-warning" className="grid gap-3">
+      {envelopes.map((e) => {
+        const tone = envelopeTone(e.percent);
+        return (
+          <li key={e.id} data-tone={tone} className="grid gap-1">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="flex min-w-0 items-center gap-2">
+                <AlertTriangle className={cn('size-3.5 shrink-0', tone === 'over' ? 'text-destructive' : 'text-amber-600')} />
+                <span className="truncate">{e.name}</span>
+              </span>
+              <span className={cn('text-xs font-medium tabular-nums', tone === 'over' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400')}>{e.percent}%</span>
+            </div>
+            <Progress actual={e.actual} planned={e.planned} label={`Terpakai ${e.name}`} className={tone === 'over' ? 'bg-destructive' : 'bg-amber-500'} />
+            <span className="text-xs text-muted-foreground">
+              <MoneyText amount={e.actual} /> / <MoneyText amount={e.planned} />
+              {e.actual > e.planned ? <> · lebih <MoneyText amount={e.actual - e.planned} /></> : <> · sisa <MoneyText amount={e.planned - e.actual} /></>}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function AccountBalances({ accounts }: { accounts: Account[] }) {
+  if (accounts.length === 0) {
+    return <p className="text-sm text-muted-foreground">Belum ada akun. <Link to="/accounts" className={linkClass}>Tambah rekening, e-wallet, atau dompet</Link>.</p>;
+  }
+  return (
+    <ul className="grid gap-1">
+      {accounts.map((a) => {
+        const Icon = accountTypeIcon[a.type];
+        return (
+          <li key={a.id} className="flex items-center justify-between gap-3 py-1.5">
+            <span className="flex min-w-0 items-center gap-2.5">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted"><Icon className="size-4 text-muted-foreground" /></span>
+              <span className="grid min-w-0">
+                <span className="truncate text-sm font-medium">{a.name}</span>
+                <span className="text-xs text-muted-foreground">{accountTypeLabel[a.type]}</span>
+              </span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              {a.balance < 0 && <AlertTriangle className="size-3.5 text-amber-600" aria-label="Saldo negatif" />}
+              <MoneyText amount={a.balance} tone="balance" className="text-sm font-medium" />
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function RecentList({ recent, accounts, categories }: { recent: Dashboard['recent']; accounts: Map<number, Account>; categories: Map<number, Category> }) {
+  if (recent.length === 0) {
+    return <p className="text-sm text-muted-foreground">Belum ada transaksi. Catat pengeluaran pertama Anda.</p>;
+  }
+  return (
+    <ul data-testid="recent" className="grid divide-y">
+      {recent.map((tx) => (
+        <li key={tx.id} className="flex items-center justify-between gap-3 py-2.5">
+          <div className="grid min-w-0">
+            <span className="truncate text-sm font-medium">{transactionLabel(tx, categories)}</span>
+            <span className="truncate text-xs text-muted-foreground">
+              {formatDate(tx.occurred_on, { day: 'numeric', month: 'short' })} · {accounts.get(tx.account_id)?.name ?? 'Akun'}{tx.note ? ` · ${tx.note}` : ''}
+            </span>
+          </div>
+          <MoneyText amount={tx.amount} tone="signed" className="text-sm font-medium" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Panel({ title, action, className, testId, children }: { title: string; action?: ReactNode; className?: string; testId?: string; children: ReactNode }) {
+  return (
+    <Card data-testid={testId} className={className}>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+        {action && <CardAction>{action}</CardAction>}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+function EmptyPlan({ month, onGenerate, busy }: { month: string; onGenerate: () => void; busy: boolean }) {
+  return (
+    <div data-testid="empty-plan" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed bg-background p-4">
+      <div className="flex items-start gap-3 text-sm">
+        <CalendarCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <p>
+          <span className="font-medium">Belum ada rencana untuk {formatMonth(month)}.</span>{' '}
+          <span className="text-muted-foreground">Buat dari template bulanan, atau <Link to={`/plan?month=${month}`} className={linkClass}>susun di halaman Rencana</Link>.</span>
+        </p>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Saldo − masih akan keluar <MoneyText amount={free.stillToSpend} /> (tagihan belum dibayar <MoneyText amount={unpaid} /> + sisa amplop <MoneyText amount={envelopes} />).
-        {free.free < 0 && <span className="font-medium text-destructive"> Saldo tidak cukup untuk menutup rencana bulan ini.</span>}
-      </p>
+      <Button onClick={onGenerate} disabled={busy}><Repeat /> Buat dari template</Button>
     </div>
   );
 }
 
 /**
- * Ringkasan rencana bulan ini. Angka total langsung dari GET /plan/{month} (PlanComparisonQuery) —
- * cache yang sama dengan halaman Rencana, jadi angkanya tidak mungkin berbeda.
- */
-function PlanCard({ month, today, accounts }: { month: string; today: string; accounts: Account[] | undefined }) {
-  const { data: plan, isPending, isError } = useQuery({ queryKey: qk.plan(month), queryFn: () => planApi.get(month) });
-  const pending = (plan?.items ?? [])
-    .filter((i) => i.mode === 'checklist' && i.status === 'planned')
-    .sort((a, b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999'));
-  const hotEnvelopes = (plan?.items ?? [])
-    .filter((i) => i.mode === 'envelope' && i.type === 'expense' && i.status !== 'skipped' && envelopeTone(i.percent) !== 'normal')
-    .sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0));
-
-  return (
-    <Card data-testid="dashboard-plan">
-      <CardHeader>
-        <CardDescription>Rencana {formatMonth(month)}</CardDescription>
-        <CardAction><Button asChild variant="ghost" size="sm"><Link to="/plan">Buka</Link></Button></CardAction>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        {isPending && <Skeleton className="h-32" />}
-        {isError && <p className="text-sm text-muted-foreground">Rencana gagal dimuat.</p>}
-        {plan && plan.items.length === 0 && (
-          <div className="flex items-start gap-3 text-sm text-muted-foreground">
-            <CalendarCheck className="mt-0.5 size-4 shrink-0" />
-            <p>
-              Belum ada rencana bulan ini.{' '}
-              <Link to="/plan" className="font-medium text-primary underline-offset-4 hover:underline">Buat checklist tagihan dan amplop</Link>.
-            </p>
-          </div>
-        )}
-        {plan && plan.items.length > 0 && (
-          <>
-            <div className="grid grid-cols-3 gap-3">
-              <PlanStat testId="plan-income" label="Pemasukan" actual={plan.totals.income.actual} planned={plan.totals.income.planned} />
-              <PlanStat testId="plan-expense" label="Pengeluaran" actual={plan.totals.expense.actual} planned={plan.totals.expense.planned} />
-              <div data-testid="plan-remaining" className="grid content-start gap-0.5">
-                <span className="text-xs text-muted-foreground">Sisa rencana</span>
-                <MoneyText amount={plan.totals.remaining_budget} tone="balance" className="text-base font-semibold" />
-              </div>
-            </div>
-
-            {accounts && <FreeMoneyBlock free={freeMoney(accounts, plan)} unpaid={plan.totals.expense.unpaid} envelopes={plan.totals.expense.envelope_remaining} />}
-
-            <div data-testid="plan-pending" className="grid gap-1">
-              <p className="text-xs font-medium text-muted-foreground">
-                {pending.length === 0 ? 'Semua checklist sudah dicentang atau dilewati.' : `Belum dicentang (${pending.length})`}
-              </p>
-              {pending.slice(0, 3).map((i) => {
-                const late = i.due_on !== null && i.due_on < today;
-                return (
-                  <div key={i.id} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Circle className="size-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{i.name}</span>
-                      {i.due_on && (
-                        <span className={cn('shrink-0 text-xs', late ? 'font-medium text-destructive' : 'text-muted-foreground')}>
-                          {late ? 'lewat ' : ''}{formatDate(i.due_on, { day: 'numeric', month: 'short' })}
-                        </span>
-                      )}
-                    </span>
-                    <MoneyText amount={i.planned_amount} className="text-sm" />
-                  </div>
-                );
-              })}
-              {pending.length > 3 && <Link to="/plan" className="text-xs font-medium text-primary underline-offset-4 hover:underline">+{pending.length - 3} lainnya</Link>}
-            </div>
-
-            {hotEnvelopes.length > 0 && (
-              <div data-testid="plan-envelopes" className="grid gap-1">
-                <p className="text-xs font-medium text-muted-foreground">Amplop hampir habis</p>
-                {hotEnvelopes.map((i) => {
-                  const tone = envelopeTone(i.percent);
-                  return (
-                    <div key={i.id} className="flex items-center justify-between gap-3 text-sm">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <AlertTriangle className={cn('size-3.5 shrink-0', tone === 'over' ? 'text-destructive' : 'text-amber-600')} />
-                        <span className="truncate">{i.name}</span>
-                      </span>
-                      <span className={cn('text-xs font-medium tabular-nums', tone === 'over' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400')}>
-                        {i.percent}%
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function RecentCard({ accounts }: { accounts: Account[] }) {
-  const { data: transactions, isPending } = useRecentTransactions();
-  const { data: categories = [] } = useCategories();
-  const accountMap = new Map(accounts.map((a) => [a.id, a]));
-  const categoryMap = new Map<number, Category>(categories.map((c) => [c.id, c]));
-
-  return (
-    <Card className="md:col-span-2">
-      <CardHeader>
-        <CardDescription>Transaksi terakhir</CardDescription>
-        <CardAction><Button asChild variant="ghost" size="sm"><Link to="/transactions">Semua</Link></Button></CardAction>
-      </CardHeader>
-      <CardContent className="grid divide-y">
-        {isPending && <Skeleton className="h-32" />}
-        {transactions?.length === 0 && <p className="py-2 text-sm text-muted-foreground">Belum ada transaksi. Catat pengeluaran pertama Anda.</p>}
-        {transactions?.map((tx: Transaction) => (
-          <div key={tx.id} className="flex items-center justify-between gap-3 py-2.5">
-            <div className="grid min-w-0">
-              <span className="truncate text-sm font-medium">{transactionLabel(tx, categoryMap)}</span>
-              <span className="truncate text-xs text-muted-foreground">
-                {formatDate(tx.occurred_on, { day: 'numeric', month: 'short' })} · {accountMap.get(tx.account_id)?.name ?? 'Akun'}{tx.note ? ` · ${tx.note}` : ''}
-              </span>
-            </div>
-            <MoneyText amount={tx.amount} tone="signed" className="text-sm font-medium" />
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * Beranda sederhana (#40): saldo per tipe akun, ringkasan rencana bulan ini, transaksi terbaru.
- * Dashboard penuh (KPI, chart) lewat GET /api/dashboard menyusul di Minggu 5 (#132).
+ * Beranda (Architecture § Dashboard web, #132). Satu request: GET /api/dashboard?month= — angka
+ * rencana vs aktual dari PlanComparisonQuery yang sama dengan halaman Rencana. Halaman ini hanya
+ * menyusun; tidak menjumlah ulang uang. Daftar akun (saldo per akun) dari cache akun bersama.
  */
 export function DashboardPage() {
-  const { data: me } = useMe();
   const timezone = useTimezone();
-  const { data: accounts, isPending } = useAccounts();
-  const active = (accounts ?? []).filter((a) => !a.archived_at);
+  const current = monthIn(timezone);
+  const today = todayIn(timezone);
+  const [month, setMonth] = useMonthParam(current);
+  const query = useQuery({ queryKey: [...qk.dashboard, month], queryFn: () => dashboardApi.get(month) });
+  const { data: accounts = [] } = useAccounts();
+  const { data: categories = [] } = useCategories();
+  const m = usePlanMutations();
+  const [checking, setChecking] = useState<DueItem | null>(null);
+
+  const d = query.data;
+  const active = accounts.filter((a) => !a.archived_at);
+  const accountMap = new Map(accounts.map((a) => [a.id, a]));
+  const categoryMap = new Map<number, Category>(categories.map((c) => [c.id, c]));
+  const planLink = month === current ? '/plan' : `/plan?month=${month}`;
+  const noPlan = d !== undefined && d.income.planned === 0 && d.expense.planned === 0;
+
+  const generate = async () => {
+    try {
+      const { created } = await m.generate.mutateAsync(month);
+      toast.success(created > 0 ? `${created} item dibuat dari template.` : 'Belum ada template aktif. Atur di Pengaturan → Template bulanan.');
+    } catch {
+      // Pesan galat sudah ditampilkan klien API (toast global).
+    }
+  };
 
   return (
     <>
       <PageHeader
         title="Beranda"
-        description={me ? `Halo, ${me.name}` : undefined}
-        actions={
-          <Button asChild>
-            <Link to="/transactions?new=expense"><Plus className="size-4" /> Catat</Link>
-          </Button>
-        }
+        actions={<Button asChild><Link to="/transactions?new=expense"><Plus className="size-4" /> Catat</Link></Button>}
       />
-      <div className="grid gap-4 md:grid-cols-2">
-        {isPending ? <Skeleton className="h-64" /> : <BalancesCard accounts={active} />}
-        <PlanCard month={monthIn(timezone)} today={todayIn(timezone)} accounts={accounts} />
-        <RecentCard accounts={accounts ?? []} />
-      </div>
+      <MonthPicker month={month} current={current} onChange={setMonth} />
+
+      {query.isPending && (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32" />)}</div>
+      )}
+      {query.isError && <p className="rounded-lg border bg-background p-6 text-sm text-destructive">Beranda tidak bisa dimuat. Coba muat ulang halaman.</p>}
+
+      {d && (
+        <div className="grid gap-4">
+          {!d.reconcile_ok && (
+            <Alert data-testid="reconcile-banner" variant="destructive">
+              <AlertTriangle />
+              <AlertTitle>Saldo akun tidak cocok dengan riwayat transaksi</AlertTitle>
+              <AlertDescription>
+                <p>Ada akun yang saldonya berbeda dari jumlah transaksinya. Jalankan <code>php artisan accounts:reconcile --fix</code> untuk membetulkan.</p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {noPlan && <EmptyPlan month={month} onGenerate={generate} busy={m.generate.isPending} />}
+
+          <KpiCards d={d} />
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Panel testId="panel-categories" title="Rencana vs aktual per kategori" className="lg:col-span-2" action={<Button asChild variant="ghost" size="sm"><Link to={planLink}>Rencana</Link></Button>}>
+              <CategoryChart rows={d.categories} />
+            </Panel>
+            <Panel testId="panel-due" title={`Perlu dicentang${d.due_items.length > 0 ? ` (${d.due_items.length})` : ''}`}>
+              <DueList items={d.due_items} today={today} onCheck={setChecking} />
+            </Panel>
+
+            <Panel testId="panel-income" title="Pemasukan per sumber">
+              <IncomeSources sources={d.income_sources} />
+            </Panel>
+            <Panel testId="panel-trend" title="Tren 6 bulan" className="lg:col-span-2">
+              <TrendChart trend={d.trend} month={d.month} />
+            </Panel>
+
+            <Panel testId="panel-envelopes" title="Amplop hampir habis">
+              <EnvelopeWarnings envelopes={d.envelopes_warning} />
+            </Panel>
+            <Panel testId="panel-accounts" title="Saldo per akun" action={<Button asChild variant="ghost" size="sm"><Link to="/accounts">Akun</Link></Button>}>
+              <AccountBalances accounts={active} />
+            </Panel>
+            <Panel testId="panel-recent" title="Transaksi terbaru" action={<Button asChild variant="ghost" size="sm"><Link to="/transactions">Semua</Link></Button>}>
+              <RecentList recent={d.recent} accounts={accountMap} categories={categoryMap} />
+            </Panel>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={checking !== null} onOpenChange={(open) => !open && setChecking(null)}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{checking ? `Centang ${checking.name}` : 'Centang'}</DialogTitle>
+            <DialogDescription className="sr-only">Catat transaksi untuk item rencana ini.</DialogDescription>
+          </DialogHeader>
+          {checking && (
+            <CheckForm
+              item={{ type: checking.type, name: checking.name, planned_amount: checking.planned, account_id: checking.account_id }}
+              accounts={accounts}
+              today={today}
+              onSubmit={async (body) => {
+                await m.check.mutateAsync({ id: checking.id, body });
+                toast.success(`${checking.name} dicentang dan dicatat.`);
+                setChecking(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -3,7 +3,7 @@ import type { Account, Category, Transaction } from '@/api/types';
 import { MoneyText } from '@/components/money/MoneyText';
 import { formatDate } from '@/lib/dates';
 
-export function transactionLabel(tx: Transaction, categories: Map<number, Category>): string {
+export function transactionLabel(tx: Pick<Transaction, 'type' | 'amount' | 'category_id'> & { category?: Category | null }, categories: Map<number, Category>): string {
   if (tx.type === 'transfer') return tx.amount < 0 ? 'Transfer keluar' : 'Transfer masuk';
   if (tx.type === 'adjustment') return 'Penyesuaian saldo';
   const category = tx.category ?? (tx.category_id ? categories.get(tx.category_id) : undefined);
