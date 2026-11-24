@@ -75,6 +75,16 @@ it('lists income sources with their status and warns about envelopes from 80%, f
         ->and(array_map(fn ($r) => [$r['name'], $r['percent']], $d['envelopes_warning']))->toBe([['Hiburan', 106], ['Transport', 85]]);
 });
 
+it('warns about an envelope from exactly 80%, not at 79%', function () {
+    $f = new PlanFixture;
+    $f->envelope('Makan', 1_000_000);
+    $f->envelope('Transport', 1_000_000);
+    $f->spend('Makan', 800_000);
+    $f->spend('Transport', 799_999);
+
+    expect(array_column(dashboard($f)['envelopes_warning'], 'percent', 'name'))->toBe(['Makan' => 80]);
+});
+
 it('lists checklist items due within 7 days or overdue, in the user’s timezone', function () {
     $f = PlanFixture::architecture();
     $f->item['Listrik']->update(['due_on' => '2026-11-20']);          // lewat
