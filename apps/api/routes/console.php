@@ -14,3 +14,10 @@ Schedule::command('accounts:reconcile')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Rencana bulan baru dari template (Keputusan #9): tiap jam menit 10, hanya user yang di zona
+// waktunya sedang tanggal 1 pukul 00.xx → ≈ 00:10 lokal, sekali per bulan. Idempoten.
+Schedule::command('plan:generate --scheduled')
+    ->hourlyAt(10)
+    ->withoutOverlapping()
+    ->onOneServer();

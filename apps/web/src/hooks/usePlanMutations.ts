@@ -23,6 +23,7 @@ export function usePlanMutations() {
     remove: useMutation({ mutationFn: (id: Id) => planApi.removeItem(id), onSuccess: plan }),
     skip: useMutation({ mutationFn: ({ id, skipped }: { id: Id; skipped: boolean }) => (skipped ? planApi.skip(id) : planApi.unskip(id)), onSuccess: plan }),
     copyFromPrevious: useMutation({ mutationFn: (month: string) => planApi.copyFromPrevious(month), onSuccess: plan }),
+    generate: useMutation({ mutationFn: (month: string) => planApi.generate(month), onSuccess: plan }),
     // Gagal (mis. 409 sudah dicentang di perangkat lain) juga menyegarkan: tampilkan keadaan terbaru.
     check: useMutation({ mutationFn: ({ id, body }: { id: Id; body: CheckBody }) => planApi.check(id, body), onSettled: money }),
     uncheck: useMutation({ mutationFn: (id: Id) => planApi.uncheck(id), onSettled: money }),

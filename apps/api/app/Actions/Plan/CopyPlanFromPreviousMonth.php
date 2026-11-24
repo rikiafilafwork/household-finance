@@ -7,7 +7,9 @@ use App\Enums\PlanMode;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\PlanItem;
+use App\Models\PlanTemplate;
 use App\Models\User;
+use App\Plan\MonthlyDueDate;
 use App\Plan\PlanMonth;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +21,8 @@ use Illuminate\Support\Facades\DB;
  *  - checklist manual: sudah ada kalau ada item dengan jenis + kategori + nama yang sama.
  * Item yang di-skip bulan lalu tetap disalin (bulan ini mungkin ada lagi), tanpa status skip.
  * Kategori/akun yang sudah diarsip tidak disalin / akun default dikosongkan.
+ * Jatuh tempo item dari template dihitung dari `day_of_month` template (tanpa drift: 31 → 28 Feb
+ * → 31 Mar); item manual memakai tanggal bulan lalu.
  */
 class CopyPlanFromPreviousMonth
 {
@@ -36,6 +40,7 @@ class CopyPlanFromPreviousMonth
             // Eksplisit per user (bukan relasi ber-scope) supaya bisa jalan dari console/job.
             $categories = Category::ownedBy($user)->whereKey($source->pluck('category_id'))->get()->keyBy('id');
             $accounts = Account::ownedBy($user)->whereKey($source->pluck('account_id')->filter())->get()->keyBy('id');
+            $templateDays = PlanTemplate::ownedBy($user)->whereKey($source->pluck('template_id')->filter())->pluck('day_of_month', 'id');
 
             $created = 0;
             foreach ($source as $item) {
@@ -54,7 +59,7 @@ class CopyPlanFromPreviousMonth
                     'category_id' => $item->category_id,
                     'planned_amount' => $item->planned_amount,
                     'account_id' => $account === null || $account->isArchived() ? null : $account->getKey(),
-                    'due_on' => $item->due_on !== null ? $target->day($item->due_on->day) : null,
+                    'due_on' => $this->dueOn($item, $target, $templateDays->get((int) $item->template_id)),
                     'template_id' => $item->template_id,
                     'source' => PlanItemSource::Copied,
                     'sort_order' => $item->sort_order,
@@ -65,6 +70,15 @@ class CopyPlanFromPreviousMonth
 
             return $created;
         });
+    }
+
+    private function dueOn(PlanItem $item, PlanMonth $target, ?int $templateDay): ?string
+    {
+        if ($item->due_on === null) {
+            return null;
+        }
+
+        return MonthlyDueDate::in($target, $templateDay ?? $item->due_on->day);
     }
 
     /**

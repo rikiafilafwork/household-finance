@@ -10,6 +10,7 @@
 
 use App\Actions\Plan\CheckPlanItem;
 use App\Actions\Plan\CheckPlanItemInput;
+use App\Actions\Plan\GeneratePlanFromTemplates;
 use App\Actions\Plan\UncheckPlanItem;
 use App\Actions\Transactions\CreateTransaction;
 use App\Actions\Transactions\TransactionInput;
@@ -19,6 +20,7 @@ use App\Enums\TransactionType;
 use App\Jobs\CheckEnvelopeThresholds;
 use App\Models\PlanItem;
 use App\Models\User;
+use App\Plan\PlanMonth;
 use App\Queries\PlanComparisonQuery;
 use Illuminate\Contracts\Console\Kernel;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -77,6 +79,11 @@ try {
             (new CheckEnvelopeThresholds($user->getKey(), (int) $job['category_id'], (string) $job['month']))->handle(app(PlanComparisonQuery::class));
 
             return ['id' => 'envelope-check', 'created' => true];
+        })(),
+        'generate' => (function () use ($user, $job) {
+            $created = app(GeneratePlanFromTemplates::class)->handle($user, PlanMonth::parse((string) $job['month']));
+
+            return ['id' => (string) $created, 'created' => $created > 0];
         })(),
         default => throw new InvalidArgumentException("op tidak dikenal: {$job['op']}"),
     };

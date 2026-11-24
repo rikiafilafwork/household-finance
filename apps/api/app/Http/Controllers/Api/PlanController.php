@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Actions\Plan\CheckPlanItem;
 use App\Actions\Plan\CopyPlanFromPreviousMonth;
 use App\Actions\Plan\DeletePlanItem;
+use App\Actions\Plan\GeneratePlanFromTemplates;
 use App\Actions\Plan\SavePlanItem;
 use App\Actions\Plan\SkipPlanItem;
 use App\Actions\Plan\UncheckPlanItem;
@@ -50,6 +51,14 @@ class PlanController extends Controller
     public function copyFromPrevious(Request $request, string $month, CopyPlanFromPreviousMonth $copy): JsonResponse
     {
         $created = $copy->handle($this->user($request), PlanMonth::parse($month));
+
+        return response()->json(['data' => ['created' => $created]], $created > 0 ? 201 : 200);
+    }
+
+    /** Tombol "Buat dari template": aman diklik berkali-kali (yang sudah ada dilewati). */
+    public function generate(Request $request, string $month, GeneratePlanFromTemplates $generate): JsonResponse
+    {
+        $created = $generate->handle($this->user($request), PlanMonth::parse($month));
 
         return response()->json(['data' => ['created' => $created]], $created > 0 ? 201 : 200);
     }
