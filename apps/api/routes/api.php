@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\PlanTemplateController;
@@ -38,6 +39,9 @@ Route::prefix('auth')->group(function () {
 | BelongsToUser, jadi id milik user lain = 404, bukan 403 (tidak membocorkan keberadaannya).
 */
 Route::middleware('auth:sanctum')->group(function () {
+    // Beranda (Keputusan #11): angka rencana vs aktual dari PlanComparisonQuery yang sama dengan Rencana.
+    Route::get('dashboard', DashboardController::class);
+
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification');

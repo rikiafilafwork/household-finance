@@ -257,6 +257,9 @@ function isolationCases(): array
         'check own item replaying the victim’s client_id' => ['POST api/plan-items/{planItem}/check', fn ($c, $id) => ['POST', '/api/plan-items/'.$c->myPlanItemId.'/check', ['client_id' => $id('client_id'), 'account_id' => $c->myAccount->id]]],
         'uncheck the victim’s plan item' => ['POST api/plan-items/{planItem}/uncheck', fn ($c, $id) => ['POST', '/api/plan-items/'.$id('plan_item').'/uncheck']],
 
+        // Beranda
+        'dashboard of the month the victim planned' => ['GET api/dashboard', fn ($c, $id) => ['GET', '/api/dashboard?month=2026-11']],
+
         // Template bulanan
         'list templates' => ['GET api/plan-templates', fn ($c, $id) => ['GET', '/api/plan-templates']],
         'add template with the victim’s category' => ['POST api/plan-templates', fn ($c, $id) => ['POST', '/api/plan-templates', $template($c, ['category_id' => $id('category')])]],
