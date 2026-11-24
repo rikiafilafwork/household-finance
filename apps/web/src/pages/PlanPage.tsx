@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, CopyPlus, Plus, Repeat } from 'lucide-react';
+import { CopyPlus, Plus, Repeat } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { ApiError } from '@/api/client';
 import { qk } from '@/api/keys';
@@ -11,6 +10,7 @@ import { useTimezone } from '@/auth/useAuth';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MoneyText } from '@/components/money/MoneyText';
 import { CheckForm } from '@/components/plan/CheckForm';
+import { MonthPicker, useMonthParam } from '@/components/plan/MonthPicker';
 import { PlanItemForm } from '@/components/plan/PlanItemForm';
 import { ChecklistRow, EnvelopeRow, UnplannedRow, type RowAction } from '@/components/plan/PlanRows';
 import { freeMoney, type FreeMoney } from '@/components/plan/planMeta';
@@ -28,8 +28,6 @@ type DialogState =
   | { mode: 'new'; preset: { type: PlanItemType; mode: PlanMode } }
   | { mode: 'edit' | 'check' | 'uncheck' | 'delete'; item: PlanItem }
   | null;
-
-const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 function SummaryCard({ label, children, footer, testId }: { label: string; children: ReactNode; footer?: ReactNode; testId: string }) {
   return (
@@ -114,11 +112,8 @@ function Section({ title, total, hint, children, onAdd, addLabel, columns }: {
  */
 export function PlanPage() {
   const timezone = useTimezone();
-  const [params, setParams] = useSearchParams();
   const current = monthIn(timezone);
-  const requested = params.get('month');
-  const month = requested && MONTH.test(requested) ? requested : current;
-  const setMonth = (m: string) => setParams(m === current ? {} : { month: m });
+  const [month, setMonth] = useMonthParam(current);
 
   const planQuery = useQuery({ queryKey: qk.plan(month), queryFn: () => planApi.get(month) });
   const { data: accounts = [], isSuccess: accountsLoaded } = useAccounts();
@@ -246,12 +241,7 @@ export function PlanPage() {
         )}
       />
 
-      <nav aria-label="Pilih bulan" className="mb-4 flex items-center gap-1">
-        <Button variant="ghost" size="icon" aria-label="Bulan sebelumnya" onClick={() => setMonth(shiftMonth(month, -1))}><ChevronLeft /></Button>
-        <h2 className="min-w-40 text-center text-base font-semibold" aria-live="polite">{formatMonth(month)}</h2>
-        <Button variant="ghost" size="icon" aria-label="Bulan berikutnya" onClick={() => setMonth(shiftMonth(month, 1))}><ChevronRight /></Button>
-        {month !== current && <Button variant="link" size="sm" onClick={() => setMonth(current)}>Bulan ini</Button>}
-      </nav>
+      <MonthPicker month={month} current={current} onChange={setMonth} />
 
       {planQuery.isPending && <Skeleton className="h-64" />}
       {planQuery.isError && <p className="rounded-lg border bg-background p-6 text-sm text-destructive">Rencana tidak bisa dimuat. Coba muat ulang halaman.</p>}

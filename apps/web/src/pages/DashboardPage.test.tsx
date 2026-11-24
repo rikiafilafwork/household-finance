@@ -1,41 +1,51 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Dashboard } from '@/api/dashboard';
 import { qk } from '@/api/keys';
-import type { PlanComparison, PlanItem } from '@/api/plan';
-import type { Account } from '@/api/types';
+import type { Account, Category } from '@/api/types';
 import { monthIn, shiftMonth, todayIn } from '@/lib/dates';
 
 const TZ = 'Asia/Jakarta';
 const MONTH = monthIn(TZ);
 const TODAY = todayIn(TZ);
-const YESTERDAY_DUE = TODAY.endsWith('-01') ? null : `${MONTH}-01`;
 
-const item = (id: number, name: string, extra: Partial<PlanItem>): PlanItem => ({
-  id, month: MONTH, type: 'expense', mode: 'checklist', name, category_id: 1, planned_amount: 100_000, account_id: 1, due_on: null,
-  template_id: null, source: 'manual', sort_order: 0, skipped_at: null, auto_posted_at: null, status: 'planned', transaction: null, actual: 0, percent: null, ...extra,
-});
-
-const plan: PlanComparison = {
+// Angka meniru fixture Architecture #11 (lihat PlanFixture::architecture()).
+const dashboard: Dashboard = {
   month: MONTH,
-  totals: {
-    income: { planned: 9_500_000, actual: 8_000_000, unplanned: 0, unpaid: 0, envelope_remaining: 1_500_000 },
-    expense: { planned: 5_100_000, actual: 4_075_000, unplanned: 180_000, unpaid: 500_000, envelope_remaining: 740_000 },
-    remaining_budget: 1_025_000,
-    still_to_spend: 1_240_000,
-  },
-  categories: [],
-  items: [
-    item(1, 'Gaji', { type: 'income', status: 'done', actual: 8_000_000 }),
-    item(2, 'Pulsa', { status: 'done', actual: 165_000 }),
-    item(3, 'Listrik', { planned_amount: 500_000, due_on: YESTERDAY_DUE }),
-    item(4, 'Asuransi', { status: 'skipped', skipped_at: '2026-11-01T00:00:00Z' }),
-    item(8, 'Internet', { planned_amount: 350_000, due_on: `${MONTH}-28` }),
-    item(5, 'Makan', { mode: 'envelope', planned_amount: 2_000_000, actual: 1_350_000, percent: 67, account_id: null }),
-    item(6, 'Transport', { mode: 'envelope', planned_amount: 600_000, actual: 510_000, percent: 85, account_id: null }),
-    item(7, 'Hiburan', { mode: 'envelope', planned_amount: 300_000, actual: 320_000, percent: 106, account_id: null }),
+  is_current_month: true,
+  balances: { bank: 5_000_000, ewallet: 250_000, cash: 150_000, total: 5_400_000 },
+  income: { planned: 9_500_000, actual: 8_000_000, unplanned: 0, unpaid: 0, envelope_remaining: 1_500_000 },
+  expense: { planned: 5_100_000, actual: 4_075_000, unplanned: 180_000, unpaid: 500_000, envelope_remaining: 740_000 },
+  remaining_budget: 1_025_000,
+  still_to_spend: 1_240_000,
+  free_money: 4_160_000,
+  categories: [
+    { id: 11, name: 'Makan', color: '#f97316', planned: 2_000_000, actual: 1_350_000 },
+    { id: 12, name: 'Transport', color: null, planned: 600_000, actual: 510_000 },
+    { id: 13, name: 'Hiburan', color: null, planned: 300_000, actual: 320_000 },
+    { id: 14, name: 'Belanja', color: null, planned: 0, actual: 180_000 },
+    { id: 15, name: 'Pendidikan', color: null, planned: 0, actual: 0 },
   ],
+  income_sources: [
+    { id: 1, name: 'Gaji', planned: 8_000_000, actual: 8_000_000, done: true, skipped: false },
+    { id: 9, name: 'Freelance', planned: 1_500_000, actual: 0, done: false, skipped: false },
+  ],
+  due_items: [
+    { id: 3, type: 'expense', name: 'Listrik', due_on: '2000-01-01', planned: 500_000, account_id: 2, overdue: true },
+    { id: 8, type: 'expense', name: 'Internet', due_on: TODAY, planned: 350_000, account_id: null, overdue: false },
+  ],
+  envelopes_warning: [
+    { id: 7, name: 'Hiburan', planned: 300_000, actual: 320_000, percent: 106 },
+    { id: 6, name: 'Transport', planned: 600_000, actual: 510_000, percent: 85 },
+  ],
+  trend: [5, 4, 3, 2, 1, 0].map((back) => ({ month: shiftMonth(MONTH, -back), income_actual: 9_000_000, expense_actual: 4_000_000 + back, expense_planned: 5_000_000 })),
+  recent: [
+    { id: 50, type: 'expense', account_id: 3, category_id: 11, amount: -45_000, occurred_on: TODAY, note: 'Nasi padang', plan_item_id: null },
+  ],
+  reconcile_ok: true,
 };
 
 const accounts: Account[] = [
@@ -44,114 +54,178 @@ const accounts: Account[] = [
   { id: 3, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 150_000, sort_order: 2, archived_at: null },
   { id: 4, name: 'Lama', type: 'bank', opening_balance: 0, balance: 999_000, sort_order: 3, archived_at: '2026-01-01T00:00:00Z' },
 ];
+const categories: Category[] = [{ id: 11, kind: 'expense', name: 'Makan', color: null, icon: null, archived_at: null }];
 
-const planApi = vi.hoisted(() => ({ get: vi.fn() }));
+const dashboardApi = vi.hoisted(() => ({ get: vi.fn() }));
+const planApi = vi.hoisted(() => ({ get: vi.fn(), check: vi.fn(), generate: vi.fn() }));
 const accountsApi = vi.hoisted(() => ({ list: vi.fn() }));
 const categoriesApi = vi.hoisted(() => ({ list: vi.fn() }));
-const transactionsApi = vi.hoisted(() => ({ list: vi.fn() }));
+vi.mock('@/api/dashboard', () => ({ dashboardApi }));
 vi.mock('@/api/plan', () => ({ planApi }));
 vi.mock('@/api/accounts', () => ({ accountsApi }));
 vi.mock('@/api/categories', () => ({ categoriesApi }));
-vi.mock('@/api/transactions', () => ({ transactionsApi }));
+vi.mock('@/api/notifications', () => ({ notificationsApi: { list: vi.fn() } }));
 
 const { DashboardPage } = await import('./DashboardPage');
 
-function renderPage() {
+function renderPage(path = '/') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   queryClient.setQueryData(qk.me, { id: 1, name: 'Riki', email: 'riki@example.com', timezone: TZ });
-  render(<QueryClientProvider client={queryClient}><MemoryRouter><DashboardPage /></MemoryRouter></QueryClientProvider>);
+  render(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={[path]}><DashboardPage /></MemoryRouter></QueryClientProvider>);
   return queryClient;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  planApi.get.mockResolvedValue(plan);
+  dashboardApi.get.mockResolvedValue(dashboard);
   accountsApi.list.mockResolvedValue(accounts);
-  categoriesApi.list.mockResolvedValue([]);
-  transactionsApi.list.mockResolvedValue({ data: [], meta: { next_cursor: null, prev_cursor: null, per_page: 8 } });
+  categoriesApi.list.mockResolvedValue(categories);
 });
 
-describe('DashboardPage — Beranda sederhana', () => {
-  it('totals active balances per account type, ignoring archived accounts', async () => {
+describe('DashboardPage — Beranda', () => {
+  it('loads the dashboard of the current month in one request, no separate plan request', async () => {
     renderPage();
-    const [total] = await screen.findAllByText('Rp5.400.000');
-    expect(total!.closest('[data-slot="card-header"]'))
-      .toHaveTextContent('Rekening Rp5.000.000 · E-wallet Rp250.000 · Tunai Rp150.000');
-    expect(screen.queryByText('Lama')).not.toBeInTheDocument();
+    await screen.findByTestId('kpi-balance');
+    expect(dashboardApi.get).toHaveBeenCalledExactlyOnceWith(MONTH);
+    expect(planApi.get).not.toHaveBeenCalled();
   });
 
-  it('shows the plan totals of the current month exactly as the plan API computed them', async () => {
+  it('shows the four KPI cards exactly as the server computed them', async () => {
     renderPage();
-    const card = await screen.findByTestId('dashboard-plan');
-
-    expect(planApi.get).toHaveBeenCalledWith(MONTH);
-    expect(await within(card).findByTestId('plan-income')).toHaveTextContent('Rp8.000.000dari Rp9.500.000');
-    expect(within(card).getByTestId('plan-expense')).toHaveTextContent('Rp4.075.000dari Rp5.100.000');
-    expect(within(card).getByTestId('plan-remaining')).toHaveTextContent('Rp1.025.000');
+    expect(await screen.findByTestId('kpi-balance')).toHaveTextContent('Total saldoRp5.400.000RekeningRp5.000.000E-walletRp250.000DompetRp150.000');
+    expect(screen.getByTestId('kpi-income')).toHaveTextContent('PemasukanRp8.000.000dari rencana Rp9.500.000');
+    expect(screen.getByTestId('kpi-expense')).toHaveTextContent('PengeluaranRp4.075.000dari rencana Rp5.100.000');
+    expect(screen.getByTestId('kpi-unplanned')).toHaveTextContent('di luar rencana Rp180.000');
+    expect(screen.getByTestId('kpi-remaining')).toHaveTextContent('Sisa anggaranRp1.025.000Rp500.000 belum dibayar');
+    expect(screen.getByTestId('kpi-free')).toHaveTextContent('Uang bebas Rp4.160.000');
+    // 8.000.000 / 9.500.000 = 84% (dibulatkan ke bawah)
+    expect(within(screen.getByTestId('kpi-income')).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '84');
   });
 
-  it('shows the remaining plan next to all account balances and the free money', async () => {
+  it('flags negative free money', async () => {
+    dashboardApi.get.mockResolvedValue({ ...dashboard, free_money: -240_000 });
     renderPage();
-    const block = await screen.findByTestId('plan-free');
-
-    expect(screen.getByTestId('plan-remaining')).toHaveTextContent('Sisa rencanaRp1.025.000');
-    // 5.000.000 + 250.000 + 150.000 (arsip tidak dihitung) − 1.240.000 dari server
-    expect(block).toHaveTextContent('Saldo semua akunRp5.400.000');
-    expect(block).toHaveTextContent('Uang bebasRp4.160.000');
-    expect(block).toHaveTextContent('masih akan keluar Rp1.240.000 (tagihan belum dibayar Rp500.000 + sisa amplop Rp740.000)');
-    expect(block).not.toHaveTextContent('tidak cukup');
+    expect(await screen.findByTestId('kpi-free')).toHaveTextContent('Uang bebas −Rp240.000 — saldo tidak cukup menutup rencana');
   });
 
-  it('warns in red when the balance cannot cover the rest of the plan', async () => {
-    accountsApi.list.mockResolvedValue([{ ...accounts[0]!, balance: 1_000_000 }]);
-    renderPage();
-    const block = await screen.findByTestId('plan-free');
-
-    expect(await within(block).findByText('−Rp240.000')).toHaveClass('text-destructive');
-    expect(block).toHaveTextContent('Saldo tidak cukup untuk menutup rencana bulan ini.');
+  it('hides free money for another month taken from the URL', async () => {
+    const prev = shiftMonth(MONTH, -1);
+    dashboardApi.get.mockResolvedValue({ ...dashboard, month: prev, is_current_month: false, free_money: null });
+    renderPage(`/?month=${prev}`);
+    await screen.findByTestId('kpi-remaining');
+    expect(dashboardApi.get).toHaveBeenCalledWith(prev);
+    expect(screen.queryByTestId('kpi-free')).not.toBeInTheDocument();
   });
 
-  it('shares the plan cache with the Rencana page (same query key)', async () => {
-    const queryClient = renderPage();
-    await screen.findByTestId('plan-income');
-    expect(queryClient.getQueryData(qk.plan(MONTH))).toBe(plan);
+  it('switches month through the picker and the URL', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByTestId('kpi-balance');
+    await user.click(screen.getByRole('button', { name: 'Bulan sebelumnya' }));
+    expect(dashboardApi.get).toHaveBeenLastCalledWith(shiftMonth(MONTH, -1));
+    expect(screen.getByRole('button', { name: 'Bulan ini' })).toBeInTheDocument();
   });
 
-  it('lists unchecked checklist items by due date, skipping done and skipped ones', async () => {
+  it('shows the reconcile banner only when balances do not match', async () => {
     renderPage();
-    const pending = await screen.findByTestId('plan-pending');
+    await screen.findByTestId('kpi-balance');
+    expect(screen.queryByTestId('reconcile-banner')).not.toBeInTheDocument();
+  });
 
-    expect(pending).toHaveTextContent('Belum dicentang (2)');
-    const text = pending.textContent ?? '';
-    expect(text).not.toContain('Pulsa');
-    expect(text).not.toContain('Asuransi');
-    expect(text).not.toContain('Gaji');
-    if (YESTERDAY_DUE) {
-      expect(text.indexOf('Listrik')).toBeLessThan(text.indexOf('Internet'));
-      expect(within(pending).getByText(/^lewat/)).toHaveClass('text-destructive');
-    }
+  it('warns when reconcile finds a mismatch', async () => {
+    dashboardApi.get.mockResolvedValue({ ...dashboard, reconcile_ok: false });
+    renderPage();
+    expect(await screen.findByTestId('reconcile-banner')).toHaveTextContent('accounts:reconcile --fix');
+  });
+
+  it('charts planned vs actual per category, biggest first, colored by percent, skipping empty rows', async () => {
+    renderPage();
+    const panel = await screen.findByTestId('panel-categories');
+    const rows = within(panel).getAllByRole('listitem');
+    expect(rows.map((r) => r.dataset.testid)).toEqual(['category-11', 'category-12', 'category-13', 'category-14']);
+    expect(rows[0]).toHaveAttribute('data-tone', 'normal'); // 67%
+    expect(rows[1]).toHaveAttribute('data-tone', 'warning'); // 85%
+    expect(rows[2]).toHaveAttribute('data-tone', 'over'); // 106%
+    expect(rows[3]).toHaveAttribute('data-tone', 'over'); // tanpa rencana
+    expect(rows[0]).toHaveTextContent('MakanRp1.350.000 / Rp2.000.000');
+  });
+
+  it('lists income sources with their status and the 6-month trend', async () => {
+    renderPage();
+    expect(await screen.findByTestId('income-1')).toHaveTextContent('Gaji DiterimaRp8.000.000 / Rp8.000.000');
+    expect(screen.getByTestId('income-9')).toHaveTextContent('Freelance BelumRp0 / Rp1.500.000');
+
+    const rows = within(screen.getByTestId('trend-table')).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(6);
+    expect(rows[5]).toHaveTextContent(`${MONTH}Rp9.000.000Rp4.000.000Rp5.000.000`);
+  });
+
+  it('lists items due soon or overdue and checks one quickly with the plan defaults', async () => {
+    const user = userEvent.setup();
+    planApi.check.mockResolvedValue({ item: {}, transaction: {} });
+    renderPage();
+
+    expect(await screen.findByTestId('due-3')).toHaveTextContent('ListrikTerlambat · 1 Jan');
+    expect(screen.getByTestId('due-8')).toHaveTextContent('InternetHari ini');
+    expect(screen.getByTestId('panel-due')).toHaveTextContent('Perlu dicentang (2)');
+
+    await user.click(screen.getByRole('button', { name: 'Centang Listrik' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByLabelText('Dari akun')).toHaveValue('2');
+    await user.click(within(dialog).getByRole('button', { name: 'Centang & catat' }));
+
+    expect(planApi.check).toHaveBeenCalledWith(3, expect.objectContaining({ amount: 500_000, account_id: 2, occurred_on: TODAY, note: 'Listrik' }));
+    // Setelah centang, dashboard dimuat ulang (invalidateMoney → qk.dashboard).
+    await vi.waitFor(() => expect(dashboardApi.get).toHaveBeenCalledTimes(2));
   });
 
   it('flags envelopes from 80%, most used first', async () => {
     renderPage();
-    const hot = await screen.findByTestId('plan-envelopes');
-
-    expect(hot).toHaveTextContent('Hiburan106%');
-    expect(hot).toHaveTextContent('Transport85%');
-    expect(hot).not.toHaveTextContent('Makan');
-    expect((hot.textContent ?? '').indexOf('Hiburan')).toBeLessThan((hot.textContent ?? '').indexOf('Transport'));
+    const list = await screen.findByTestId('envelopes-warning');
+    const text = list.textContent ?? '';
+    expect(text).toContain('Hiburan106%');
+    expect(text).toContain('lebih Rp20.000');
+    expect(text).toContain('Transport85%');
+    expect(text.indexOf('Hiburan')).toBeLessThan(text.indexOf('Transport'));
   });
 
-  it('invites to create a plan when the month is empty', async () => {
-    planApi.get.mockResolvedValue({ ...plan, items: [] });
+  it('shows active account balances and the recent transactions', async () => {
     renderPage();
-    expect(await screen.findByText(/Belum ada rencana bulan ini/)).toBeInTheDocument();
-    expect(screen.queryByTestId('plan-income')).not.toBeInTheDocument();
+    const accountsPanel = await screen.findByTestId('panel-accounts');
+    expect(await within(accountsPanel).findByText('BCA')).toBeInTheDocument();
+    expect(within(accountsPanel).queryByText('Lama')).not.toBeInTheDocument();
+
+    const recent = screen.getByTestId('recent');
+    expect(await within(recent).findByText('Makan')).toBeInTheDocument();
+    expect(recent).toHaveTextContent('Dompet · Nasi padang');
+    expect(recent).toHaveTextContent('−Rp45.000');
   });
 
-  it('does not load another month', async () => {
+  it('offers to generate from templates when the month has no plan, without crashing', async () => {
+    const user = userEvent.setup();
+    const empty: Dashboard = {
+      ...dashboard,
+      income: { planned: 0, actual: 0, unplanned: 0, unpaid: 0, envelope_remaining: 0 },
+      expense: { planned: 0, actual: 0, unplanned: 0, unpaid: 0, envelope_remaining: 0 },
+      remaining_budget: 0, still_to_spend: 0, free_money: 5_400_000,
+      categories: [], income_sources: [], due_items: [], envelopes_warning: [],
+      trend: dashboard.trend.map((t) => ({ ...t, income_actual: 0, expense_actual: 0, expense_planned: 0 })),
+      recent: [],
+    };
+    dashboardApi.get.mockResolvedValue(empty);
+    planApi.generate.mockResolvedValue({ created: 4 });
     renderPage();
-    await screen.findByTestId('plan-income');
-    expect(planApi.get).not.toHaveBeenCalledWith(shiftMonth(MONTH, -1));
+
+    const banner = await screen.findByTestId('empty-plan');
+    expect(screen.getByText('Belum ada rencana atau pengeluaran berkategori bulan ini.')).toBeInTheDocument();
+    expect(screen.getByText('Tidak ada tagihan jatuh tempo dalam 7 hari.')).toBeInTheDocument();
+    await user.click(within(banner).getByRole('button', { name: 'Buat dari template' }));
+    expect(planApi.generate).toHaveBeenCalledWith(MONTH);
+  });
+
+  it('does not show the empty-plan banner when the month has a plan', async () => {
+    renderPage();
+    await screen.findByTestId('kpi-balance');
+    expect(screen.queryByTestId('empty-plan')).not.toBeInTheDocument();
   });
 });
