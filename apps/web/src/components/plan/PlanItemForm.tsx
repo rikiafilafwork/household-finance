@@ -30,7 +30,7 @@ const MODES: { value: PlanMode; label: string; hint: string }[] = [
   { value: 'envelope', label: 'Amplop', hint: 'Batas pengeluaran sebulan; terisi otomatis dari transaksi kategorinya.' },
 ];
 
-function Segmented<T extends string>({ value, options, onChange, disabled, label }: {
+export function Segmented<T extends string>({ value, options, onChange, disabled, label }: {
   value: T;
   options: { value: T; label: string }[];
   onChange: (v: T) => void;

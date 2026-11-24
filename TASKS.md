@@ -101,15 +101,15 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #148 Sisa anggaran: sisa rencana + saldo semua akun + uang bebas `api` `web`
 - [x] #149 Rencana: tombol + Catat di baris amplop `web`
 
-## Minggu 5 — Template Bulanan + Dashboard (3/10)
+## Minggu 5 — Template Bulanan + Dashboard (5/10)
 
 > **Done kalau:** di awal bulan plan terisi sendiri dari template, dan Beranda menampilkan angka rencana vs aktual yang sama persis dengan halaman Rencana.
 
 - [x] #43 Template bulanan: migration + CRUD API `api`
 - [x] #44 `MonthlyDueDate` murni + unit test `api` `test`
 - [x] #45 Command `plan:generate {--month=}` idempoten + tombol "Buat dari template" `api`
-- [ ] #46 Command `plan:auto-post` harian (memakai `CheckPlanItem`) `api`
-- [ ] #47 Test template: idempotensi, tanggal akhir bulan, yearly, auto-post `test`
+- [x] #46 Command `plan:auto-post` harian (memakai `CheckPlanItem`) `api`
+- [x] #47 Test template: idempotensi, tanggal akhir bulan, yearly, auto-post `test`
 - [ ] #48 Web: halaman template bulanan (Pengaturan) `web`
 - [ ] #49 Dogfooding: template asli (gaji, cicilan, internet, listrik) `dogfooding`
 - [ ] #131 `DashboardQuery` + `GET /api/dashboard?month=` `api`
