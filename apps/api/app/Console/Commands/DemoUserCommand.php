@@ -32,18 +32,31 @@ use Illuminate\Support\Str;
 /**
  * Akun demo untuk mencoba aplikasi (mis. lewat tunnel): 4 akun, template bulanan, rencana 6 bulan
  * terakhir dengan centang, transaksi harian, transfer. Semua lewat Actions asli → saldo konsisten
- * (reconcile 0). Password acak ditulis ke storage/app/private (di-gitignore), tidak dicetak.
- * Data deterministik (seed tetap) supaya mudah dibandingkan antar-reset. Ditolak di production.
+ * (reconcile 0). Password acak ditulis ke storage/app/private/credentials/{email}.txt (di-gitignore),
+ * tidak dicetak. Data deterministik (seed tetap) supaya mudah dibandingkan antar-reset.
+ * `--empty`: hanya kategori bawaan (seperti user baru daftar). `--easy-password`: 3 kata + 2 angka,
+ * mudah diketik di HP. Ditolak di production.
  */
 class DemoUserCommand extends Command
 {
-    public const CREDENTIALS_FILE = 'demo-credentials.txt';
+    /** Kata untuk password mudah: huruf kecil, mudah dieja, tanpa huruf mirip (l/1, o/0) yang membingungkan. */
+    private const WORDS = [
+        'apel', 'bambu', 'cabai', 'daun', 'elang', 'gajah', 'hujan', 'ikan', 'jeruk', 'kapas', 'kelapa', 'kopi',
+        'kuda', 'langit', 'madu', 'mangga', 'melati', 'merah', 'nanas', 'padi', 'pasir', 'pelangi', 'pisang', 'rusa',
+        'sapi', 'sawah', 'semut', 'senja', 'sungai', 'tebu', 'teh', 'terang', 'udang', 'ubi', 'wangi', 'zebra',
+        'bintang', 'bulan', 'mentari', 'gunung', 'pantai', 'karang', 'perahu', 'jagung', 'kacang', 'nangka', 'durian', 'salak',
+        'rambutan', 'kenari', 'merpati', 'kancil', 'harimau', 'badak', 'penyu', 'kunang', 'cemara', 'beringin', 'anggrek', 'mawar',
+        'kemuning', 'cendana', 'jati', 'pinus',
+    ];
 
-    protected $description = 'Buat (ulang) user demo berisi data contoh 6 bulan; password acak ke storage/app/private';
+    protected $description = 'Buat (ulang) user demo (data contoh 6 bulan atau --empty); kredensial ke storage/app/private/credentials';
 
     protected $signature = 'demo:user
         {--email=demo@example.test : Email user demo}
-        {--fresh : Hapus user demo yang sudah ada lalu buat ulang}';
+        {--name=Demo : Nama tampilan}
+        {--fresh : Hapus user yang sudah ada lalu buat ulang}
+        {--empty : Tanpa data contoh, hanya kategori bawaan}
+        {--easy-password : Password 3 kata + 2 angka (mudah diketik)}';
 
     private User $user;
 
@@ -72,10 +85,41 @@ class DemoUserCommand extends Command
             $this->deleteUser($existing);
         }
 
-        mt_srand(2026);
-        $password = Str::password(24, symbols: false);
-        $this->user = User::create(['name' => 'Demo', 'email' => $email, 'password' => $password, 'timezone' => 'Asia/Jakarta']);
+        $password = $this->option('easy-password') ? self::easyPassword() : Str::password(24, symbols: false);
+        $this->user = User::create(['name' => (string) $this->option('name'), 'email' => $email, 'password' => $password, 'timezone' => 'Asia/Jakarta']);
         DefaultCategories::seedFor($this->user);
+
+        if (! $this->option('empty')) {
+            $this->seedSampleData();
+        }
+
+        $file = self::credentialsFile($email);
+        Storage::disk('local')->put($file, "email: {$email}\npassword: {$password}\n");
+        $this->info("User {$email} siap".($this->option('empty') ? ' (kosong, hanya kategori bawaan).' : ' dengan data contoh.'));
+        $this->line('Kredensial: '.Storage::disk('local')->path($file));
+
+        return self::SUCCESS;
+    }
+
+    public static function credentialsFile(string $email): string
+    {
+        return 'credentials/'.mb_strtolower(trim($email)).'.txt';
+    }
+
+    /** CSPRNG (random_int), BUKAN mt_rand: mt_rand di-seed tetap untuk data contoh. */
+    private static function easyPassword(): string
+    {
+        $words = [];
+        for ($i = 0; $i < 3; $i++) {
+            $words[] = self::WORDS[random_int(0, count(self::WORDS) - 1)];
+        }
+
+        return implode('-', $words).'-'.random_int(10, 99);
+    }
+
+    private function seedSampleData(): void
+    {
+        mt_srand(2026);
         $this->cat = Category::ownedBy($this->user)->get()
             ->mapWithKeys(fn (Category $c) => ["{$c->kind->value}:{$c->name}" => (int) $c->getKey()])->all();
 
@@ -85,12 +129,6 @@ class DemoUserCommand extends Command
         foreach ([5, 4, 3, 2, 1, 0] as $back) {
             $this->seedMonth(PlanMonth::parse($today->subMonthsNoOverflow($back)->format('Y-m')), $today);
         }
-
-        Storage::disk('local')->put(self::CREDENTIALS_FILE, "email: {$email}\npassword: {$password}\n");
-        $this->info("User demo {$email} siap.");
-        $this->line('Kredensial: '.Storage::disk('local')->path(self::CREDENTIALS_FILE));
-
-        return self::SUCCESS;
     }
 
     private function deleteUser(User $user): void
