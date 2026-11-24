@@ -3,6 +3,7 @@
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\PlanItem;
+use App\Models\PlanTemplate;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
@@ -63,6 +64,10 @@ final class IsolationContext
 
     public int $myPlanItemId;
 
+    public PlanTemplate $victimTemplate;
+
+    public int $myTemplateId;
+
     public Account $myAccount;
 
     public Account $myAccount2;
@@ -105,6 +110,10 @@ final class IsolationContext
         PlanItem::factory()->forUser($this->victim)->forMonth('2026-10')
             ->create(['name' => 'Cicilan Rahasia', 'category_id' => $this->victimCategory->id]);
 
+        $this->victimTemplate = PlanTemplate::factory()->forUser($this->victim)->create([
+            'name' => 'Template Rahasia', 'category_id' => $this->victimCategory->id, 'account_id' => $this->victimAccount->id, 'auto_post' => true,
+        ]);
+
         $this->attacker = User::factory()->create(['name' => 'Penyerang']);
         $this->myAccount = Account::factory()->forUser($this->attacker)->opening(500_000)->create(['name' => 'Akun Saya']);
         $this->myAccount2 = Account::factory()->forUser($this->attacker)->opening(0)->create(['name' => 'Akun Saya 2']);
@@ -115,6 +124,8 @@ final class IsolationContext
         ])->assertCreated()->json('data.id');
         $this->myPlanItemId = PlanItem::factory()->forUser($this->attacker)->forMonth('2026-11')
             ->create(['name' => 'Item Saya', 'category_id' => $this->myCategory->id])->id;
+        $this->myTemplateId = PlanTemplate::factory()->forUser($this->attacker)
+            ->create(['name' => 'Template Saya', 'category_id' => $this->myCategory->id])->id;
     }
 
     /**
@@ -134,6 +145,7 @@ final class IsolationContext
             'transactions' => $rows('transactions'),
             'notifications' => $rows('notifications', 'notifiable_id'),
             'plan_items' => $rows('plan_items'),
+            'plan_templates' => $rows('plan_templates'),
         ];
     }
 
@@ -144,7 +156,7 @@ final class IsolationContext
      */
     public function leakMarkers(): array
     {
-        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', $this->victimTransferGroup, $this->victimNotification->id];
+        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', 'Template Rahasia', $this->victimTransferGroup, $this->victimNotification->id];
     }
 }
 
@@ -171,6 +183,10 @@ function isolationCases(): array
     ], $overrides);
     $planItem = fn (IsolationContext $c, array $overrides = []) => array_merge([
         'type' => 'expense', 'mode' => 'checklist', 'name' => 'Item baru', 'category_id' => $c->myCategory->id, 'planned_amount' => 10_000,
+    ], $overrides);
+    $template = fn (IsolationContext $c, array $overrides = []) => array_merge([
+        'type' => 'expense', 'mode' => 'checklist', 'name' => 'Template baru', 'category_id' => $c->myCategory->id,
+        'planned_amount' => 10_000, 'day_of_month' => 5, 'account_id' => $c->myAccount->id,
     ], $overrides);
     $transfer = fn (IsolationContext $c, array $overrides = []) => array_merge([
         'from_account_id' => $c->myAccount->id, 'to_account_id' => $c->myAccount2->id, 'amount' => 1_000,
@@ -238,6 +254,16 @@ function isolationCases(): array
         'check own item into the victim’s account' => ['POST api/plan-items/{planItem}/check', fn ($c, $id) => ['POST', '/api/plan-items/'.$c->myPlanItemId.'/check', ['client_id' => (string) Str::uuid(), 'account_id' => $id('account')]]],
         'check own item replaying the victim’s client_id' => ['POST api/plan-items/{planItem}/check', fn ($c, $id) => ['POST', '/api/plan-items/'.$c->myPlanItemId.'/check', ['client_id' => $id('client_id'), 'account_id' => $c->myAccount->id]]],
         'uncheck the victim’s plan item' => ['POST api/plan-items/{planItem}/uncheck', fn ($c, $id) => ['POST', '/api/plan-items/'.$id('plan_item').'/uncheck']],
+
+        // Template bulanan
+        'list templates' => ['GET api/plan-templates', fn ($c, $id) => ['GET', '/api/plan-templates']],
+        'add template with the victim’s category' => ['POST api/plan-templates', fn ($c, $id) => ['POST', '/api/plan-templates', $template($c, ['category_id' => $id('category')])]],
+        'add auto-post template paying from the victim’s account' => ['POST api/plan-templates', fn ($c, $id) => ['POST', '/api/plan-templates', $template($c, ['account_id' => $id('account'), 'auto_post' => true])]],
+        'show template' => ['GET api/plan-templates/{planTemplate}', fn ($c, $id) => ['GET', '/api/plan-templates/'.$id('plan_template')]],
+        'update template' => ['PUT api/plan-templates/{planTemplate}', fn ($c, $id) => ['PATCH', '/api/plan-templates/'.$id('plan_template'), ['planned_amount' => 1]]],
+        'deactivate template' => ['PUT api/plan-templates/{planTemplate}', fn ($c, $id) => ['PATCH', '/api/plan-templates/'.$id('plan_template'), ['is_active' => false]]],
+        'point own template at the victim’s account' => ['PUT api/plan-templates/{planTemplate}', fn ($c, $id) => ['PATCH', '/api/plan-templates/'.$c->myTemplateId, ['account_id' => $id('account')]]],
+        'delete template' => ['DELETE api/plan-templates/{planTemplate}', fn ($c, $id) => ['DELETE', '/api/plan-templates/'.$id('plan_template')]],
     ];
 
     return array_map(fn (array $case) => new IsolationCase($case[0], $case[1]), $cases);
@@ -258,6 +284,7 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'client_id' => $c->victimClientId,
         'notification' => $c->victimNotification->id,
         'plan_item' => $c->victimPlanItem->id,
+        'plan_template' => $c->victimTemplate->id,
         'own_transaction' => $ownTransaction,
     ];
     $missing = [
@@ -268,6 +295,7 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'client_id' => (string) Str::uuid(),
         'notification' => (string) Str::uuid(),
         'plan_item' => 999_999_999,
+        'plan_template' => 999_999_999,
         'own_transaction' => $ownTransaction,
     ];
     $ids = $mode === 'foreign' ? $foreign : $missing;
@@ -329,4 +357,7 @@ it('really exercises the victim’s data (sanity check of the fixture)', functio
     actingAs($c->victim)->getJson('/api/notifications')->assertJsonCount(1, 'data');
     actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.items.0.name', 'Cicilan Rahasia');
     actingAs($c->victim)->getJson('/api/plan-items/'.$c->victimPlanItem->id)->assertOk();
+    actingAs($c->victim)->getJson('/api/plan-templates/'.$c->victimTemplate->id)->assertOk()->assertJsonPath('data.name', 'Template Rahasia');
+    // Payload template penyerang sah untuk dirinya sendiri (kasus "missing" tidak gagal karena bentuk data).
+    actingAs($c->attacker)->getJson('/api/plan-templates')->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Template Saya');
 });
