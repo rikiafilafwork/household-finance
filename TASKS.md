@@ -82,7 +82,7 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #129 Test plan: centang/batal paralel, amplop tidak dobel, di luar rencana `test`
 - [x] #130 Properti: reconcile 0 setelah rangkaian centang/batal/hapus acak `test`
 
-## Minggu 4 — Web Inti + Dogfooding (10/12)
+## Minggu 4 — Web Inti + Dogfooding (12/14)
 
 > **Done kalau:** kamu mencatat plan dan transaksi asli selama seminggu lewat web, dan reconcile harian tetap 0.
 
@@ -98,12 +98,14 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #40 Beranda sederhana + lonceng notifikasi in-app `web`
 - [ ] #41 Deploy minimal + backup MySQL harian `infra`
 - [ ] #42 Mulai dogfooding + `docs/dogfooding-log.md` `docs` `dogfooding`
+- [x] #148 Sisa anggaran: sisa rencana + saldo semua akun + uang bebas `api` `web`
+- [x] #149 Rencana: tombol + Catat di baris amplop `web`
 
-## Minggu 5 — Template Bulanan + Dashboard (0/10)
+## Minggu 5 — Template Bulanan + Dashboard (1/10)
 
 > **Done kalau:** di awal bulan plan terisi sendiri dari template, dan Beranda menampilkan angka rencana vs aktual yang sama persis dengan halaman Rencana.
 
-- [ ] #43 Template bulanan: migration + CRUD API `api`
+- [x] #43 Template bulanan: migration + CRUD API `api`
 - [ ] #44 `MonthlyDueDate` murni + unit test `api` `test`
 - [ ] #45 Command `plan:generate {--month=}` idempoten + tombol "Buat dari template" `api`
 - [ ] #46 Command `plan:auto-post` harian (memakai `CheckPlanItem`) `api`
