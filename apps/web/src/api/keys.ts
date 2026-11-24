@@ -12,6 +12,7 @@ export const qk = {
   notifications: ['notifications'] as const,
   plan: (month?: string) => (month ? ['plan', month] : ['plan']) as readonly unknown[],
   dashboard: ['dashboard'] as const,
+  templates: ['plan-templates'] as const,
 };
 
 /**

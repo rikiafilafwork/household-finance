@@ -7,12 +7,12 @@ import { queryClient } from '@/lib/query-client';
 import { withNext } from '@/lib/redirect';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
-import { ComingSoon } from '@/pages/ComingSoon';
 import { AccountsPage } from '@/pages/AccountsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { PlanPage } from '@/pages/PlanPage';
 import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { ProfilePage } from '@/pages/settings/ProfilePage';
+import { TemplatesPage } from '@/pages/settings/TemplatesPage';
 import { SettingsLayout } from '@/pages/settings/SettingsLayout';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 
@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
             element: <SettingsLayout />,
             children: [
               { path: '/settings/categories', element: <CategoriesPage /> },
-              { path: '/settings/templates', element: <ComingSoon title="Template bulanan" issue={48} bare /> },
+              { path: '/settings/templates', element: <TemplatesPage /> },
               { path: '/settings/profile', element: <ProfilePage /> },
             ],
           },
