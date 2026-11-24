@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, CopyPlus, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CopyPlus, Plus, Repeat } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
@@ -167,6 +167,15 @@ export function PlanPage() {
     }
   };
 
+  const generate = async () => {
+    try {
+      const { created } = await m.generate.mutateAsync(month);
+      toast.success(created > 0 ? `${created} item dibuat dari template.` : 'Semua template sudah ada di bulan ini.');
+    } catch {
+      // Pesan galat sudah ditampilkan klien API (toast global).
+    }
+  };
+
   const addFor = (type: PlanItemType, mode: PlanMode) => () => setDialog({ mode: 'new', preset: { type, mode } });
 
   let title = '';
@@ -230,6 +239,7 @@ export function PlanPage() {
         title="Rencana"
         actions={(
           <>
+            <Button variant="outline" onClick={generate} disabled={m.generate.isPending}><Repeat /> Buat dari template</Button>
             <Button variant="outline" onClick={copyFromPrevious} disabled={m.copyFromPrevious.isPending}><CopyPlus /> Salin dari bulan lalu</Button>
             <Button onClick={addFor('expense', 'checklist')}><Plus /> Tambah item</Button>
           </>
@@ -254,7 +264,8 @@ export function PlanPage() {
           {items.length === 0 && (
             <div className="mb-6 rounded-lg border border-dashed bg-background p-8 text-center">
               <p className="text-sm font-medium">Belum ada rencana untuk {formatMonth(month)}.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Salin dari bulan lalu, atau mulai dengan gaji, tagihan, dan amplop belanja harian.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Buat dari template, salin dari bulan lalu, atau mulai dengan gaji, tagihan, dan amplop belanja harian.</p>
+              <Button className="mt-4" onClick={generate} disabled={m.generate.isPending}><Repeat /> Buat dari template</Button>
             </div>
           )}
 

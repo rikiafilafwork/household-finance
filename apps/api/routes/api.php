@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('plan/{month}', [PlanController::class, 'index'])->where('month', PlanMonth::ROUTE_PATTERN);
     Route::post('plan/{month}/items', [PlanController::class, 'store'])->where('month', PlanMonth::ROUTE_PATTERN);
     Route::post('plan/{month}/copy-from-previous', [PlanController::class, 'copyFromPrevious'])->where('month', PlanMonth::ROUTE_PATTERN);
+    Route::post('plan/{month}/generate', [PlanController::class, 'generate'])->where('month', PlanMonth::ROUTE_PATTERN);
     Route::get('plan-items/{planItem}', [PlanController::class, 'show']);
     Route::patch('plan-items/{planItem}', [PlanController::class, 'update']);
     Route::delete('plan-items/{planItem}', [PlanController::class, 'destroy']);

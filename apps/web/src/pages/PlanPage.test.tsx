@@ -51,7 +51,7 @@ const categories: Category[] = [
 ];
 
 const planApi = vi.hoisted(() => ({
-  get: vi.fn(), createItem: vi.fn(), copyFromPrevious: vi.fn(), updateItem: vi.fn(), removeItem: vi.fn(),
+  get: vi.fn(), createItem: vi.fn(), copyFromPrevious: vi.fn(), generate: vi.fn(), updateItem: vi.fn(), removeItem: vi.fn(),
   skip: vi.fn(), unskip: vi.fn(), check: vi.fn(), uncheck: vi.fn(),
 }));
 const accountsApi = vi.hoisted(() => ({ list: vi.fn() }));
@@ -225,6 +225,29 @@ describe('PlanPage — bulan & item', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Salin dari bulan lalu/ }));
     expect(planApi.copyFromPrevious).toHaveBeenCalledWith(shiftMonth(MONTH, -1));
+  });
+
+  it('fills the shown month from templates and reloads the plan', async () => {
+    planApi.generate.mockResolvedValue({ created: 5 });
+    renderPage();
+    await screen.findByText('Pulsa');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Buat dari template' }));
+
+    expect(planApi.generate).toHaveBeenCalledWith(MONTH);
+    await waitFor(() => expect(planApi.get).toHaveBeenCalledTimes(2));
+  });
+
+  it('offers "Buat dari template" in the empty state of a month without a plan', async () => {
+    planApi.get.mockResolvedValue({ ...plan, items: [] });
+    planApi.generate.mockResolvedValue({ created: 0 });
+    renderPage();
+
+    expect(await screen.findByText(/Belum ada rencana untuk/)).toBeInTheDocument();
+    const buttons = screen.getAllByRole('button', { name: 'Buat dari template' });
+    expect(buttons).toHaveLength(2); // header + empty state
+    await userEvent.click(buttons[1]!);
+    expect(planApi.generate).toHaveBeenCalledWith(MONTH);
   });
 
   it('adds an envelope from the Amplop section without due date or account', async () => {

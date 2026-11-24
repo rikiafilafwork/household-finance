@@ -244,6 +244,8 @@ function isolationCases(): array
         'add plan item with the victim’s category' => ['POST api/plan/{month}/items', fn ($c, $id) => ['POST', '/api/plan/2026-11/items', $planItem($c, ['category_id' => $id('category')])]],
         'add plan item with the victim’s default account' => ['POST api/plan/{month}/items', fn ($c, $id) => ['POST', '/api/plan/2026-11/items', $planItem($c, ['account_id' => $id('account')])]],
         'copy from the month the victim planned' => ['POST api/plan/{month}/copy-from-previous', fn ($c, $id) => ['POST', '/api/plan/2026-11/copy-from-previous']],
+        // Korban punya template aktif (Template Rahasia); penyerang hanya boleh mendapat item dari template miliknya.
+        'generate the month from templates' => ['POST api/plan/{month}/generate', fn ($c, $id) => ['POST', '/api/plan/2026-12/generate']],
         'show plan item' => ['GET api/plan-items/{planItem}', fn ($c, $id) => ['GET', '/api/plan-items/'.$id('plan_item')]],
         'update plan item' => ['PATCH api/plan-items/{planItem}', fn ($c, $id) => ['PATCH', '/api/plan-items/'.$id('plan_item'), ['planned_amount' => 1]]],
         'point own plan item at the victim’s category' => ['PATCH api/plan-items/{planItem}', fn ($c, $id) => ['PATCH', '/api/plan-items/'.$c->myPlanItemId, ['category_id' => $id('category')]]],

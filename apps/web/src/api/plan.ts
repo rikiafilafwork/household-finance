@@ -71,6 +71,8 @@ export const planApi = {
   get: (month: string) => unwrap(api.get<{ data: PlanComparison }>(`/plan/${month}`)),
   createItem: (month: string, body: PlanItemBody) => unwrap(api.post<{ data: PlanItem }>(`/plan/${month}/items`, body)),
   copyFromPrevious: (month: string) => unwrap(api.post<{ data: { created: number } }>(`/plan/${month}/copy-from-previous`)),
+  /** "Buat dari template": idempoten, item yang sudah ada dilewati. */
+  generate: (month: string) => unwrap(api.post<{ data: { created: number } }>(`/plan/${month}/generate`)),
   updateItem: (id: Id, body: Partial<PlanItemBody>) => unwrap(api.patch<{ data: PlanItem }>(`/plan-items/${id}`, body)),
   removeItem: (id: Id) => api.delete(`/plan-items/${id}`),
   skip: (id: Id) => unwrap(api.post<{ data: PlanItem }>(`/plan-items/${id}/skip`)),

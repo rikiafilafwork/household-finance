@@ -4,6 +4,7 @@ use App\Models\Account;
 use App\Models\BudgetAlert;
 use App\Models\Category;
 use App\Models\PlanItem;
+use App\Models\PlanTemplate;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
@@ -253,4 +254,24 @@ it('inserts each threshold once when 8 envelope checks race on an already-exceed
     expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
         ->and(BudgetAlert::where('plan_item_id', $envelope->id)->orderBy('threshold')->pluck('threshold')->all())->toBe([80, 100])
         ->and(DatabaseNotification::where('notifiable_id', $owner->id)->count())->toBe(1);
+});
+
+it('creates each template item once when plan:generate runs 8 times at the same moment', function () {
+    $owner = User::factory()->create();
+    $bills = Category::factory()->forUser($owner)->create(['name' => 'Tagihan']);
+    $food = Category::factory()->forUser($owner)->create(['name' => 'Makan']);
+    foreach (['Listrik' => 20, 'Internet' => 10, 'Cicilan' => 31] as $name => $day) {
+        PlanTemplate::factory()->forUser($owner)->create(['name' => $name, 'category_id' => $bills->id, 'day_of_month' => $day]);
+    }
+    PlanTemplate::factory()->forUser($owner)->envelope()->create(['name' => 'Makan', 'category_id' => $food->id]);
+
+    $results = runConcurrently(array_fill(0, 8, [
+        'op' => 'generate', 'user_id' => $owner->id, 'month' => '2026-12', 'amount' => 0, 'client_id' => '',
+    ]));
+
+    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
+        ->and(array_sum(array_map('intval', array_column($results, 'id'))))->toBe(4)   // total dibuat di semua proses
+        ->and(array_filter(array_column($results, 'created')))->toHaveCount(1)          // satu proses membuat semuanya
+        ->and(PlanItem::ownedBy($owner)->forMonth('2026-12-01')->count())->toBe(4)
+        ->and(PlanItem::ownedBy($owner)->forMonth('2026-12-01')->where('name', 'Cicilan')->value('due_on')?->toDateString())->toBe('2026-12-31');
 });
