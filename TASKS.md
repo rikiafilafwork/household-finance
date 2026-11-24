@@ -101,7 +101,7 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #148 Sisa anggaran: sisa rencana + saldo semua akun + uang bebas `api` `web`
 - [x] #149 Rencana: tombol + Catat di baris amplop `web`
 
-## Minggu 5 — Template Bulanan + Dashboard (7/10)
+## Minggu 5 — Template Bulanan + Dashboard (9/10)
 
 > **Done kalau:** di awal bulan plan terisi sendiri dari template, dan Beranda menampilkan angka rencana vs aktual yang sama persis dengan halaman Rencana.
 
@@ -113,8 +113,8 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #48 Web: halaman template bulanan (Pengaturan) `web`
 - [ ] #49 Dogfooding: template asli (gaji, cicilan, internet, listrik) `dogfooding`
 - [x] #131 `DashboardQuery` + `GET /api/dashboard?month=` `api`
-- [ ] #132 Web: Beranda lengkap (KPI, chart, perlu dicentang, amplop) `web`
-- [ ] #133 Test dashboard: fixture manual + sama dengan Rencana `test`
+- [x] #132 Web: Beranda lengkap (KPI, chart, perlu dicentang, amplop) `web`
+- [x] #133 Test dashboard: fixture manual + sama dengan Rencana `test`
 
 ## Minggu 6 — Import CSV Mutasi Rekening (0/8)
 
