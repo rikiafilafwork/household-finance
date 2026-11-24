@@ -3,9 +3,12 @@
 use App\Actions\Accounts\ReconcileAccounts;
 use App\Console\Commands\DemoUserCommand;
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\PlanItem;
+use App\Models\PlanTemplate;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\DefaultCategories;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
 
@@ -28,7 +31,7 @@ it('creates a demo user with consistent balances and a password only in the cred
         ->and(Account::ownedBy($user)->where('balance', '<', 0)->exists())->toBeFalse()
         ->and(app(ReconcileAccounts::class)->mismatches($user->getKey()))->toBeEmpty();
 
-    preg_match('/password: (\S+)/', Storage::disk('local')->get(DemoUserCommand::CREDENTIALS_FILE) ?? '', $m);
+    preg_match('/password: (\S+)/', Storage::disk('local')->get(DemoUserCommand::credentialsFile('demo@example.test')) ?? '', $m);
     postJson('/api/auth/token', ['email' => 'demo@example.test', 'password' => $m[1] ?? '', 'device_name' => 'test'])->assertCreated();
 });
 
@@ -51,6 +54,31 @@ it('does not touch other users', function () {
     artisan('demo:user', ['--fresh' => true])->assertSuccessful();
 
     expect(Account::ownedBy($other)->count())->toBe(1);
+});
+
+it('creates a clean user with only the default categories and an easy password', function () {
+    artisan('demo:user', ['--email' => 'Coba@Example.test', '--name' => 'Coba', '--empty' => true, '--easy-password' => true])->assertSuccessful();
+
+    $user = User::where('email', 'coba@example.test')->firstOrFail();
+    expect($user->name)->toBe('Coba')
+        ->and(Category::ownedBy($user)->count())->toBe(count(DefaultCategories::all()))
+        ->and(Account::ownedBy($user)->count())->toBe(0)
+        ->and(PlanTemplate::ownedBy($user)->count())->toBe(0)
+        ->and(PlanItem::ownedBy($user)->count())->toBe(0)
+        ->and(Transaction::ownedBy($user)->count())->toBe(0);
+
+    $file = (string) Storage::disk('local')->get(DemoUserCommand::credentialsFile('coba@example.test'));
+    expect($file)->toMatch('/^email: coba@example\.test\npassword: [a-z]+-[a-z]+-[a-z]+-\d{2}\n$/');
+    preg_match('/password: (\S+)/', $file, $m);
+    postJson('/api/auth/token', ['email' => 'coba@example.test', 'password' => $m[1] ?? '', 'device_name' => 'test'])->assertCreated();
+});
+
+it('keeps each user’s credentials in its own file', function () {
+    artisan('demo:user')->assertSuccessful();
+    artisan('demo:user', ['--email' => 'coba@example.test', '--empty' => true])->assertSuccessful();
+
+    expect(Storage::disk('local')->get(DemoUserCommand::credentialsFile('demo@example.test')))->toContain('demo@example.test')
+        ->and(Storage::disk('local')->get(DemoUserCommand::credentialsFile('coba@example.test')))->toContain('coba@example.test');
 });
 
 it('refuses to run in production', function () {

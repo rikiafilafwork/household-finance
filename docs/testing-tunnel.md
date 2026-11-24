@@ -7,11 +7,15 @@ Untuk mencoba stack lokal dari perangkat lain (HP, laptop lain) sebelum ada depl
 ```sh
 docker compose exec app php artisan demo:user          # buat sekali
 docker compose exec app php artisan demo:user --fresh  # reset ke data awal
+
+# akun bersih (hanya kategori bawaan), password mudah diketik
+docker compose exec app php artisan demo:user --email=coba@example.test --name=Coba --empty --easy-password
 ```
 
-- Email `demo@example.test`, zona waktu Asia/Jakarta.
-- Password acak, ditulis ke `apps/api/storage/app/private/demo-credentials.txt` (di-gitignore, tidak dicetak).
-  `--fresh` membuat password baru.
+- Default email `demo@example.test`, zona waktu Asia/Jakarta.
+- Kredensial ditulis ke `apps/api/storage/app/private/credentials/<email>.txt` (di-gitignore, tidak dicetak).
+  `--fresh` membuat password baru. `--easy-password`: 3 kata + 2 angka (mis. `kata-kata-kata-12`),
+  cukup untuk testing karena login dibatasi 5 percobaan/menit; jangan dipakai untuk data asli.
 - Isi: 4 akun (BCA, Bank Jago, GoPay, Dompet), 10 template bulanan, rencana 6 bulan terakhir dengan centang,
   transaksi harian, top-up/tarik tunai. Bulan berjalan punya tagihan terlambat (Listrik), gaji jatuh tempo,
   amplop ≥ 80% dan satu yang jebol. Semua lewat Actions → `accounts:reconcile` selisih 0.
