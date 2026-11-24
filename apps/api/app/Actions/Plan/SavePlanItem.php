@@ -2,15 +2,13 @@
 
 namespace App\Actions\Plan;
 
-use App\Enums\CategoryKind;
 use App\Enums\PlanItemSource;
 use App\Enums\PlanMode;
-use App\Models\Account;
-use App\Models\Category;
 use App\Models\PlanItem;
 use App\Models\User;
 use App\Plan\EnvelopeCheck;
 use App\Plan\PlanMonth;
+use App\Plan\PlanReferences;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -87,26 +85,7 @@ class SavePlanItem
 
     private function assertValid(User $user, PlanMonth $month, PlanItemInput $input, ?int $keepArchivedCategoryId = null, ?int $keepArchivedAccountId = null): void
     {
-        $category = Category::ownedBy($user)->whereKey($input->categoryId)->first();
-        if ($category === null) {
-            throw ValidationException::withMessages(['category_id' => 'Kategori tidak ditemukan.']);
-        }
-        if ($category->kind !== CategoryKind::from($input->type->value)) {
-            throw ValidationException::withMessages(['category_id' => 'Jenis kategori tidak cocok dengan jenis item.']);
-        }
-        if ($category->archived_at !== null && $category->getKey() !== $keepArchivedCategoryId) {
-            throw ValidationException::withMessages(['category_id' => 'Kategori ini sudah diarsip.']);
-        }
-
-        if ($input->accountId !== null) {
-            $account = Account::ownedBy($user)->whereKey($input->accountId)->first();
-            if ($account === null) {
-                throw ValidationException::withMessages(['account_id' => 'Akun tidak ditemukan.']);
-            }
-            if ($account->isArchived() && $account->getKey() !== $keepArchivedAccountId) {
-                throw ValidationException::withMessages(['account_id' => 'Akun ini sudah diarsip.']);
-            }
-        }
+        PlanReferences::assert($user, $input->type, $input->categoryId, $input->accountId, $keepArchivedCategoryId, $keepArchivedAccountId);
 
         if ($input->mode === PlanMode::Checklist && $input->dueOn !== null && ! $month->contains($input->dueOn)) {
             throw ValidationException::withMessages(['due_on' => 'Jatuh tempo harus di bulan rencana ini.']);

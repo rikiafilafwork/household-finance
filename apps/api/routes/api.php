@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\PlanTemplateController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TransactionController;
@@ -70,4 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Centang = transaksi (Keputusan #8); client_id wajib (Keputusan #15).
     Route::post('plan-items/{planItem}/check', [PlanController::class, 'check']);
     Route::post('plan-items/{planItem}/uncheck', [PlanController::class, 'uncheck']);
+
+    // Template bulanan (Keputusan #9). Mengubah template tidak menyentuh item yang sudah dibuat.
+    Route::apiResource('plan-templates', PlanTemplateController::class)->parameters(['plan-templates' => 'planTemplate']);
 });

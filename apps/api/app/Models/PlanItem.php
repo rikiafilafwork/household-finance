@@ -79,6 +79,14 @@ class PlanItem extends Model
     }
 
     /**
+     * @return BelongsTo<PlanTemplate, $this>
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(PlanTemplate::class, 'template_id');
+    }
+
+    /**
      * Transaksi centang (maks satu, dijaga uq_tx_plan_item). Soft-deleted tidak dihitung.
      *
      * @return HasOne<Transaction, $this>
