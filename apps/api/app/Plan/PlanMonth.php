@@ -50,10 +50,10 @@ final readonly class PlanMonth
         return new self($this->start->subMonthNoOverflow());
     }
 
-    /** Tanggal ke-$day di bulan ini, dibatasi hari terakhir (31 → 28/29 Feb). */
+    /** Tanggal ke-$day di bulan ini, dibatasi hari terakhir (31 → 28/29 Feb). Lihat MonthlyDueDate. */
     public function day(int $day): string
     {
-        return $this->start->setDay(min(max($day, 1), $this->start->daysInMonth))->toDateString();
+        return MonthlyDueDate::in($this, $day);
     }
 
     public function contains(string $date): bool
