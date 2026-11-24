@@ -44,7 +44,7 @@ function RowMenu({ item, onAction }: { item: PlanItem; onAction: (a: RowAction) 
 
 function Meta({ item, category }: { item: PlanItem; category?: Category }) {
   const parts = [category?.name, item.due_on && item.status !== 'done' ? `jatuh tempo ${formatDate(item.due_on, { day: 'numeric', month: 'short' })}` : null,
-    item.transaction ? `dicatat ${formatDate(item.transaction.occurred_on, { day: 'numeric', month: 'short' })}` : null].filter(Boolean);
+    item.transaction ? `dicatat${item.auto_posted_at ? ' otomatis' : ''} ${formatDate(item.transaction.occurred_on, { day: 'numeric', month: 'short' })}` : null].filter(Boolean);
   return <span className="truncate text-xs text-muted-foreground">{parts.join(' · ')}</span>;
 }
 

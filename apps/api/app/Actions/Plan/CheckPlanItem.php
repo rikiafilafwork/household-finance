@@ -32,7 +32,9 @@ class CheckPlanItem
         try {
             return $this->check($user, $item, $input);
         } catch (UniqueConstraintViolationException $e) {
-            $existing = Transaction::ownedBy($user)->where('client_id', $input->clientId)->first();
+            $existing = $input->clientId !== null
+                ? Transaction::ownedBy($user)->where('client_id', $input->clientId)->first()
+                : null;
             if ($existing !== null && $existing->plan_item_id === $item->getKey()) {
                 return [$existing, false];
             }
@@ -58,7 +60,10 @@ class CheckPlanItem
             }
             $account = $this->lockAccounts->one($user, $accountId);
 
-            $existing = Transaction::ownedBy($user)->where('client_id', $input->clientId)->first();
+            // Tanpa client_id (auto-post) tidak ada retry klien untuk dicocokkan.
+            $existing = $input->clientId !== null
+                ? Transaction::ownedBy($user)->where('client_id', $input->clientId)->first()
+                : null;
             if ($existing !== null) {
                 if ($existing->plan_item_id !== $locked->getKey()) {
                     throw ValidationException::withMessages(['client_id' => 'client_id sudah dipakai transaksi lain.']);
@@ -94,6 +99,9 @@ class CheckPlanItem
             ]);
 
             $account->increment('balance', $transaction->amount);
+            if ($input->autoPost) {
+                $locked->forceFill(['auto_posted_at' => now()])->save();
+            }
 
             return [$transaction, true];
         });

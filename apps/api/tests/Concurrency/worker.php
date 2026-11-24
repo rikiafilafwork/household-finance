@@ -8,6 +8,7 @@
 | php tests/Concurrency/worker.php '{"op":"transaction",...,"start_at":1732000000.5}'
 */
 
+use App\Actions\Plan\AutoPostDueItems;
 use App\Actions\Plan\CheckPlanItem;
 use App\Actions\Plan\CheckPlanItemInput;
 use App\Actions\Plan\GeneratePlanFromTemplates;
@@ -22,6 +23,7 @@ use App\Models\PlanItem;
 use App\Models\User;
 use App\Plan\PlanMonth;
 use App\Queries\PlanComparisonQuery;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -29,7 +31,7 @@ require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, plan_item_id?: int, month?: string, from?: int, to?: int, amount: int, client_id: string} $job */
+/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, plan_item_id?: int, month?: string, now?: string, from?: int, to?: int, amount: int, client_id: string} $job */
 $job = json_decode($argv[1] ?? '{}', true, flags: JSON_THROW_ON_ERROR);
 
 while (microtime(true) < $job['start_at']) {
@@ -84,6 +86,11 @@ try {
             $created = app(GeneratePlanFromTemplates::class)->handle($user, PlanMonth::parse((string) $job['month']));
 
             return ['id' => (string) $created, 'created' => $created > 0];
+        })(),
+        'auto-post' => (function () use ($user, $job) {
+            $result = app(AutoPostDueItems::class)->handle($user, CarbonImmutable::parse((string) $job['now'], 'UTC'));
+
+            return ['id' => (string) count($result['posted']), 'created' => $result['posted'] !== []];
         })(),
         default => throw new InvalidArgumentException("op tidak dikenal: {$job['op']}"),
     };

@@ -27,10 +27,11 @@ use Illuminate\Support\Carbon;
  * @property PlanItemSource $source
  * @property int $sort_order
  * @property Carbon|null $skipped_at
+ * @property Carbon|null $auto_posted_at
  */
 #[Fillable([
     'user_id', 'month', 'type', 'mode', 'name', 'category_id', 'planned_amount', 'account_id',
-    'due_on', 'template_id', 'source', 'sort_order', 'skipped_at',
+    'due_on', 'template_id', 'source', 'sort_order', 'skipped_at', 'auto_posted_at',
 ])]
 class PlanItem extends Model
 {
@@ -59,6 +60,7 @@ class PlanItem extends Model
             'source' => PlanItemSource::class,
             'sort_order' => 'integer',
             'skipped_at' => 'datetime',
+            'auto_posted_at' => 'datetime',
         ];
     }
 

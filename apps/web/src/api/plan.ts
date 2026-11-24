@@ -20,6 +20,8 @@ export interface PlanItem {
   source: string;
   sort_order: number;
   skipped_at: string | null;
+  /** Dicentang otomatis oleh plan:auto-post (template auto-post). */
+  auto_posted_at: string | null;
   status: PlanItemStatus;
   transaction: { id: Id; account_id: Id; amount: number; occurred_on: string } | null;
   actual: number; // positif

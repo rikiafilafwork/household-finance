@@ -33,6 +33,8 @@ class PlanItemResource extends JsonResource
             'source' => $this->source->value,
             'sort_order' => $this->sort_order,
             'skipped_at' => $this->skipped_at?->toIso8601String(),
+            // Dicentang otomatis oleh plan:auto-post (sekali per item).
+            'auto_posted_at' => $this->auto_posted_at?->toIso8601String(),
             // Diturunkan (Keputusan #7): done = ada transaksi terhubung; skipped = skipped_at terisi.
             'status' => $transaction !== null ? 'done' : ($this->skipped_at !== null ? 'skipped' : 'planned'),
             'transaction' => $transaction === null ? null : [
