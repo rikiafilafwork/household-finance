@@ -14,9 +14,7 @@ use App\Imports\Exceptions\InvalidStatementFile;
 interface StatementParser
 {
     /**
-     * @return iterable<int, ParsedLine>
-     *
      * @throws InvalidStatementFile
      */
-    public function lines(string $contents): iterable;
+    public function parse(string $contents): ParsedStatement;
 }

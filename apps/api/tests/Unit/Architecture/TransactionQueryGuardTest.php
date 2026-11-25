@@ -3,6 +3,7 @@
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Import;
 use App\Models\Transaction;
 
 /*
@@ -63,6 +64,7 @@ it('makes every user-owned model use BelongsToUser', function (string $model) {
 })->with([
     Account::class,
     Category::class,
+    Import::class,
     Transaction::class,
 ]);
 
