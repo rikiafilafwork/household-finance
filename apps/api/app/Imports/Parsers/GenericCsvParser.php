@@ -7,6 +7,7 @@ use App\Imports\Csv\CsvReader;
 use App\Imports\Exceptions\InvalidStatementFile;
 use App\Imports\Exceptions\InvalidStatementValue;
 use App\Imports\ParsedLine;
+use App\Imports\ParsedStatement;
 use App\Imports\StatementAmount;
 use App\Imports\StatementDate;
 use App\Imports\StatementParser;
@@ -26,7 +27,7 @@ final class GenericCsvParser implements StatementParser
         private readonly DateTimeImmutable $reference,
     ) {}
 
-    public function lines(string $contents): iterable
+    public function parse(string $contents): ParsedStatement
     {
         $records = array_slice(CsvReader::records($contents, $this->mapping->delimiter), $this->mapping->skipRows);
 
@@ -42,24 +43,23 @@ final class GenericCsvParser implements StatementParser
 
         $columns = $this->resolveColumns($header);
 
+        $lines = [];
         foreach ($records as $record) {
-            $cells = $record['cells'];
-            $raw = $header === null ? $cells : $this->combine($header, $cells);
-
             try {
-                yield $this->line($record['line'], $raw, $cells, $columns);
+                $lines[] = $this->line($record['line'], $record['cells'], $columns);
             } catch (InvalidStatementValue $e) {
-                yield ParsedLine::invalid($record['line'], $raw, $e->getMessage());
+                $lines[] = ParsedLine::invalid($record['line'], $record['cells'], $e->getMessage());
             }
         }
+
+        return new ParsedStatement($header, $lines);
     }
 
     /**
-     * @param  array<int|string, string>  $raw
      * @param  list<string>  $cells
      * @param  array{date: int, description: list<int>, amount: ?int, direction: ?int, debit: ?int, credit: ?int}  $columns
      */
-    private function line(int $lineNumber, array $raw, array $cells, array $columns): ParsedLine
+    private function line(int $lineNumber, array $cells, array $columns): ParsedLine
     {
         $cell = fn (int $index) => $cells[$index] ?? throw new InvalidStatementValue('Kolom ke-'.($index + 1).' tidak ada di baris ini.');
 
@@ -78,7 +78,7 @@ final class GenericCsvParser implements StatementParser
             throw new InvalidStatementValue('Nominal nol.');
         }
 
-        return ParsedLine::valid($lineNumber, $raw, $date, $amount, $description);
+        return ParsedLine::valid($lineNumber, $cells, $date, $amount, $description);
     }
 
     private function singleAmount(string $value, ?string $direction): int
@@ -144,23 +144,5 @@ final class GenericCsvParser implements StatementParser
             'debit' => $resolve($this->mapping->debit),
             'credit' => $resolve($this->mapping->credit),
         ];
-    }
-
-    /**
-     * Sel berkunci nama header; kolom tanpa nama/duplikat memakai indeksnya.
-     *
-     * @param  list<string>  $header
-     * @param  list<string>  $cells
-     * @return array<int|string, string>
-     */
-    private function combine(array $header, array $cells): array
-    {
-        $raw = [];
-        foreach ($cells as $index => $value) {
-            $name = $header[$index] ?? '';
-            $raw[$name === '' || array_key_exists($name, $raw) ? $index : $name] = $value;
-        }
-
-        return $raw;
     }
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\PlanTemplateController;
@@ -79,4 +80,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Template bulanan (Keputusan #9). Mengubah template tidak menyentuh item yang sudah dibuat.
     Route::apiResource('plan-templates', PlanTemplateController::class)->parameters(['plan-templates' => 'planTemplate']);
+
+    // Import CSV mutasi rekening (Keputusan #13): upload → 202, poll status, lalu baca baris preview.
+    Route::get('imports', [ImportController::class, 'index']);
+    Route::post('imports', [ImportController::class, 'store'])->middleware('throttle:imports');
+    Route::get('imports/{import}', [ImportController::class, 'show']);
+    Route::get('imports/{import}/rows', [ImportController::class, 'rows']);
 });

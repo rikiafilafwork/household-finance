@@ -688,12 +688,14 @@ CREATE TABLE imports (
   account_id        BIGINT UNSIGNED NOT NULL,       -- harus bertipe bank (divalidasi di aplikasi)
   bank_format       VARCHAR(30) NOT NULL,           -- generic | <bank yang dipakai>
   column_mapping    JSON NULL,                      -- untuk generic
+  headers           JSON NULL,                      -- nama kolom file (urutan asli); import_rows.raw = daftar sel
   original_filename VARCHAR(255) NOT NULL,
   file_path         VARCHAR(255) NULL,              -- disk privat, dihapus setelah commit
   status            ENUM('pending','parsing','ready','committing','committed','failed') NOT NULL DEFAULT 'pending',
   total_rows        INT UNSIGNED NOT NULL DEFAULT 0,
   new_rows          INT UNSIGNED NOT NULL DEFAULT 0,
   duplicate_rows    INT UNSIGNED NOT NULL DEFAULT 0,
+  possible_duplicate_rows INT UNSIGNED NOT NULL DEFAULT 0,
   invalid_rows      INT UNSIGNED NOT NULL DEFAULT 0,
   error             TEXT NULL,
   created_at        TIMESTAMP NULL,

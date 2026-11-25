@@ -14,7 +14,7 @@ function parseCsv(string $contents, array $mapping, string $uploadedOn = '2026-1
 {
     $parser = new GenericCsvParser(ColumnMapping::fromArray($mapping), new DateTimeImmutable($uploadedOn));
 
-    return [...$parser->lines($contents)];
+    return $parser->parse($contents)->lines;
 }
 
 /**
@@ -43,9 +43,7 @@ it('parses an Indonesian semicolon file with debit and credit columns', function
         [2, '2026-11-01', 10_000_000, 'GAJI NOVEMBER', null],
         [3, '2026-11-03', -25_000, 'KOPI KENANGAN', null],
         [4, '2026-11-03', -25_000, 'KOPI KENANGAN', null],
-    ])->and($lines[1]->raw)->toBe([
-        'Tanggal' => '03/11/2026', 'Keterangan' => 'KOPI KENANGAN', 'Cabang' => '0123', 'Debet' => '25.000,00', 'Kredit' => '',
-    ]);
+    ])->and($lines[1]->raw)->toBe(['03/11/2026', 'KOPI KENANGAN', '0123', '25.000,00', '']);
 });
 
 it('parses an English comma file with a DB/CR suffixed amount and a preamble', function () {
@@ -177,4 +175,19 @@ describe('column mapping', function () {
         'skip rows too many' => [['skip_rows' => 99], 'skip_rows'],
         'too many description columns' => [['description' => ['a', 'b', 'c', 'd', 'e', 'f']], '1–5'],
     ]);
+});
+
+it('returns the header names in file order', function () {
+    $parser = new GenericCsvParser(ColumnMapping::fromArray([
+        'skip_rows' => 1, 'date' => 'Tgl', 'date_format' => 'd/m/Y', 'description' => 'Ket', 'amount' => 'Jumlah',
+    ]), new DateTimeImmutable('2026-11-25'));
+
+    expect($parser->parse("Mutasi BCA\nTgl;Ket;Jumlah;Saldo\n03/11/2026;KOPI;-25.000;975.000\n")->headers)
+        ->toBe(['Tgl', 'Ket', 'Jumlah', 'Saldo']);
+
+    $noHeader = new GenericCsvParser(ColumnMapping::fromArray([
+        'has_header' => false, 'date' => 0, 'date_format' => 'd/m/Y', 'description' => 1, 'amount' => 2,
+    ]), new DateTimeImmutable('2026-11-25'));
+
+    expect($noHeader->parse("03/11/2026;KOPI;-25.000\n")->headers)->toBeNull();
 });

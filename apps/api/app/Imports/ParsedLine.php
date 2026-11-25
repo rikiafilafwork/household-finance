@@ -8,7 +8,7 @@ namespace App\Imports;
 final readonly class ParsedLine
 {
     /**
-     * @param  array<int|string, string>  $raw  isi sel asli (berkunci nama header kalau ada)
+     * @param  list<string>  $raw  isi sel asli sesuai urutan kolom file
      */
     private function __construct(
         public int $rowNumber,
@@ -19,13 +19,13 @@ final readonly class ParsedLine
         public ?string $error,
     ) {}
 
-    /** @param  array<int|string, string>  $raw */
+    /** @param  list<string>  $raw */
     public static function valid(int $rowNumber, array $raw, string $occurredOn, int $amount, string $description): self
     {
         return new self($rowNumber, $raw, $occurredOn, $amount, mb_substr($description, 0, 255), null);
     }
 
-    /** @param  array<int|string, string>  $raw */
+    /** @param  list<string>  $raw */
     public static function invalid(int $rowNumber, array $raw, string $error): self
     {
         return new self($rowNumber, $raw, null, null, null, mb_substr($error, 0, 255));

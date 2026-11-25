@@ -2,6 +2,7 @@
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\Import;
 use App\Models\PlanItem;
 use App\Models\PlanTemplate;
 use App\Models\Transaction;
@@ -66,6 +67,8 @@ final class IsolationContext
 
     public PlanTemplate $victimTemplate;
 
+    public Import $victimImport;
+
     public int $myTemplateId;
 
     public Account $myAccount;
@@ -114,6 +117,17 @@ final class IsolationContext
             'name' => 'Template Rahasia', 'category_id' => $this->victimCategory->id, 'account_id' => $this->victimAccount->id, 'auto_post' => true,
         ]);
 
+        // Import mutasi korban (sudah di-parse) dengan satu baris staging.
+        $this->victimImport = Import::ownedBy($this->victim)->create([
+            'user_id' => $this->victim->id, 'account_id' => $this->victimAccount->id, 'bank_format' => 'generic',
+            'column_mapping' => ['date' => 0, 'date_format' => 'd/m/Y', 'description' => 1, 'amount' => 2, 'has_header' => false],
+            'original_filename' => 'mutasi-rahasia.csv', 'file_path' => 'imports/rahasia.csv', 'status' => 'ready', 'total_rows' => 1, 'new_rows' => 1,
+        ]);
+        $this->victimImport->rows()->create([
+            'row_number' => 1, 'occurred_on' => '2026-11-03', 'amount' => -25_000, 'description' => 'TRANSFER RAHASIA',
+            'fingerprint' => str_repeat('a', 64), 'status' => 'new', 'raw' => ['03/11/2026', 'TRANSFER RAHASIA', '-25.000'],
+        ]);
+
         $this->attacker = User::factory()->create(['name' => 'Penyerang']);
         $this->myAccount = Account::factory()->forUser($this->attacker)->opening(500_000)->create(['name' => 'Akun Saya']);
         $this->myAccount2 = Account::factory()->forUser($this->attacker)->opening(0)->create(['name' => 'Akun Saya 2']);
@@ -146,6 +160,8 @@ final class IsolationContext
             'notifications' => $rows('notifications', 'notifiable_id'),
             'plan_items' => $rows('plan_items'),
             'plan_templates' => $rows('plan_templates'),
+            'imports' => $rows('imports'),
+            'import_rows' => DB::table('import_rows')->where('import_id', $this->victimImport->id)->orderBy('id')->get()->map(fn ($r) => (array) $r)->all(),
         ];
     }
 
@@ -156,7 +172,7 @@ final class IsolationContext
      */
     public function leakMarkers(): array
     {
-        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', 'Template Rahasia', $this->victimTransferGroup, $this->victimNotification->id];
+        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', 'Template Rahasia', 'mutasi-rahasia.csv', 'TRANSFER RAHASIA', $this->victimTransferGroup, $this->victimNotification->id];
     }
 }
 
@@ -269,6 +285,12 @@ function isolationCases(): array
         'deactivate template' => ['PUT api/plan-templates/{planTemplate}', fn ($c, $id) => ['PATCH', '/api/plan-templates/'.$id('plan_template'), ['is_active' => false]]],
         'point own template at the victim’s account' => ['PUT api/plan-templates/{planTemplate}', fn ($c, $id) => ['PATCH', '/api/plan-templates/'.$c->myTemplateId, ['account_id' => $id('account')]]],
         'delete template' => ['DELETE api/plan-templates/{planTemplate}', fn ($c, $id) => ['DELETE', '/api/plan-templates/'.$id('plan_template')]],
+
+        // Import mutasi
+        'list imports' => ['GET api/imports', fn ($c, $id) => ['GET', '/api/imports']],
+        'upload into the victim’s account' => ['POST api/imports', fn ($c, $id) => ['POST', '/api/imports', ['account_id' => $id('account'), 'format' => 'generic']]],
+        'show import' => ['GET api/imports/{import}', fn ($c, $id) => ['GET', '/api/imports/'.$id('import')]],
+        'list import rows' => ['GET api/imports/{import}/rows', fn ($c, $id) => ['GET', '/api/imports/'.$id('import').'/rows']],
     ];
 
     return array_map(fn (array $case) => new IsolationCase($case[0], $case[1]), $cases);
@@ -290,6 +312,7 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'notification' => $c->victimNotification->id,
         'plan_item' => $c->victimPlanItem->id,
         'plan_template' => $c->victimTemplate->id,
+        'import' => $c->victimImport->id,
         'own_transaction' => $ownTransaction,
     ];
     $missing = [
@@ -301,6 +324,7 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'notification' => (string) Str::uuid(),
         'plan_item' => 999_999_999,
         'plan_template' => 999_999_999,
+        'import' => 999_999_999,
         'own_transaction' => $ownTransaction,
     ];
     $ids = $mode === 'foreign' ? $foreign : $missing;
@@ -363,6 +387,7 @@ it('really exercises the victim’s data (sanity check of the fixture)', functio
     actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.items.0.name', 'Cicilan Rahasia');
     actingAs($c->victim)->getJson('/api/plan-items/'.$c->victimPlanItem->id)->assertOk();
     actingAs($c->victim)->getJson('/api/plan-templates/'.$c->victimTemplate->id)->assertOk()->assertJsonPath('data.name', 'Template Rahasia');
+    actingAs($c->victim)->getJson('/api/imports/'.$c->victimImport->id.'/rows')->assertOk()->assertJsonPath('data.0.description', 'TRANSFER RAHASIA');
     // Payload template penyerang sah untuk dirinya sendiri (kasus "missing" tidak gagal karena bentuk data).
     actingAs($c->attacker)->getJson('/api/plan-templates')->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Template Saya');
 });

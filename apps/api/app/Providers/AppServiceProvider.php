@@ -67,5 +67,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('register', fn (Request $request) => Limit::perHour(10)->by($request->ip()));
+
+        // Upload import: tiap file memicu job parse; cukup untuk beberapa percobaan pemetaan kolom.
+        RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(10)->by((string) $request->user()?->getAuthIdentifier()));
     }
 }
