@@ -20,6 +20,7 @@ const SCOPE_BYPASS_ALLOWLIST = [
     'Actions/Categories/DeleteCategory.php' => 'exists() termasuk soft-deleted, tidak mengembalikan data',
     'Support/DefaultCategories.php' => 'insertOrIgnore kategori bawaan untuk satu user eksplisit',
     'Console/Commands/ResetUserPassword.php' => 'hapus baris sessions milik satu user (bukan data keuangan)',
+    'Console/Commands/DemoUserCommand.php' => 'demo:user --empty: hapus data milik satu user demo eksplisit (WHERE user_id)',
 ];
 
 it('only bypasses the user scope in allow-listed files', function () {
