@@ -116,7 +116,7 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #132 Web: Beranda lengkap (KPI, chart, perlu dicentang, amplop) `web`
 - [x] #133 Test dashboard: fixture manual + sama dengan Rencana `test`
 
-## Minggu 6 — Import CSV Mutasi Rekening (3/8)
+## Minggu 6 — Import CSV Mutasi Rekening (5/8)
 
 > **Done kalau:** mutasi rekening asli sebulan bisa diimpor, dan mengimpor ulang tidak menambah apa pun.
 
@@ -124,8 +124,8 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #51 `StatementParser` + `GenericCsvParser` `api`
 - [ ] #52 Parser CSV untuk bank yang dipakai + fixture anonim `api` `test`
 - [x] #53 `FingerprintCalculator` + `DescriptionNormalizer` + unit test `api` `test`
-- [ ] #54 `POST /imports/{id}/commit` `api`
-- [ ] #55 Test import: dedupe & file tumpang tindih `test`
+- [x] #54 `POST /imports/{id}/commit` `api`
+- [x] #55 Test import: dedupe & file tumpang tindih `test`
 - [ ] #56 Web: wizard import (upload → preview → commit) `web`
 - [ ] #57 [Stretch] `category_rules`: kata kunci → kategori `api` `stretch`
 
