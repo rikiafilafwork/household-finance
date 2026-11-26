@@ -8,6 +8,7 @@
 | php tests/Concurrency/worker.php '{"op":"transaction",...,"start_at":1732000000.5}'
 */
 
+use App\Actions\Imports\CommitImport;
 use App\Actions\Plan\AutoPostDueItems;
 use App\Actions\Plan\CheckPlanItem;
 use App\Actions\Plan\CheckPlanItemInput;
@@ -19,6 +20,7 @@ use App\Actions\Transfers\CreateTransfer;
 use App\Actions\Transfers\TransferInput;
 use App\Enums\TransactionType;
 use App\Jobs\CheckEnvelopeThresholds;
+use App\Models\Import;
 use App\Models\PlanItem;
 use App\Models\User;
 use App\Plan\PlanMonth;
@@ -31,7 +33,7 @@ require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, plan_item_id?: int, month?: string, now?: string, from?: int, to?: int, amount: int, client_id: string} $job */
+/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, plan_item_id?: int, import_id?: int, month?: string, now?: string, from?: int, to?: int, amount: int, client_id: string} $job */
 $job = json_decode($argv[1] ?? '{}', true, flags: JSON_THROW_ON_ERROR);
 
 while (microtime(true) < $job['start_at']) {
@@ -91,6 +93,13 @@ try {
             $result = app(AutoPostDueItems::class)->handle($user, CarbonImmutable::parse((string) $job['now'], 'UTC'));
 
             return ['id' => (string) count($result['posted']), 'created' => $result['posted'] !== []];
+        })(),
+        'commit-import' => (function () use ($user, $job) {
+            $import = Import::ownedBy($user)->findOrFail((int) $job['import_id']);
+            $selection = $import->rows()->whereIn('status', ['new', 'possible_duplicate'])->pluck('id')->mapWithKeys(fn (int $id) => [$id => null])->all();
+            $result = app(CommitImport::class)->handle($user, $import, $selection);
+
+            return ['id' => (string) $result['committed'], 'created' => $result['committed'] > 0];
         })(),
         default => throw new InvalidArgumentException("op tidak dikenal: {$job['op']}"),
     };
