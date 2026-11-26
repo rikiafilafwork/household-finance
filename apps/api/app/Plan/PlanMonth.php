@@ -50,6 +50,26 @@ final readonly class PlanMonth
         return new self($this->start->subMonthNoOverflow());
     }
 
+    public function next(): self
+    {
+        return new self($this->start->addMonthNoOverflow());
+    }
+
+    /**
+     * Bulan-bulan dari $from sampai $to (inklusif, urut naik).
+     *
+     * @return list<self>
+     */
+    public static function range(self $from, self $to): array
+    {
+        $months = [];
+        for ($m = $from; $m->key() <= $to->key(); $m = $m->next()) {
+            $months[] = $m;
+        }
+
+        return $months;
+    }
+
     /** Tanggal ke-$day di bulan ini, dibatasi hari terakhir (31 → 28/29 Feb). Lihat MonthlyDueDate. */
     public function day(int $day): string
     {

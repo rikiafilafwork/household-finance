@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\PlanTemplateController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
@@ -87,4 +88,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('imports/{import}', [ImportController::class, 'show']);
     Route::get('imports/{import}/rows', [ImportController::class, 'rows']);
     Route::post('imports/{import}/commit', [ImportController::class, 'commit']);
+
+    // Laporan (Minggu 7): angka rencana vs aktual dari PlanComparisonQuery, sama dengan Beranda.
+    Route::prefix('reports')->group(function () {
+        Route::get('summary', [ReportController::class, 'summary']);
+        Route::get('by-category', [ReportController::class, 'byCategory']);
+        Route::get('trend', [ReportController::class, 'trend']);
+        Route::get('cash-flow', [ReportController::class, 'cashFlow']);
+        Route::get('cash-vs-noncash', [ReportController::class, 'cashVsNonCash']);
+    });
 });

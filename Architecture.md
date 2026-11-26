@@ -457,7 +457,8 @@ Tujuannya bukan web yang lengkap, tapi cukup untuk **dipakai sendiri mulai mingg
 **API laporan** (hanya `type IN ('income','expense')` kecuali cash flow):
 
 - `GET /reports/summary?month=` → pemasukan, pengeluaran, net, rencana vs aktual, perbandingan bulan lalu.
-- `GET /reports/by-category?from&to&kind=` → total per kategori + persen + rencana.
+- `GET /reports/by-category?from=YYYY-MM&to=YYYY-MM&kind=` → total per kategori + persen + rencana (rentang BULAN: rencana itu bulanan).
+- Ringkasan, kategori, tren, dan tunai vs non-tunai memakai definisi aktual PlanComparisonQuery (checklist dihitung di bulan itemnya), jadi sama dengan Rencana & Beranda.
 - `GET /reports/trend?months=6` → pemasukan vs pengeluaran (+ rencana) per bulan.
 - `GET /reports/cash-flow?from&to&account=` → net harian + saldo berjalan (window function, dimulai dari saldo sebelum `from`).
 - `GET /reports/cash-vs-noncash?month=` → pengeluaran per tipe akun.
