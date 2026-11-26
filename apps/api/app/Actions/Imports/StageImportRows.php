@@ -5,6 +5,7 @@ namespace App\Actions\Imports;
 use App\Enums\ImportRowStatus;
 use App\Enums\ImportStatus;
 use App\Enums\TransactionType;
+use App\Imports\CategorySuggester;
 use App\Imports\Exceptions\InvalidStatementFile;
 use App\Imports\FingerprintCalculator;
 use App\Imports\ParsedLine;
@@ -26,6 +27,8 @@ use Illuminate\Support\Facades\Storage;
  *    (kemungkinan dicatat manual). Satu transaksi manual hanya "mengklaim" satu baris CSV, jadi dua
  *    kopi di CSV vs satu kopi yang dicatat → satu possible_duplicate, satu new;
  *  - new: sisanya.
+ *
+ * Baris new/possible_duplicate diberi saran kategori di `category_id` dari CategorySuggester.
  *
  * Hanya jalan dari status `pending` (klaim atomik), jadi job yang terulang tidak memproses dua kali.
  */
@@ -118,6 +121,7 @@ class StageImportRows
 
         $imported = $this->existingImportHashes($import, array_values($fingerprints));
         $manual = $this->manualCandidates($import, $valid);
+        $suggester = CategorySuggester::for($this->owner($import));
 
         $rows = [];
         foreach ($lines as $index => $line) {
@@ -138,6 +142,10 @@ class StageImportRows
                 'description' => $line->description,
                 'fingerprint' => $fingerprint,
                 'status' => $status->value,
+                // Saran kategori (aturan dari import sebelumnya); user bisa mengubahnya di preview.
+                'category_id' => in_array($status, [ImportRowStatus::New, ImportRowStatus::PossibleDuplicate], true)
+                    ? $suggester->suggest((string) $line->description, (int) $line->amount)
+                    : null,
                 'error' => $line->error,
                 'raw' => json_encode($line->raw, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             ];

@@ -729,6 +729,7 @@ CREATE TABLE category_rules (
   keyword     VARCHAR(100) NOT NULL,                -- dicocokkan ke deskripsi ternormalisasi
   category_id BIGINT UNSIGNED NOT NULL,
   created_at  TIMESTAMP NULL,
+  updated_at  TIMESTAMP NULL,                      -- koreksi terakhir menimpa kategori
   UNIQUE KEY uq_category_rule (user_id, keyword),
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );

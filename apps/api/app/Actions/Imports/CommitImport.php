@@ -8,8 +8,10 @@ use App\Enums\CategoryKind;
 use App\Enums\ImportRowStatus;
 use App\Enums\ImportStatus;
 use App\Enums\TransactionType;
+use App\Imports\CategorySuggester;
 use App\Jobs\CheckEnvelopeThresholds;
 use App\Models\Category;
+use App\Models\CategoryRule;
 use App\Models\Import;
 use App\Models\ImportRow;
 use App\Models\Transaction;
@@ -68,6 +70,7 @@ class CommitImport
         }
 
         $skipped = $this->finish($user, $import);
+        $this->learnRules($user, $import);
 
         foreach ($envelopes as $key => $_) {
             [$categoryId, $month] = explode('|', $key);
@@ -238,6 +241,29 @@ class CommitImport
 
             return [count($fresh), count($existing), $envelopes];
         });
+    }
+
+    /**
+     * Kategori yang dipilih user (termasuk koreksi atas saran) jadi aturan untuk import berikutnya.
+     * Dari semua baris committed import ini, jadi retry tidak kehilangan apa pun; kata kunci yang
+     * sama di satu file → baris terakhir menang, aturan lama dengan kata kunci sama ditimpa.
+     */
+    private function learnRules(User $user, Import $import): void
+    {
+        $rules = [];
+        $now = now();
+        $import->rows()->where('status', ImportRowStatus::Committed->value)->whereNotNull('category_id')
+            ->orderBy('row_number')->get(['description', 'category_id'])
+            ->each(function (ImportRow $row) use (&$rules, $user, $now) {
+                $keyword = CategorySuggester::keywordFor((string) $row->description);
+                if ($keyword !== null) {
+                    $rules[$keyword] = ['user_id' => $user->id, 'keyword' => $keyword, 'category_id' => $row->category_id, 'created_at' => $now, 'updated_at' => $now];
+                }
+            });
+
+        if ($rules !== []) {
+            CategoryRule::ownedBy($user)->upsert(array_values($rules), ['user_id', 'keyword'], ['category_id', 'updated_at']);
+        }
     }
 
     /**
