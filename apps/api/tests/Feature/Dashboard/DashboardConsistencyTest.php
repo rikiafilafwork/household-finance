@@ -22,7 +22,7 @@ use function Pest\Laravel\actingAs;
 | Oracle sengaja ditulis ulang dari definisi (bukan memanggil PlanComparisonQuery) supaya dua
 | endpoint yang memakai query yang sama tidak bisa "sama-sama salah".
 |
-| "= laporan summary" menyusul saat GET /reports/summary ada (#58, Minggu 7).
+| Sejak #58 laporan ikut dicek: summary, by-category, cash-vs-noncash per bulan, dan tren 6 bulan.
 */
 
 const RANDOM_HISTORY_MONTHS = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11'];
@@ -216,6 +216,22 @@ it('matches the hand-rolled oracle and GET /api/plan for every month of a random
         // Sumber pemasukan = item pemasukan Rencana dengan aktual yang sama.
         expect(array_map(fn (array $r) => [$r['id'], $r['actual']], $dash['income_sources']))
             ->toBe(array_values(array_map(fn (array $i) => [$i['id'], $i['actual']], array_filter($plan['items'], fn (array $i) => $i['type'] === 'income'))), $ctx);
+
+        // Laporan (#58): ringkasan, per kategori, dan tunai vs non-tunai memakai definisi yang sama.
+        $summary = actingAs($f->user)->getJson("/api/reports/summary?month={$month}")->assertOk()->json('data');
+        expect([
+            'income' => $summary['income'],
+            'expense' => $summary['expense'],
+            'remaining_budget' => $summary['remaining_budget'],
+        ])->toBe(array_diff_key($oracle, ['still_to_spend' => 0]), "Laporan ringkasan ≠ oracle ({$ctx})")
+            ->and($summary['net'])->toBe($oracle['income']['actual'] - $oracle['expense']['actual'], $ctx);
+        foreach (['income', 'expense'] as $kind) {
+            $byCategory = actingAs($f->user)->getJson("/api/reports/by-category?from={$month}&to={$month}&kind={$kind}")->assertOk()->json('data');
+            expect([$byCategory['total_planned'], $byCategory['total_actual']])
+                ->toBe([$oracle[$kind]['planned'], $oracle[$kind]['actual']], "Laporan kategori {$kind} ≠ oracle ({$ctx})");
+        }
+        expect(actingAs($f->user)->getJson("/api/reports/cash-vs-noncash?month={$month}")->assertOk()->json('data.total'))
+            ->toBe($oracle['expense']['actual'], "Laporan tunai vs non-tunai ≠ oracle ({$ctx})");
     }
 
     // Tren 6 bulan di Beranda November = total Rencana tiap bulan.
@@ -226,6 +242,17 @@ it('matches the hand-rolled oracle and GET /api/plan for every month of a random
         'expense_actual' => oracleTotals($f->user, $m)['expense']['actual'],
         'expense_planned' => oracleTotals($f->user, $m)['expense']['planned'],
     ], RANDOM_HISTORY_MONTHS));
+
+    // Laporan tren 6 bulan = oracle juga.
+    expect(actingAs($f->user)->getJson('/api/reports/trend?months=6&end=2026-11')->assertOk()->json('data'))
+        ->toBe(array_map(fn (string $m) => [
+            'month' => $m,
+            'income_planned' => oracleTotals($f->user, $m)['income']['planned'],
+            'income_actual' => oracleTotals($f->user, $m)['income']['actual'],
+            'expense_planned' => oracleTotals($f->user, $m)['expense']['planned'],
+            'expense_actual' => oracleTotals($f->user, $m)['expense']['actual'],
+            'net' => oracleTotals($f->user, $m)['income']['actual'] - oracleTotals($f->user, $m)['expense']['actual'],
+        ], RANDOM_HISTORY_MONTHS));
 
     // Generator benar-benar menyentuh kasus tepi (kalau tidak, test ini kosong).
     expect(array_keys(array_filter($stats, fn (int $n) => $n === 0)))->toBe([], "seed {$seed}: kasus tidak tersentuh");

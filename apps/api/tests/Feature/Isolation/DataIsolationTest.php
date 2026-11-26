@@ -294,6 +294,14 @@ function isolationCases(): array
         'point own template at the victim’s account' => ['PUT api/plan-templates/{planTemplate}', fn ($c, $id) => ['PATCH', '/api/plan-templates/'.$c->myTemplateId, ['account_id' => $id('account')]]],
         'delete template' => ['DELETE api/plan-templates/{planTemplate}', fn ($c, $id) => ['DELETE', '/api/plan-templates/'.$id('plan_template')]],
 
+        // Laporan: korban punya transaksi & rencana November 2026 di kategori 'Rahasia Korban'.
+        'summary of the month the victim used' => ['GET api/reports/summary', fn ($c, $id) => ['GET', '/api/reports/summary?month=2026-11']],
+        'categories of the month the victim used' => ['GET api/reports/by-category', fn ($c, $id) => ['GET', '/api/reports/by-category?from=2026-10&to=2026-11']],
+        'trend over the victim’s months' => ['GET api/reports/trend', fn ($c, $id) => ['GET', '/api/reports/trend?months=3&end=2026-11']],
+        'cash flow of the victim’s account' => ['GET api/reports/cash-flow', fn ($c, $id) => ['GET', '/api/reports/cash-flow?from=2026-11-01&to=2026-11-30&account='.$id('account')]],
+        'cash flow of all accounts' => ['GET api/reports/cash-flow', fn ($c, $id) => ['GET', '/api/reports/cash-flow?from=2026-11-01&to=2026-11-30']],
+        'cash vs non-cash of the victim’s month' => ['GET api/reports/cash-vs-noncash', fn ($c, $id) => ['GET', '/api/reports/cash-vs-noncash?month=2026-11']],
+
         // Import mutasi
         'list imports' => ['GET api/imports', fn ($c, $id) => ['GET', '/api/imports']],
         'upload into the victim’s account' => ['POST api/imports', fn ($c, $id) => ['POST', '/api/imports', ['account_id' => $id('account'), 'format' => 'generic']]],
