@@ -2,7 +2,7 @@
 COMPOSE ?= docker compose
 APP     := $(COMPOSE) exec app
 
-.PHONY: help up down logs setup install migrate test seed fresh shell reconcile load-test web web-dev lint
+.PHONY: help up down logs setup install migrate test seed fresh shell reconcile load-test web web-dev lint bench seed-large
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -26,6 +26,13 @@ install: ## Install dependency JS (pnpm) dan PHP (composer)
 test: ## Jalankan test API (Pest) dan test JS workspace
 	$(APP) php artisan test
 	pnpm test
+
+seed-large: ## Akun demo 200 ribu transaksi + 1 juta noise (±2 menit; untuk benchmark)
+	$(COMPOSE) exec -T app php -d memory_limit=1G artisan demo:seed-large --fresh
+
+bench: ## Benchmark laporan & dashboard (butuh seed-large) → docs/benchmarks/reports.md
+	$(COMPOSE) exec -T app php artisan reports:benchmark
+	mkdir -p docs/benchmarks && cp apps/api/storage/app/benchmarks/reports.md docs/benchmarks/reports.md
 
 web: ## Build SPA ke apps/web/dist (disajikan nginx di http://localhost:8080)
 	pnpm --filter @personal-finance/web build

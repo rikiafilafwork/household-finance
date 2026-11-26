@@ -23,6 +23,7 @@ const SCOPE_BYPASS_ALLOWLIST = [
     'Support/DefaultCategories.php' => 'insertOrIgnore kategori bawaan untuk satu user eksplisit',
     'Console/Commands/ResetUserPassword.php' => 'hapus baris sessions milik satu user (bukan data keuangan)',
     'Console/Commands/DemoUserCommand.php' => 'demo:user --empty: hapus data milik satu user demo eksplisit (WHERE user_id)',
+    'Console/Commands/BenchmarkReports.php' => 'alat ukur lokal: total baris tabel (lintas user) + EXPLAIN ANALYZE; tidak mengembalikan data ke user',
 ];
 
 it('only bypasses the user scope in allow-listed files', function () {
