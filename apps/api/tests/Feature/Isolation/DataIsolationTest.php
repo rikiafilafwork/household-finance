@@ -69,6 +69,10 @@ final class IsolationContext
 
     public Import $victimImport;
 
+    public int $victimImportRowId;
+
+    public int $myImportId;
+
     public int $myTemplateId;
 
     public Account $myAccount;
@@ -123,10 +127,10 @@ final class IsolationContext
             'column_mapping' => ['date' => 0, 'date_format' => 'd/m/Y', 'description' => 1, 'amount' => 2, 'has_header' => false],
             'original_filename' => 'mutasi-rahasia.csv', 'file_path' => 'imports/rahasia.csv', 'status' => 'ready', 'total_rows' => 1, 'new_rows' => 1,
         ]);
-        $this->victimImport->rows()->create([
+        $this->victimImportRowId = $this->victimImport->rows()->create([
             'row_number' => 1, 'occurred_on' => '2026-11-03', 'amount' => -25_000, 'description' => 'TRANSFER RAHASIA',
             'fingerprint' => str_repeat('a', 64), 'status' => 'new', 'raw' => ['03/11/2026', 'TRANSFER RAHASIA', '-25.000'],
-        ]);
+        ])->id;
 
         $this->attacker = User::factory()->create(['name' => 'Penyerang']);
         $this->myAccount = Account::factory()->forUser($this->attacker)->opening(500_000)->create(['name' => 'Akun Saya']);
@@ -140,6 +144,10 @@ final class IsolationContext
             ->create(['name' => 'Item Saya', 'category_id' => $this->myCategory->id])->id;
         $this->myTemplateId = PlanTemplate::factory()->forUser($this->attacker)
             ->create(['name' => 'Template Saya', 'category_id' => $this->myCategory->id])->id;
+        $this->myImportId = Import::ownedBy($this->attacker)->create([
+            'user_id' => $this->attacker->id, 'account_id' => $this->myAccount->id, 'bank_format' => 'generic',
+            'original_filename' => 'punyaku.csv', 'status' => 'ready',
+        ])->id;
     }
 
     /**
@@ -291,6 +299,8 @@ function isolationCases(): array
         'upload into the victim’s account' => ['POST api/imports', fn ($c, $id) => ['POST', '/api/imports', ['account_id' => $id('account'), 'format' => 'generic']]],
         'show import' => ['GET api/imports/{import}', fn ($c, $id) => ['GET', '/api/imports/'.$id('import')]],
         'list import rows' => ['GET api/imports/{import}/rows', fn ($c, $id) => ['GET', '/api/imports/'.$id('import').'/rows']],
+        'commit the victim’s import' => ['POST api/imports/{import}/commit', fn ($c, $id) => ['POST', '/api/imports/'.$id('import').'/commit', ['rows' => []]]],
+        'commit the victim’s staged row into own import' => ['POST api/imports/{import}/commit', fn ($c, $id) => ['POST', '/api/imports/'.$c->myImportId.'/commit', ['rows' => [['id' => $id('import_row'), 'category_id' => null]]]]],
     ];
 
     return array_map(fn (array $case) => new IsolationCase($case[0], $case[1]), $cases);
@@ -313,6 +323,7 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'plan_item' => $c->victimPlanItem->id,
         'plan_template' => $c->victimTemplate->id,
         'import' => $c->victimImport->id,
+        'import_row' => $c->victimImportRowId,
         'own_transaction' => $ownTransaction,
     ];
     $missing = [
@@ -325,6 +336,7 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'plan_item' => 999_999_999,
         'plan_template' => 999_999_999,
         'import' => 999_999_999,
+        'import_row' => 999_999_999,
         'own_transaction' => $ownTransaction,
     ];
     $ids = $mode === 'foreign' ? $foreign : $missing;

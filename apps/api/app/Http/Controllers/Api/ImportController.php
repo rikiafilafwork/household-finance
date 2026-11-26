@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Imports\CommitImport;
 use App\Enums\AccountType;
 use App\Enums\ImportRowStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Imports\CommitImportRequest;
 use App\Http\Requests\Imports\StoreImportRequest;
 use App\Http\Resources\ImportResource;
 use App\Http\Resources\ImportRowResource;
@@ -71,6 +73,20 @@ class ImportController extends Controller
     public function show(Import $import): ImportResource
     {
         return new ImportResource($import);
+    }
+
+    /**
+     * Commit baris yang dicentang jadi transaksi (#54). Sinkron: 500 baris per transaksi DB, mutasi
+     * sebulan hanya beberapa ratus baris.
+     */
+    public function commit(CommitImportRequest $request, Import $import, CommitImport $commit): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $result = $commit->handle($user, $import, $request->selection());
+
+        return (new ImportResource($import->refresh()))->additional(['meta' => $result])->response();
     }
 
     public function rows(Request $request, Import $import): AnonymousResourceCollection

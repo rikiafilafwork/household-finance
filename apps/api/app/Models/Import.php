@@ -27,12 +27,14 @@ use Illuminate\Support\Carbon;
  * @property int $duplicate_rows
  * @property int $possible_duplicate_rows
  * @property int $invalid_rows
+ * @property int $committed_rows
+ * @property int $skipped_rows
  * @property string|null $error
  * @property Carbon $created_at
  */
 #[Fillable([
     'user_id', 'account_id', 'bank_format', 'column_mapping', 'headers', 'original_filename', 'file_path', 'status',
-    'total_rows', 'new_rows', 'duplicate_rows', 'possible_duplicate_rows', 'invalid_rows', 'error',
+    'total_rows', 'new_rows', 'duplicate_rows', 'possible_duplicate_rows', 'invalid_rows', 'committed_rows', 'skipped_rows', 'error',
 ])]
 class Import extends Model
 {
@@ -63,6 +65,8 @@ class Import extends Model
             'duplicate_rows' => 'integer',
             'possible_duplicate_rows' => 'integer',
             'invalid_rows' => 'integer',
+            'committed_rows' => 'integer',
+            'skipped_rows' => 'integer',
         ];
     }
 

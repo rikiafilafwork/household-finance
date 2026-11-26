@@ -32,6 +32,8 @@ class ImportResource extends JsonResource
                 'duplicate' => $this->duplicate_rows,
                 'possible_duplicate' => $this->possible_duplicate_rows,
                 'invalid' => $this->invalid_rows,
+                'committed' => $this->committed_rows,
+                'skipped' => $this->skipped_rows,
             ],
             'error' => $this->error,
             'created_at' => $this->created_at->toIso8601String(),

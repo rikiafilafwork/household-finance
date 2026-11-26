@@ -82,7 +82,7 @@ it('uploads a statement to the private disk and parses it into staging rows', fu
         ->assertJsonPath('data.format', 'generic')
         ->assertJsonPath('data.original_filename', 'mutasi-november.csv')
         ->assertJsonPath('data.headers', ['Tanggal', 'Keterangan', 'Debet', 'Kredit'])
-        ->assertJsonPath('data.counts', ['total' => 5, 'new' => 4, 'duplicate' => 0, 'possible_duplicate' => 0, 'invalid' => 1])
+        ->assertJsonPath('data.counts', ['total' => 5, 'new' => 4, 'duplicate' => 0, 'possible_duplicate' => 0, 'invalid' => 1, 'committed' => 0, 'skipped' => 0])
         ->assertJsonMissingPath('data.file_path');
 
     $import = Import::query()->findOrFail($response->json('data.id'));
