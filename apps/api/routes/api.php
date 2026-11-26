@@ -96,5 +96,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('trend', [ReportController::class, 'trend']);
         Route::get('cash-flow', [ReportController::class, 'cashFlow']);
         Route::get('cash-vs-noncash', [ReportController::class, 'cashVsNonCash']);
+        Route::get('export.csv', [ReportController::class, 'export'])->middleware('throttle:exports');
     });
 });

@@ -11,12 +11,14 @@ use App\Queries\CashFlowQuery;
 use App\Reports\CashVsNonCashReport;
 use App\Reports\CategoryBreakdownReport;
 use App\Reports\MonthlySummaryReport;
+use App\Reports\TransactionCsvExporter;
 use App\Reports\TrendReport;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Laporan (Minggu 7, Keputusan #14): dihitung langsung dari transactions & plan_items, tanpa
@@ -94,6 +96,32 @@ class ReportController extends Controller
         $request->validate(['month' => ['sometimes', self::MONTH]], $this->messages());
 
         return $this->data($report->for($this->user($request), $this->month($request, 'month')));
+    }
+
+    /**
+     * Unduh transaksi rentang tanggal sebagai CSV (streaming, memori datar). Default bulan berjalan.
+     */
+    public function export(Request $request, TransactionCsvExporter $exporter): StreamedResponse
+    {
+        $request->validate([
+            'from' => ['sometimes', 'date_format:Y-m-d'],
+            'to' => ['sometimes', 'date_format:Y-m-d'],
+            'delimiter' => ['sometimes', Rule::in(['semicolon', 'comma', 'tab'])],
+        ]);
+        $user = $this->user($request);
+        $today = CarbonImmutable::now($user->timezone);
+        $from = $request->string('from', $today->startOfMonth()->toDateString())->toString();
+        $to = $request->string('to', $today->toDateString())->toString();
+        if ($to < $from) {
+            throw ValidationException::withMessages(['to' => 'Tanggal akhir tidak boleh sebelum tanggal awal.']);
+        }
+        $delimiter = ['semicolon' => ';', 'comma' => ',', 'tab' => "\t"][$request->string('delimiter', 'semicolon')->toString()];
+
+        return response()->streamDownload(function () use ($exporter, $user, $from, $to, $delimiter) {
+            foreach ($exporter->lines($user, $from, $to, $delimiter) as $line) {
+                echo $line;
+            }
+        }, TransactionCsvExporter::filename($from, $to), ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     private function month(Request $request, string $field): PlanMonth
