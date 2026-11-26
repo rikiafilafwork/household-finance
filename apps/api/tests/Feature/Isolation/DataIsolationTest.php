@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 use function Pest\Laravel\actingAs;
 
@@ -301,6 +302,7 @@ function isolationCases(): array
         'cash flow of the victim’s account' => ['GET api/reports/cash-flow', fn ($c, $id) => ['GET', '/api/reports/cash-flow?from=2026-11-01&to=2026-11-30&account='.$id('account')]],
         'cash flow of all accounts' => ['GET api/reports/cash-flow', fn ($c, $id) => ['GET', '/api/reports/cash-flow?from=2026-11-01&to=2026-11-30']],
         'cash vs non-cash of the victim’s month' => ['GET api/reports/cash-vs-noncash', fn ($c, $id) => ['GET', '/api/reports/cash-vs-noncash?month=2026-11']],
+        'export the month the victim used' => ['GET api/reports/export.csv', fn ($c, $id) => ['GET', '/api/reports/export.csv?from=2026-11-01&to=2026-11-30']],
 
         // Import mutasi
         'list imports' => ['GET api/imports', fn ($c, $id) => ['GET', '/api/imports']],
@@ -356,6 +358,16 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
     return [actingAs($c->attacker)->json($method, $url, $payload), $url.' '.json_encode($payload)];
 }
 
+/**
+ * Isi response, termasuk download streaming (export CSV) yang getContent()-nya selalu false.
+ *
+ * @param  TestResponse<Response>  $response
+ */
+function responseBody(TestResponse $response): string
+{
+    return $response->baseResponse instanceof StreamedResponse ? (string) $response->streamedContent() : (string) $response->getContent();
+}
+
 it('treats another user’s data exactly like data that does not exist', function (IsolationCase $case) {
     $c = new IsolationContext;
     $before = $c->victimSnapshot();
@@ -375,7 +387,7 @@ it('treats another user’s data exactly like data that does not exist', functio
     // Nilai yang dikirim penyerang sendiri (mis. membuat akun bernama "BCA Korban") boleh muncul kembali.
     foreach ($c->leakMarkers() as $marker) {
         if (! str_contains($request, (string) $marker)) {
-            expect((string) $foreign->getContent())->not->toContain((string) $marker);
+            expect(responseBody($foreign))->not->toContain((string) $marker);
         }
     }
 
@@ -402,6 +414,7 @@ it('really exercises the victim’s data (sanity check of the fixture)', functio
     actingAs($c->victim)->getJson('/api/accounts/'.$c->victimAccount->id)->assertOk();
     actingAs($c->victim)->getJson('/api/transfers/'.$c->victimTransferGroup)->assertOk();
     actingAs($c->victim)->getJson('/api/transactions?q=catatan')->assertJsonCount(1, 'data');
+    expect(responseBody(actingAs($c->victim)->get('/api/reports/export.csv?from=2026-11-01&to=2026-11-30')))->toContain('catatan rahasia');
     actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.items.0.status', 'done');
     actingAs($c->victim)->getJson('/api/notifications')->assertJsonCount(1, 'data');
     actingAs($c->victim)->getJson('/api/plan/2026-11')->assertJsonPath('data.items.0.name', 'Cicilan Rahasia');

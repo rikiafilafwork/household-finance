@@ -462,7 +462,7 @@ Tujuannya bukan web yang lengkap, tapi cukup untuk **dipakai sendiri mulai mingg
 - `GET /reports/trend?months=6` → pemasukan vs pengeluaran (+ rencana) per bulan.
 - `GET /reports/cash-flow?from&to&account=` → net harian + saldo berjalan (window function, dimulai dari saldo sebelum `from`).
 - `GET /reports/cash-vs-noncash?month=` → pengeluaran per tipe akun.
-- `GET /reports/export.csv?from&to` → streaming (`streamDownload` + `lazyById`), UTF-8 dengan BOM, delimiter bisa dipilih (`;` untuk Excel locale Indonesia).
+- `GET /reports/export.csv?from&to&delimiter=semicolon|comma|tab` → streaming (`streamDownload` + halaman keyset `(occurred_on, id)` per 1.000 baris, urut tanggal; `lazyById` hanya bisa urut id), UTF-8 dengan BOM, `;` default untuk Excel locale Indonesia, teks diawali `= + - @` diberi `'` (formula injection).
 
 ```sql
 -- tren 6 bulan

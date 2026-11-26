@@ -70,5 +70,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Upload import: tiap file memicu job parse; cukup untuk beberapa percobaan pemetaan kolom.
         RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(10)->by((string) $request->user()?->getAuthIdentifier()));
+        RateLimiter::for('exports', fn (Request $request) => Limit::perMinute(10)->by((string) $request->user()?->getAuthIdentifier()));
     }
 }
