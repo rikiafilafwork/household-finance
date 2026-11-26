@@ -33,8 +33,10 @@ apps/mobile/android/
 
 # Data keuangan asli: JANGAN di-commit (fixture anonim ada di tests/Fixtures/statements/)
 *.csv
-!apps/api/tests/Fixtures/statements/*.csv
 statements/
+# Fixture anonim boleh masuk repo (folder harus dikecualikan dulu, baru file-nya).
+!apps/api/tests/Fixtures/statements/
+!apps/api/tests/Fixtures/statements/*.csv
 backups/
 *.sql.gz
 
