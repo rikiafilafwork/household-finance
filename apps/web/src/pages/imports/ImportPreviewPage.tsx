@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { ApiError } from '@/api/client';
@@ -40,22 +40,30 @@ function SummaryCards({ imp }: { imp: StatementImport }) {
   );
 }
 
-function CategoryPicker({ row, categories, value, disabled, onChange }: {
-  row: ImportRow; categories: Category[]; value: Id | null; disabled: boolean; onChange: (id: Id | null) => void;
+function CategoryPicker({ row, categories, value, suggested, disabled, onChange }: {
+  row: ImportRow; categories: Category[]; value: Id | null; suggested: boolean; disabled: boolean; onChange: (id: Id | null) => void;
 }) {
   const kind = (row.amount ?? 0) > 0 ? 'income' : 'expense';
   const options = categories.filter((c) => c.kind === kind && !c.archived_at);
   return (
-    <NativeSelect
-      aria-label={`Kategori baris ${row.row_number}`}
-      className="h-8 min-w-36 text-xs"
-      value={value ?? ''}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-    >
-      <option value="">Tanpa kategori</option>
-      {options.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-    </NativeSelect>
+    <div className="grid gap-0.5">
+      <NativeSelect
+        aria-label={`Kategori baris ${row.row_number}`}
+        aria-describedby={suggested ? `suggested-${row.id}` : undefined}
+        className="h-8 min-w-36 text-xs"
+        value={value ?? ''}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+      >
+        <option value="">Tanpa kategori</option>
+        {options.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </NativeSelect>
+      {suggested && (
+        <span id={`suggested-${row.id}`} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Sparkles className="size-3" aria-hidden /> saran dari impor sebelumnya
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -76,6 +84,9 @@ export function ImportPreviewPage() {
   // Pilihan user; baris yang belum disentuh mengikuti default (baru = dicentang).
   const [picked, setPicked] = useState<Record<Id, boolean>>({});
   const [categoryOf, setCategoryOf] = useState<Record<Id, Id | null>>({});
+  // Belum disentuh user → saran dari aturan kategori (#57) yang dikirim server di `category_id`.
+  const categoryFor = (row: ImportRow) => (row.id in categoryOf ? (categoryOf[row.id] ?? null) : row.category_id);
+  const isSuggested = (row: ImportRow) => !(row.id in categoryOf) && row.category_id !== null;
   const [result, setResult] = useState<{ committed: number; duplicate: number; skipped: number } | null>(null);
   const [commitError, setCommitError] = useState<string | null>(null);
 
@@ -88,7 +99,7 @@ export function ImportPreviewPage() {
   async function submit() {
     setCommitError(null);
     try {
-      const { meta } = await commit.mutateAsync({ id, rows: selected.map((r) => ({ id: r.id, category_id: categoryOf[r.id] ?? null })) });
+      const { meta } = await commit.mutateAsync({ id, rows: selected.map((r) => ({ id: r.id, category_id: categoryFor(r) })) });
       setResult(meta);
     } catch (e) {
       if (e instanceof ApiError && e.isValidation) setCommitError(Object.values(e.fieldErrors)[0]?.[0] ?? e.message);
@@ -214,7 +225,7 @@ export function ImportPreviewPage() {
                         <TableCell>
                           {canPick ? (
                             <CategoryPicker
-                              row={row} categories={categories} value={categoryOf[row.id] ?? null} disabled={!isPicked(row)}
+                              row={row} categories={categories} value={categoryFor(row)} suggested={isSuggested(row)} disabled={!isPicked(row)}
                               onChange={(cid) => setCategoryOf({ ...categoryOf, [row.id]: cid })}
                             />
                           ) : (

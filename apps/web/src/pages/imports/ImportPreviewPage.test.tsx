@@ -206,3 +206,28 @@ describe('ImportPreviewPage — tidak ada yang baru', () => {
     expect(await screen.findByText(/0 transaksi diimpor\./)).toBeInTheDocument();
   });
 });
+
+describe('ImportPreviewPage — saran kategori (#57)', () => {
+  it('preselects suggested categories, marks them, and lets the user override or clear them', async () => {
+    importsApi.rows.mockResolvedValue(rows.map((r) => (r.id === 11 ? { ...r, category_id: 9 } : r.id === 12 || r.id === 13 ? { ...r, category_id: 1 } : r)));
+    importsApi.commit.mockResolvedValue({ import: imp({ status: 'committed' }), meta: { committed: 3, duplicate: 0, skipped: 1 } });
+    renderPage();
+    await screen.findByRole('table', { name: 'Baris mutasi' });
+
+    expect(screen.getByLabelText('Kategori baris 2')).toHaveDisplayValue('Gaji');
+    expect(screen.getByLabelText('Kategori baris 3')).toHaveDisplayValue('Makan');
+    expect(screen.getByLabelText('Kategori baris 3')).toHaveAccessibleDescription('saran dari impor sebelumnya');
+    expect(screen.getByLabelText('Kategori baris 5')).not.toHaveAccessibleDescription();
+
+    await userEvent.selectOptions(screen.getByLabelText('Kategori baris 3'), 'Tanpa kategori');   // tolak saran
+    expect(screen.getByLabelText('Kategori baris 3')).not.toHaveAccessibleDescription();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Impor 3 transaksi' }));
+
+    expect(importsApi.commit).toHaveBeenCalledWith(7, [
+      { id: 11, category_id: 9 },
+      { id: 12, category_id: null },
+      { id: 13, category_id: 1 },
+    ]);
+  });
+});
