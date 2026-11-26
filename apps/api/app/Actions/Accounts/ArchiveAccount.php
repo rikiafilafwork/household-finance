@@ -3,15 +3,35 @@
 namespace App\Actions\Accounts;
 
 use App\Models\Account;
+use App\Models\SavingsGoal;
 use Illuminate\Validation\ValidationException;
 
 class ArchiveAccount
 {
     public function archive(Account $account): Account
     {
+        self::ensureHoldsNoGoalMoney($account, 'account');
+
         $account->update(['archived_at' => $account->archived_at ?? now()]);
 
         return $account;
+    }
+
+    /**
+     * Rekening tabungan tidak boleh dinonaktifkan/diarsip selagi tujuan di dalamnya masih memegang uang.
+     */
+    public static function ensureHoldsNoGoalMoney(Account $account, string $field): void
+    {
+        $holdsMoney = SavingsGoal::ownedBy($account->user_id)
+            ->where('account_id', $account->getKey())
+            ->where('allocated_amount', '>', 0)
+            ->exists();
+
+        if ($holdsMoney) {
+            throw ValidationException::withMessages([
+                $field => 'Rekening ini masih memegang uang tujuan tabungan. Kosongkan atau pindahkan alokasinya dulu.',
+            ]);
+        }
     }
 
     public function unarchive(Account $account): Account

@@ -25,6 +25,7 @@ class UpdateAccountRequest extends FormRequest
             ],
             'type' => ['sometimes', Rule::enum(AccountType::class)],
             'opening_balance' => ['sometimes', 'integer:strict', "between:-{$max},{$max}"],
+            'is_savings' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer:strict', 'between:0,32767'],
             'balance' => ['prohibited'],
         ];

@@ -5,6 +5,7 @@ use App\Models\Category;
 use App\Models\Import;
 use App\Models\PlanItem;
 use App\Models\PlanTemplate;
+use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
@@ -67,6 +68,10 @@ final class IsolationContext
     public int $myPlanItemId;
 
     public PlanTemplate $victimTemplate;
+
+    public Account $victimSavingsAccount;
+
+    public SavingsGoal $victimGoal;
 
     public Import $victimImport;
 
@@ -133,6 +138,10 @@ final class IsolationContext
             'fingerprint' => str_repeat('a', 64), 'status' => 'new', 'raw' => ['03/11/2026', 'TRANSFER RAHASIA', '-25.000'],
         ])->id;
 
+        // Rekening tabungan korban + satu tujuan yang memegang uang.
+        $this->victimSavingsAccount = Account::factory()->forUser($this->victim)->savings()->opening(200_000)->create(['name' => 'BCA Tabungan Korban']);
+        $this->victimGoal = SavingsGoal::factory()->forAccount($this->victimSavingsAccount)->allocated(50_000)->create(['name' => 'Tujuan Rahasia']);
+
         $this->attacker = User::factory()->create(['name' => 'Penyerang']);
         $this->myAccount = Account::factory()->forUser($this->attacker)->opening(500_000)->create(['name' => 'Akun Saya']);
         $this->myAccount2 = Account::factory()->forUser($this->attacker)->opening(0)->create(['name' => 'Akun Saya 2']);
@@ -169,6 +178,8 @@ final class IsolationContext
             'notifications' => $rows('notifications', 'notifiable_id'),
             'plan_items' => $rows('plan_items'),
             'plan_templates' => $rows('plan_templates'),
+            'savings_goals' => $rows('savings_goals'),
+            'savings_allocations' => $rows('savings_allocations'),
             'imports' => $rows('imports'),
             'import_rows' => DB::table('import_rows')->where('import_id', $this->victimImport->id)->orderBy('id')->get()->map(fn ($r) => (array) $r)->all(),
         ];
@@ -181,7 +192,7 @@ final class IsolationContext
      */
     public function leakMarkers(): array
     {
-        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', 'Template Rahasia', 'mutasi-rahasia.csv', 'TRANSFER RAHASIA', $this->victimTransferGroup, $this->victimNotification->id];
+        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', 'Template Rahasia', 'mutasi-rahasia.csv', 'TRANSFER RAHASIA', 'BCA Tabungan Korban', 'Tujuan Rahasia', $this->victimTransferGroup, $this->victimNotification->id];
     }
 }
 
