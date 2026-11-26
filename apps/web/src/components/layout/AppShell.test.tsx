@@ -26,7 +26,7 @@ function renderAt(url: string) {
 }
 
 describe('AppShell (tanpa household)', () => {
-  it('links the five main sections to flat routes, without any household id', () => {
+  it('links the main sections (plus web-only Impor on desktop) to flat routes, without any household id', () => {
     renderAt('/transactions');
 
     const [desktop] = screen.getAllByRole('navigation', { name: 'Menu utama' });
@@ -36,6 +36,7 @@ describe('AppShell (tanpa household)', () => {
       ['Rencana', '/plan'],
       ['Transaksi', '/transactions'],
       ['Akun', '/accounts'],
+      ['Impor', '/imports'],
       ['Pengaturan', '/settings'],
     ]);
     expect(within(desktop!).getByRole('link', { name: 'Transaksi' })).toHaveAttribute('aria-current', 'page');
@@ -46,6 +47,7 @@ describe('AppShell (tanpa household)', () => {
 
     const [, mobile] = screen.getAllByRole('navigation', { name: 'Menu utama' });
     expect(within(mobile!).getAllByRole('link')).toHaveLength(5);
+    expect(within(mobile!).queryByRole('link', { name: 'Impor' })).not.toBeInTheDocument();
     expect(screen.queryByText('Lainnya')).not.toBeInTheDocument();
     expect(screen.queryByText(/household/i)).not.toBeInTheDocument();
   });

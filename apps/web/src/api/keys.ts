@@ -13,6 +13,9 @@ export const qk = {
   plan: (month?: string) => (month ? ['plan', month] : ['plan']) as readonly unknown[],
   dashboard: ['dashboard'] as const,
   templates: ['plan-templates'] as const,
+  imports: ['imports'] as const,
+  importDetail: (id: number) => ['imports', id] as const,
+  importRows: (id: number) => ['imports', id, 'rows'] as const,
 };
 
 /**
