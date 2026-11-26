@@ -322,6 +322,17 @@ function isolationCases(): array
         'list import rows' => ['GET api/imports/{import}/rows', fn ($c, $id) => ['GET', '/api/imports/'.$id('import').'/rows']],
         'commit the victim’s import' => ['POST api/imports/{import}/commit', fn ($c, $id) => ['POST', '/api/imports/'.$id('import').'/commit', ['rows' => []]]],
         'commit the victim’s staged row into own import' => ['POST api/imports/{import}/commit', fn ($c, $id) => ['POST', '/api/imports/'.$c->myImportId.'/commit', ['rows' => [['id' => $id('import_row'), 'category_id' => null]]]]],
+
+        // Tabungan
+        'savings summary' => ['GET api/savings', fn ($c, $id) => ['GET', '/api/savings']],
+        'create goal on the victim’s savings account' => ['POST api/savings-goals', fn ($c, $id) => ['POST', '/api/savings-goals', ['account_id' => $id('savings_account'), 'name' => 'Tujuan Saya', 'target_amount' => 1_000_000]]],
+        'show goal' => ['GET api/savings-goals/{savingsGoal}', fn ($c, $id) => ['GET', '/api/savings-goals/'.$id('savings_goal')]],
+        'update goal' => ['PUT api/savings-goals/{savingsGoal}', fn ($c, $id) => ['PATCH', '/api/savings-goals/'.$id('savings_goal'), ['name' => 'Diretas']]],
+        'delete goal' => ['DELETE api/savings-goals/{savingsGoal}', fn ($c, $id) => ['DELETE', '/api/savings-goals/'.$id('savings_goal')]],
+        'archive goal' => ['POST api/savings-goals/{savingsGoal}/archive', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/archive']],
+        'unarchive goal' => ['POST api/savings-goals/{savingsGoal}/unarchive', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/unarchive']],
+        'achieve goal' => ['POST api/savings-goals/{savingsGoal}/achieve', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/achieve']],
+        'unachieve goal' => ['POST api/savings-goals/{savingsGoal}/unachieve', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/unachieve']],
     ];
 
     return array_map(fn (array $case) => new IsolationCase($case[0], $case[1]), $cases);
@@ -345,6 +356,8 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'plan_template' => $c->victimTemplate->id,
         'import' => $c->victimImport->id,
         'import_row' => $c->victimImportRowId,
+        'savings_account' => $c->victimSavingsAccount->id,
+        'savings_goal' => $c->victimGoal->id,
         'own_transaction' => $ownTransaction,
     ];
     $missing = [
@@ -358,6 +371,8 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'plan_template' => 999_999_999,
         'import' => 999_999_999,
         'import_row' => 999_999_999,
+        'savings_account' => 999_999_999,
+        'savings_goal' => 999_999_999,
         'own_transaction' => $ownTransaction,
     ];
     $ids = $mode === 'foreign' ? $foreign : $missing;
