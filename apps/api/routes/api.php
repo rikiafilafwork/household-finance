@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('savings-goals/{savingsGoal}/allocations', [SavingsGoalController::class, 'allocations']);
     Route::post('savings-goals/{savingsGoal}/allocations', [SavingsGoalController::class, 'allocate']);
     Route::post('savings-goals/{savingsGoal}/move', [SavingsGoalController::class, 'move']);
+    Route::post('savings-goals/{savingsGoal}/use', [SavingsGoalController::class, 'use']);
 
     Route::apiResource('categories', CategoryController::class);
     Route::post('categories/{category}/archive', [CategoryController::class, 'archive']);

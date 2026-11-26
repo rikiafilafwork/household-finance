@@ -6,13 +6,16 @@ use App\Actions\Savings\AllocateSavings;
 use App\Actions\Savings\ArchiveSavingsGoal;
 use App\Actions\Savings\MoveSavingsAllocation;
 use App\Actions\Savings\SaveSavingsGoal;
+use App\Actions\Savings\UseSavings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Savings\AllocateRequest;
 use App\Http\Requests\Savings\MoveAllocationRequest;
 use App\Http\Requests\Savings\StoreSavingsGoalRequest;
 use App\Http\Requests\Savings\UpdateSavingsGoalRequest;
+use App\Http\Requests\Savings\UseSavingsRequest;
 use App\Http\Resources\SavingsAllocationResource;
 use App\Http\Resources\SavingsGoalResource;
+use App\Http\Resources\TransactionResource;
 use App\Models\SavingsGoal;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -117,5 +120,24 @@ class SavingsGoalController extends Controller
         [$allocation, $created] = $move->handle($user, $savingsGoal, $to, $request->integer('amount'), $request->note(), $request->clientId());
 
         return (new SavingsAllocationResource($allocation))->response()->setStatusCode($created ? 201 : 200);
+    }
+
+    /**
+     * "Gunakan": transaksi pengeluaran dari rekening tabungan + alokasi tujuan berkurang sebesar itu.
+     */
+    public function use(UseSavingsRequest $request, SavingsGoal $savingsGoal, UseSavings $use): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        [$transaction, $created] = $use->handle(
+            $user, $savingsGoal, $request->integer('amount'), $request->integer('category_id'),
+            $request->string('occurred_on')->toString(), $request->note(), $request->clientId(),
+        );
+
+        return response()->json(['data' => [
+            'transaction' => new TransactionResource($transaction->load(['category', 'savingsAllocation'])),
+            'goal' => new SavingsGoalResource($savingsGoal->refresh()),
+        ]], $created ? 201 : 200);
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -55,5 +56,15 @@ class Transaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Log alokasi "Gunakan tabungan" yang menunjuk transaksi ini (paling banyak satu, uq_alloc_transaction).
+     *
+     * @return HasOne<SavingsAllocation, $this>
+     */
+    public function savingsAllocation(): HasOne
+    {
+        return $this->hasOne(SavingsAllocation::class);
     }
 }

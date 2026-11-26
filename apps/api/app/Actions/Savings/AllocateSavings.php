@@ -71,7 +71,8 @@ class AllocateSavings
             }
 
             if ($amount > 0) {
-                // Σ semua tujuan di rekening (tujuan arsip selalu 0).
+                // Σ semua tujuan di rekening (tujuan arsip selalu 0). Hanya tidak basi karena SETIAP penulis
+                // allocated_amount (UseSavings, LinkedAllocation, pindah, arsip) mengunci rekening dulu.
                 $allocated = (int) SavingsGoal::ownedBy($user)->where('account_id', $account->getKey())->sum('allocated_amount');
                 $unallocated = $account->balance - $allocated;
 

@@ -245,6 +245,10 @@ function isolationCases(): array
         'amount' => 10_000, 'occurred_on' => '2026-11-22', 'client_id' => (string) Str::uuid(),
     ], $overrides);
 
+    $use = fn (IsolationContext $c, array $overrides = []) => array_merge([
+        'amount' => 10_000, 'category_id' => $c->myCategory->id, 'occurred_on' => '2026-11-22', 'client_id' => (string) Str::uuid(),
+    ], $overrides);
+
     $cases = [
         // ---------- Akun ----------
         'list accounts' => ['GET api/accounts', fn ($c, $id) => ['GET', '/api/accounts?include_archived=1']],
@@ -355,6 +359,9 @@ function isolationCases(): array
         'move out of the victim’s goal' => ['POST api/savings-goals/{savingsGoal}/move', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/move', ['to_goal_id' => $c->myGoalId, 'amount' => 10_000, 'client_id' => (string) Str::uuid()]]],
         'move own allocation into the victim’s goal' => ['POST api/savings-goals/{savingsGoal}/move', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/move', ['to_goal_id' => $id('savings_goal'), 'amount' => 10_000, 'client_id' => (string) Str::uuid()]]],
         'move own allocation replaying the victim’s client_id' => ['POST api/savings-goals/{savingsGoal}/move', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/move', ['to_goal_id' => $c->myGoal2Id, 'amount' => 10_000, 'client_id' => $id('savings_client_id')]]],
+        'use the victim’s goal' => ['POST api/savings-goals/{savingsGoal}/use', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/use', $use($c)]],
+        'use own goal with the victim’s category' => ['POST api/savings-goals/{savingsGoal}/use', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/use', $use($c, ['category_id' => $id('category')])]],
+        'use own goal replaying the victim’s client_id' => ['POST api/savings-goals/{savingsGoal}/use', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/use', $use($c, ['client_id' => $id('client_id')])]],
     ];
 
     return array_map(fn (array $case) => new IsolationCase($case[0], $case[1]), $cases);
