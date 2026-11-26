@@ -7,6 +7,8 @@ use Pest\TestSuite;
 use Tests\Support\SpaClient;
 use Tests\TestCase;
 
+require_once __DIR__.'/Support/SavingsInvariant.php';
+
 /*
 | Feature test memakai TestCase Laravel + RefreshDatabase.
 | Unit test murni (Money, RecurrenceCalculator, dll.) tidak butuh framework.

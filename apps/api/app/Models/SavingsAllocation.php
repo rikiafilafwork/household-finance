@@ -15,6 +15,8 @@ use Illuminate\Support\Carbon;
  * @property int $amount
  * @property Carbon $occurred_on
  * @property int|null $transaction_id
+ * @property string|null $move_group_id
+ * @property string|null $client_id
  */
 #[Fillable([
     'user_id', 'savings_goal_id', 'amount', 'occurred_on', 'note', 'transaction_id', 'move_group_id', 'client_id',

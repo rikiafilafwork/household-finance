@@ -14,6 +14,7 @@ use App\Actions\Plan\CheckPlanItem;
 use App\Actions\Plan\CheckPlanItemInput;
 use App\Actions\Plan\GeneratePlanFromTemplates;
 use App\Actions\Plan\UncheckPlanItem;
+use App\Actions\Savings\AllocateSavings;
 use App\Actions\Transactions\CreateTransaction;
 use App\Actions\Transactions\TransactionInput;
 use App\Actions\Transfers\CreateTransfer;
@@ -22,18 +23,20 @@ use App\Enums\TransactionType;
 use App\Jobs\CheckEnvelopeThresholds;
 use App\Models\Import;
 use App\Models\PlanItem;
+use App\Models\SavingsGoal;
 use App\Models\User;
 use App\Plan\PlanMonth;
 use App\Queries\PlanComparisonQuery;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, plan_item_id?: int, import_id?: int, month?: string, now?: string, from?: int, to?: int, amount: int, client_id: string} $job */
+/** @var array{op: string, user_id: int, start_at: float, account_id?: int, category_id?: int, plan_item_id?: int, import_id?: int, goal_id?: int, month?: string, now?: string, from?: int, to?: int, amount: int, client_id: string} $job */
 $job = json_decode($argv[1] ?? '{}', true, flags: JSON_THROW_ON_ERROR);
 
 while (microtime(true) < $job['start_at']) {
@@ -101,12 +104,22 @@ try {
 
             return ['id' => (string) $result['committed'], 'created' => $result['committed'] > 0];
         })(),
+        'allocate' => (function () use ($user, $job) {
+            $goal = SavingsGoal::ownedBy($user)->findOrFail((int) $job['goal_id']);
+            [$allocation, $created] = app(AllocateSavings::class)->handle($user, $goal, $job['amount'], '2026-11-27', null, $job['client_id']);
+
+            return ['id' => (string) $allocation->id, 'created' => $created, 'status' => $created ? 201 : 200];
+        })(),
         default => throw new InvalidArgumentException("op tidak dikenal: {$job['op']}"),
     };
 
     echo json_encode(['ok' => true] + $result);
 } catch (Throwable $e) {
-    $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : null;
+    $status = match (true) {
+        $e instanceof HttpExceptionInterface => $e->getStatusCode(),
+        $e instanceof ValidationException => 422,
+        default => null,
+    };
     echo json_encode(['ok' => false, 'status' => $status, 'error' => $e::class.': '.$e->getMessage()]);
     exit(1);
 }

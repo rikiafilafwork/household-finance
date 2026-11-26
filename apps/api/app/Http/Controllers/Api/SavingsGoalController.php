@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Savings\AllocateSavings;
 use App\Actions\Savings\ArchiveSavingsGoal;
+use App\Actions\Savings\MoveSavingsAllocation;
 use App\Actions\Savings\SaveSavingsGoal;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Savings\AllocateRequest;
+use App\Http\Requests\Savings\MoveAllocationRequest;
 use App\Http\Requests\Savings\StoreSavingsGoalRequest;
 use App\Http\Requests\Savings\UpdateSavingsGoalRequest;
+use App\Http\Resources\SavingsAllocationResource;
 use App\Http\Resources\SavingsGoalResource;
 use App\Models\SavingsGoal;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 /**
@@ -66,5 +73,49 @@ class SavingsGoalController extends Controller
     public function unachieve(SavingsGoal $savingsGoal, ArchiveSavingsGoal $actions): SavingsGoalResource
     {
         return new SavingsGoalResource($actions->unmarkAchieved($savingsGoal));
+    }
+
+    /**
+     * Riwayat alokasi tujuan, terbaru dulu, cursor pagination (occurred_on DESC, id DESC) seperti transaksi.
+     */
+    public function allocations(Request $request, SavingsGoal $savingsGoal): AnonymousResourceCollection
+    {
+        $request->validate([
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'cursor' => ['sometimes', 'string'],
+        ]);
+
+        $page = $savingsGoal->allocations()
+            ->orderByDesc('occurred_on')
+            ->orderByDesc('id')
+            ->cursorPaginate($request->integer('per_page', 50))
+            ->withQueryString();
+
+        return SavingsAllocationResource::collection($page);
+    }
+
+    public function allocate(AllocateRequest $request, SavingsGoal $savingsGoal, AllocateSavings $allocate): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        [$allocation, $created] = $allocate->handle(
+            $user, $savingsGoal, $request->integer('amount'), $request->string('occurred_on')->toString(),
+            $request->note(), $request->clientId(),
+        );
+
+        // Retry dengan client_id yang sama → 200 + baris lama.
+        return (new SavingsAllocationResource($allocation))->response()->setStatusCode($created ? 201 : 200);
+    }
+
+    public function move(MoveAllocationRequest $request, SavingsGoal $savingsGoal, MoveSavingsAllocation $move): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $to = SavingsGoal::ownedBy($user)->findOrFail($request->integer('to_goal_id'));
+
+        [$allocation, $created] = $move->handle($user, $savingsGoal, $to, $request->integer('amount'), $request->note(), $request->clientId());
+
+        return (new SavingsAllocationResource($allocation))->response()->setStatusCode($created ? 201 : 200);
     }
 }
