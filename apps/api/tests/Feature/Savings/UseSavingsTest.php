@@ -159,6 +159,23 @@ it('restores the allocation when the transaction is deleted', function () {
     assertSavingsBalanced();
 });
 
+it('unarchives the goal when an edit puts money back', function () {
+    [$user, $account, $goal, $category] = useSavingsFixture();
+    $transactionId = useSavingsVia($user, $goal, $category, 10_000_000);
+    actingAs($user)->postJson("/api/savings-goals/{$goal->id}/archive")->assertOk();
+
+    actingAs($user)->patchJson("/api/transactions/{$transactionId}", [
+        'account_id' => $account->id, 'type' => 'expense', 'amount' => 3_000_000,
+        'category_id' => $category->id, 'occurred_on' => '2026-11-27',
+    ])->assertOk();
+
+    $goal->refresh();
+    expect($goal->allocated_amount)->toBe(7_000_000)
+        ->and($goal->archived_at)->toBeNull();
+    assertLedgerBalanced();
+    assertSavingsBalanced();
+});
+
 it('adjusts the allocation when the amount is edited', function () {
     [$user, $account, $goal, $category] = useSavingsFixture();
     $transactionId = useSavingsVia($user, $goal, $category, 4_000_000);

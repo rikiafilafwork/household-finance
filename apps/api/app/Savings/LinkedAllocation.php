@@ -57,7 +57,12 @@ final class LinkedAllocation
         }
 
         $allocation->update(['amount' => $current->amount]);
-        $goal->increment('allocated_amount', $delta);
+        $goal->allocated_amount += $delta;
+        // Nominal turun = uang kembali ke tujuan; tujuan arsip tidak boleh memegang uang → buka lagi.
+        if ($delta > 0) {
+            $goal->archived_at = null;
+        }
+        $goal->save();
     }
 
     /** Uang kembali ke tujuannya; tujuan arsip dibuka lagi karena kini memegang uang. */
