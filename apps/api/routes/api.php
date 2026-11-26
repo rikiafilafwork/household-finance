@@ -86,4 +86,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('imports', [ImportController::class, 'store'])->middleware('throttle:imports');
     Route::get('imports/{import}', [ImportController::class, 'show']);
     Route::get('imports/{import}/rows', [ImportController::class, 'rows']);
+    Route::post('imports/{import}/commit', [ImportController::class, 'commit']);
 });
