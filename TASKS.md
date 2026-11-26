@@ -129,16 +129,16 @@ Label: `api` `web` `mobile` `shared` `infra` `test` `docs` `adr` `perf` `dogfood
 - [x] #56 Web: wizard import (upload → preview → commit) `web`
 - [x] #57 [Stretch] `category_rules`: kata kunci → kategori `api` `stretch`
 
-## Minggu 7 — Laporan, Export, Bukti Performa (0/6)
+## Minggu 7 — Laporan, Export, Bukti Performa (5/6)
 
 > **Done kalau:** angka laporan cocok dengan fixture, akun lain tidak bisa melihat angka akun demo (laporan dan export), dan docs/benchmarks/reports.md berisi angka + EXPLAIN.
 
-- [ ] #58 API laporan: summary, by-category, trend, cash-flow, tunai vs non-tunai `api`
-- [ ] #59 Export CSV streaming `api`
-- [ ] #60 Test laporan & export (akurasi + isolasi) `test`
-- [ ] #61 `demo:seed-large`: 200 ribu transaksi + ~1 juta noise `api` `perf`
+- [x] #58 API laporan: summary, by-category, trend, cash-flow, tunai vs non-tunai `api`
+- [x] #59 Export CSV streaming `api`
+- [x] #60 Test laporan & export (akurasi + isolasi) `test`
+- [x] #61 `demo:seed-large`: 200 ribu transaksi + ~1 juta noise `api` `perf`
 - [ ] #62 `reports:benchmark` + `docs/benchmarks/reports.md` (laporan + dashboard) `docs` `perf`
-- [ ] #63 Web: halaman laporan + chart + export `web`
+- [x] #63 Web: halaman laporan + chart + export `web`
 
 ## Minggu 8 — Mobile (Expo) (0/6)
 
