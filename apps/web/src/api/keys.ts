@@ -16,6 +16,7 @@ export const qk = {
   imports: ['imports'] as const,
   importDetail: (id: number) => ['imports', id] as const,
   importRows: (id: number) => ['imports', id, 'rows'] as const,
+  reports: (...parts: unknown[]) => ['reports', ...parts] as const,
 };
 
 /**
@@ -44,6 +45,7 @@ export function refreshNotifications(queryClient: QueryClient) {
 export function invalidateMoney(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: qk.accounts }),
+    queryClient.invalidateQueries({ queryKey: ['reports'] }),
     queryClient.invalidateQueries({ queryKey: qk.transactions() }),
     queryClient.invalidateQueries({ queryKey: ['transfers'] }),
     refreshNotifications(queryClient),

@@ -12,6 +12,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { ImportPreviewPage } from '@/pages/imports/ImportPreviewPage';
 import { ImportUploadPage } from '@/pages/imports/ImportUploadPage';
 import { PlanPage } from '@/pages/PlanPage';
+import { ReportsPage } from '@/pages/ReportsPage';
 import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { ProfilePage } from '@/pages/settings/ProfilePage';
 import { TemplatesPage } from '@/pages/settings/TemplatesPage';
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
           { path: '/plan', element: <PlanPage /> },
           { path: '/transactions', element: <TransactionsPage /> },
           { path: '/accounts', element: <AccountsPage /> },
+          { path: '/reports', element: <ReportsPage /> },
           { path: '/imports', element: <ImportUploadPage /> },
           { path: '/imports/:id', element: <ImportPreviewPage /> },
           { path: '/settings', element: <Navigate to="/settings/categories" replace /> },

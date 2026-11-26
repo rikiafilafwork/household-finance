@@ -36,6 +36,7 @@ describe('AppShell (tanpa household)', () => {
       ['Rencana', '/plan'],
       ['Transaksi', '/transactions'],
       ['Akun', '/accounts'],
+      ['Laporan', '/reports'],
       ['Impor', '/imports'],
       ['Pengaturan', '/settings'],
     ]);
@@ -48,6 +49,7 @@ describe('AppShell (tanpa household)', () => {
     const [, mobile] = screen.getAllByRole('navigation', { name: 'Menu utama' });
     expect(within(mobile!).getAllByRole('link')).toHaveLength(5);
     expect(within(mobile!).queryByRole('link', { name: 'Impor' })).not.toBeInTheDocument();
+    expect(within(mobile!).queryByRole('link', { name: 'Laporan' })).not.toBeInTheDocument();
     expect(screen.queryByText('Lainnya')).not.toBeInTheDocument();
     expect(screen.queryByText(/household/i)).not.toBeInTheDocument();
   });

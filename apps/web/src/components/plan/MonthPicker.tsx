@@ -13,7 +13,12 @@ export function useMonthParam(current: string) {
   const [params, setParams] = useSearchParams();
   const requested = params.get('month');
   const month = requested && MONTH.test(requested) ? requested : current;
-  const setMonth = (m: string) => setParams(m === current ? {} : { month: m });
+  // Parameter lain (mis. `tab` di Laporan) dipertahankan.
+  const setMonth = (m: string) => {
+    const next = new URLSearchParams(params);
+    if (m === current) next.delete('month'); else next.set('month', m);
+    setParams(next);
+  };
   return [month, setMonth] as const;
 }
 
