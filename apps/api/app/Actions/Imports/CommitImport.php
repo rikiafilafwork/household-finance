@@ -169,6 +169,16 @@ class CommitImport
             $account = $this->lockAccounts->one($user, $import->account_id);
             $this->assertAccountWritable($account);
 
+            // Commit paralel untuk import yang SAMA (klik dua kali, retry) bisa sudah memasukkan chunk
+            // ini sebelum kunci kita dapat. Baris itu dilewati; kalau tidak, fingerprint-nya terlihat
+            // "sudah ada" dan baris yang benar-benar committed tertimpa jadi duplicate.
+            $done = ImportRow::query()->whereKey(array_map(fn (ImportRow $row) => $row->id, $chunk))
+                ->where('status', ImportRowStatus::Committed->value)->pluck('id')->flip()->all();
+            $chunk = array_values(array_filter($chunk, fn (ImportRow $row) => ! isset($done[$row->id])));
+            if ($chunk === []) {
+                return [0, 0, []];
+            }
+
             // Di bawah kunci akun: semua commit import ke akun ini serial, jadi cek ini akurat.
             $existing = Transaction::ownedBy($user)->withTrashed()
                 ->where('account_id', $account->id)

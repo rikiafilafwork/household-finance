@@ -1,15 +1,19 @@
 <?php
 
+use App\Actions\Imports\StageImportRows;
 use App\Models\Account;
 use App\Models\BudgetAlert;
 use App\Models\Category;
+use App\Models\Import;
 use App\Models\PlanItem;
 use App\Models\PlanTemplate;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Process\Pool;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /*
@@ -299,4 +303,53 @@ it('posts each due auto-post item once when plan:auto-post runs 8 times at the s
         ->and(Transaction::ownedBy($owner)->count())->toBe(2)
         ->and($bca->fresh()?->balance)->toBe(250_000);
     assertLedgerBalanced();
+});
+
+/** Import ter-parse (status ready) dari isi CSV, langsung lewat StageImportRows. */
+function stagedConcurrentImport(User $owner, Account $account, string $csv): Import
+{
+    $path = 'imports/concurrency/'.Str::uuid().'.csv';
+    Storage::disk(Import::DISK)->put($path, $csv);
+
+    $import = Import::ownedBy($owner)->create([
+        'user_id' => $owner->id, 'account_id' => $account->id, 'bank_format' => 'generic',
+        'column_mapping' => ['date' => 0, 'date_format' => 'd/m/Y', 'description' => 1, 'amount' => 2, 'has_header' => false],
+        'original_filename' => 'mutasi.csv', 'file_path' => $path,
+    ]);
+    app(StageImportRows::class)->handle($import);
+
+    return $import->refresh();
+}
+
+it('never doubles a transaction when overlapping imports are committed in parallel, twice each', function () {
+    [$owner, $bca] = concurrencySetup();
+
+    // 1–15 Nov dan 10–30 Nov: overlap 10–15 Nov, termasuk dua kopi identik tanggal 10.
+    $first = stagedConcurrentImport($owner, $bca, "01/11/2026;GAJI;10.000.000\n03/11/2026;KOPI;-25.000\n"
+        ."10/11/2026;KOPI;-25.000\n10/11/2026;KOPI;-25.000\n15/11/2026;INDOMARET;-87.500\n");
+    $second = stagedConcurrentImport($owner, $bca, "10/11/2026;KOPI;-25.000\n10/11/2026;KOPI;-25.000\n"
+        ."15/11/2026;INDOMARET;-87.500\n20/11/2026;INTERNET;-385.000\n28/11/2026;BUNGA;1.234\n");
+    expect([$first->status->value, $second->status->value])->toBe(['ready', 'ready']);
+
+    $job = fn (Import $import) => ['op' => 'commit-import', 'user_id' => $owner->id, 'import_id' => $import->id, 'amount' => 0, 'client_id' => ''];
+    $results = runConcurrently([$job($first), $job($second), $job($first), $job($second)]);
+
+    expect(array_column($results, 'ok'))->each->toBeTrue(json_encode($results))
+        ->and(array_sum(array_map('intval', array_column($results, 'id'))))->toBe(7);
+
+    $ledger = Transaction::ownedBy($owner)->orderBy('occurred_on')->orderBy('id')->get()
+        ->map(fn (Transaction $t) => [$t->occurred_on->format('Y-m-d'), $t->amount])->all();
+    expect($ledger)->toBe([
+        ['2026-11-01', 10_000_000], ['2026-11-03', -25_000], ['2026-11-10', -25_000], ['2026-11-10', -25_000],
+        ['2026-11-15', -87_500], ['2026-11-20', -385_000], ['2026-11-28', 1_234],
+    ])->and($bca->fresh()?->balance)->toBe(1_000_000 + 10_000_000 - 25_000 * 3 - 87_500 - 385_000 + 1_234);
+    assertLedgerBalanced();
+
+    // Setiap baris staging berakhir committed (punya transaksi) atau duplicate; tidak ada transaksi yatim.
+    foreach ([$first, $second] as $import) {
+        expect($import->refresh()->status->value)->toBe('committed');
+    }
+    $rows = DB::table('import_rows')->whereIn('import_id', [$first->id, $second->id])->get();
+    expect($rows->where('status', 'committed')->pluck('transaction_id')->filter()->unique()->count())->toBe(7)
+        ->and($rows->where('status', 'committed')->count() + $rows->where('status', 'duplicate')->count())->toBe(10);
 });
