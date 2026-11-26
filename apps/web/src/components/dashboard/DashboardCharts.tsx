@@ -74,7 +74,7 @@ function shortMonth(month: string): string {
  * Tren 6 bulan: bar pemasukan vs pengeluaran aktual + garis rencana pengeluaran. Tabel sr-only
  * memuat angka yang sama untuk pembaca layar.
  */
-export function TrendChart({ trend, month }: { trend: Dashboard['trend']; month: string }) {
+export function TrendChart({ trend, month, title = 'Tren 6 bulan' }: { trend: Dashboard['trend']; month: string; title?: string }) {
   const W = 600;
   const H = 170;
   const top = 8;
@@ -90,7 +90,7 @@ export function TrendChart({ trend, month }: { trend: Dashboard['trend']; month:
 
   return (
     <div className="grid gap-2">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Tren pemasukan dan pengeluaran 6 bulan">
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`${title}: pemasukan dan pengeluaran`}>
         <line x1={0} x2={W} y1={top + plotH} y2={top + plotH} className="stroke-border" />
         {trend.map((t, i) => (
           <g key={t.month}>
@@ -108,7 +108,7 @@ export function TrendChart({ trend, month }: { trend: Dashboard['trend']; month:
         <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-amber-500" /> Rencana pengeluaran</span>
       </p>
       <table data-testid="trend-table" className="sr-only">
-        <caption>Tren 6 bulan</caption>
+        <caption>{title}</caption>
         <thead><tr><th>Bulan</th><th>Pemasukan</th><th>Pengeluaran</th><th>Rencana pengeluaran</th></tr></thead>
         <tbody>
           {trend.map((t) => (

@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CalendarCheck, FileUp, LayoutDashboard, LogOut, Settings, UserRound, Wallet } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, CalendarCheck, FileUp, LayoutDashboard, LogOut, Settings, UserRound, Wallet } from 'lucide-react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { useLogout, useMe } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ const NAV = [
   { to: '/plan', label: 'Rencana', icon: CalendarCheck },
   { to: '/transactions', label: 'Transaksi', icon: ArrowLeftRight },
   { to: '/accounts', label: 'Akun', icon: Wallet },
+  { to: '/reports', label: 'Laporan', icon: BarChart3, desktopOnly: true },
   // Impor CSV sengaja hanya di web desktop (Architecture.md § Mobile); bottom nav HP tetap 5 item.
   { to: '/imports', label: 'Impor', icon: FileUp, desktopOnly: true },
   { to: '/settings', label: 'Pengaturan', icon: Settings },
