@@ -7,7 +7,7 @@ Roadmap keuangan pribadi + budget planner (~10–12 jam/minggu), mulai 23 Nov 20
 Tabel di bawah diperbarui oleh `python3 scripts/sync-progress.py` (jangan diedit manual).
 
 <!-- auto:progress:start -->
-**Total: 71/93 issue selesai (76%)** `███████████████████████░░░░░░░`
+**Total: 76/93 issue selesai (82%)** `█████████████████████████░░░░░`
 
 _Terakhir disinkronkan: 2026-11-26_
 
@@ -21,7 +21,7 @@ _Terakhir disinkronkan: 2026-11-26_
 | [Minggu 4 — Web Inti + Dogfooding](https://github.com/rikiafilafwork/personal-finance/milestone/4) | 2026-12-27 | `██████████░░` 12/14 | 86% | 🟡 Berjalan |
 | [Minggu 5 — Template Bulanan + Dashboard](https://github.com/rikiafilafwork/personal-finance/milestone/5) | 2027-01-03 | `███████████░` 9/10 | 90% | 🟡 Berjalan |
 | [Minggu 6 — Import CSV Mutasi Rekening](https://github.com/rikiafilafwork/personal-finance/milestone/6) | 2027-01-10 | `██████████░░` 7/8 | 88% | 🟡 Berjalan |
-| [Minggu 7 — Laporan, Export, Bukti Performa](https://github.com/rikiafilafwork/personal-finance/milestone/7) | 2027-01-17 | `░░░░░░░░░░░░` 0/6 | 0% | ⚪ Belum mulai |
+| [Minggu 7 — Laporan, Export, Bukti Performa](https://github.com/rikiafilafwork/personal-finance/milestone/7) | 2027-01-17 | `██████████░░` 5/6 | 83% | 🟡 Berjalan |
 | [Minggu 8 — Mobile (Expo)](https://github.com/rikiafilafwork/personal-finance/milestone/8) | 2027-01-24 | `░░░░░░░░░░░░` 0/6 | 0% | ⚪ Belum mulai |
 | [Minggu 9 — Hardening & Presentasi](https://github.com/rikiafilafwork/personal-finance/milestone/9) | 2027-01-31 | `░░░░░░░░░░░░` 0/6 | 0% | ⚪ Belum mulai |
 <!-- auto:progress:end -->
