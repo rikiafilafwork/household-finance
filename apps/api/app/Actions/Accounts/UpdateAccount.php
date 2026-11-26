@@ -19,7 +19,7 @@ class UpdateAccount
             /** @var Account $locked */
             $locked = Account::ownedBy($account->user_id)->whereKey($account->getKey())->lockForUpdate()->firstOrFail();
 
-            if ($locked->is_savings && ($data['is_savings'] ?? true) === false) {
+            if ($locked->is_savings && array_key_exists('is_savings', $data) && ! filter_var($data['is_savings'], FILTER_VALIDATE_BOOL)) {
                 ArchiveAccount::ensureHoldsNoGoalMoney($locked, 'is_savings');
             }
 

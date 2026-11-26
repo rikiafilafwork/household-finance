@@ -53,6 +53,13 @@ class ArchiveAccount
             ]);
         }
 
+        // Tujuan (termasuk yang diarsip) menahan rekeningnya lewat FK; tolak rapi, bukan 500.
+        if (SavingsGoal::ownedBy($account->user_id)->where('account_id', $account->getKey())->exists()) {
+            throw ValidationException::withMessages([
+                'account' => 'Rekening ini punya tujuan tabungan. Arsipkan saja, atau hapus tujuannya dulu.',
+            ]);
+        }
+
         $account->delete();
     }
 }

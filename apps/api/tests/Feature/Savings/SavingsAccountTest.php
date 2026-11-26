@@ -71,3 +71,25 @@ it('allows unmarking and archiving when all goals are empty', function () {
     $other = Account::factory()->savings()->forUser($user)->create();
     actingAs($user)->postJson("/api/accounts/{$other->id}/archive")->assertOk();
 });
+
+it('refuses to unmark savings with falsy non-boolean values while a goal holds money', function (mixed $value) {
+    $account = Account::factory()->savings()->create();
+    SavingsGoal::factory()->forAccount($account)->allocated(100_000)->create();
+
+    actingAs(User::find($account->user_id))->patchJson("/api/accounts/{$account->id}", ['is_savings' => $value])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('is_savings');
+
+    expect($account->fresh()->is_savings)->toBeTrue();
+})->with([0, '0']);
+
+it('refuses to delete an account that has a savings goal', function () {
+    $account = Account::factory()->savings()->create();
+    SavingsGoal::factory()->forAccount($account)->allocated(0)->create();
+
+    actingAs(User::find($account->user_id))->deleteJson("/api/accounts/{$account->id}")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('account');
+
+    expect(Account::ownedBy($account->user_id)->whereKey($account->id)->exists())->toBeTrue();
+});
