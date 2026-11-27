@@ -128,4 +128,17 @@ describe('SavingsPage', () => {
 
     expect(await screen.findByText('Melebihi saldo yang belum dialokasikan.')).toBeInTheDocument();
   });
+
+  it('asks for confirmation before deleting a goal', async () => {
+    api.removeGoal.mockResolvedValue(undefined);
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Ubah Dana darurat' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus' }));
+    expect(screen.getByText('Hapus permanen?')).toBeInTheDocument();
+    expect(api.removeGoal).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ya, hapus' }));
+    await waitFor(() => expect(api.removeGoal).toHaveBeenCalledWith(10));
+  });
 });

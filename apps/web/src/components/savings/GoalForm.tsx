@@ -33,6 +33,7 @@ export function GoalForm({ initial, accounts, onSubmit, onArchive, onAchieve, on
   onDelete?: () => Promise<unknown>;
 }) {
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const form = useForm<Input, unknown, Output>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -81,7 +82,13 @@ export function GoalForm({ initial, accounts, onSubmit, onArchive, onAchieve, on
         <div className="flex flex-wrap gap-2">
           {onAchieve && <Button type="button" variant="outline" onClick={() => void run(onAchieve)}>{initial?.achieved_at ? 'Batal tercapai' : 'Tandai tercapai'}</Button>}
           {onArchive && <Button type="button" variant="outline" onClick={() => void run(onArchive)}>Arsipkan</Button>}
-          {onDelete && <Button type="button" variant="ghost" className="text-destructive" onClick={() => void run(onDelete)}>Hapus</Button>}
+          {onDelete && (confirmDelete ? (
+            <span className="flex items-center gap-2 text-sm">
+              Hapus permanen?
+              <Button type="button" size="sm" variant="destructive" onClick={() => void run(onDelete)}>Ya, hapus</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Batal</Button>
+            </span>
+          ) : <Button type="button" variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)}>Hapus</Button>)}
         </div>
         <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Menyimpan…' : 'Simpan'}</Button>
       </div>
