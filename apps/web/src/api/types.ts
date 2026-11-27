@@ -74,6 +74,15 @@ export interface ReconcileMismatchPayload {
   fixed: boolean;
 }
 
+/** Saldo rekening tabungan kurang dari total alokasi tujuan (SavingsOverdrawn). */
+export interface SavingsOverdrawnPayload {
+  account_id: Id;
+  name: string;
+  balance: number;
+  allocated: number;
+  shortfall: number;
+}
+
 /** Amplop tembus 80% / 100% (job CheckEnvelopeThresholds). Angka dalam rupiah bulat. */
 export interface EnvelopeThresholdPayload {
   plan_item_id: Id;

@@ -35,6 +35,18 @@ describe('describeNotification', () => {
     expect(view.body).toContain('BCA');
   });
 
+  it('describes overdrawn savings and links to /savings', () => {
+    expect(describeNotification({
+      id: 'n3', type: 'savings_overdrawn', read_at: null, created_at: null,
+      payload: { account_id: 1, name: 'BCA Tabungan', balance: 800_000, allocated: 2_000_000, shortfall: 1_200_000 },
+    })).toEqual({
+      title: 'Tabungan terpakai',
+      body: 'BCA Tabungan: kurang Rp1.200.000 dari total alokasi tujuan.',
+      href: '/savings',
+      tone: 'over',
+    });
+  });
+
   it('falls back gracefully for unknown types', () => {
     expect(describeNotification({ id: 'x', type: 'something_new', payload: {}, read_at: null, created_at: null }).title).toBe('Notifikasi');
   });

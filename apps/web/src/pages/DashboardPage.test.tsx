@@ -109,6 +109,44 @@ describe('DashboardPage — Beranda', () => {
     expect(await screen.findByTestId('kpi-free')).toHaveTextContent('Uang bebas −Rp240.000 — saldo tidak cukup menutup rencana');
   });
 
+  it('says free money excludes savings', async () => {
+    renderPage();
+    expect(await screen.findByTestId('kpi-free')).toHaveTextContent('tidak termasuk tabungan');
+  });
+
+  it('shows the Tabungan panel with the total and at most three goals', async () => {
+    const goal = (id: number, name: string) => ({ id, name, allocated_amount: 1_000_000, target_amount: 4_000_000, percent: 25 });
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: 5_000_000, allocated: 3_000_000, unallocated: 2_000_000, overdrawn: false, goals: [goal(1, 'Dana darurat'), goal(2, 'Laptop'), goal(3, 'Liburan')] },
+    });
+    renderPage();
+    const panel = await screen.findByTestId('panel-savings');
+    expect(panel).toHaveTextContent('Rp5.000.000');
+    expect(within(panel).getAllByRole('progressbar')).toHaveLength(3);
+    expect(panel).toHaveTextContent('Dana darurat');
+    expect(panel).toHaveTextContent('Liburan');
+    expect(within(panel).queryByText(/Tabungan terpakai/)).not.toBeInTheDocument();
+    expect(within(panel).getByRole('link', { name: 'Tabungan' })).toHaveAttribute('href', '/savings');
+  });
+
+  it('warns with a link to /savings when savings are overdrawn', async () => {
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: 1_000_000, allocated: 2_200_000, unallocated: 0, overdrawn: true, goals: [{ id: 1, name: 'Laptop', allocated_amount: 2_200_000, target_amount: null, percent: null }] },
+    });
+    renderPage();
+    const panel = await screen.findByTestId('panel-savings');
+    expect(panel).toHaveTextContent('Tabungan terpakai Rp1.200.000');
+    expect(within(panel).getByRole('link', { name: /Tabungan terpakai/ })).toHaveAttribute('href', '/savings');
+  });
+
+  it('hides the Tabungan panel without a savings account or goals', async () => {
+    renderPage();
+    await screen.findByTestId('kpi-balance');
+    expect(screen.queryByTestId('panel-savings')).not.toBeInTheDocument();
+  });
+
   it('hides free money for another month taken from the URL', async () => {
     const prev = shiftMonth(MONTH, -1);
     dashboardApi.get.mockResolvedValue({ ...dashboard, month: prev, is_current_month: false, free_money: null });
