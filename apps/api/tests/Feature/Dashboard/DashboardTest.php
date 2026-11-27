@@ -2,7 +2,9 @@
 
 use App\Models\Account;
 use App\Models\PlanItem;
+use App\Models\SavingsGoal;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Plan\PlanMonth;
 use App\Queries\DashboardQuery;
 use Carbon\CarbonImmutable;
@@ -116,11 +118,43 @@ it('shows today’s balances per type of active accounts, and free money only fo
     $bca = (int) $f->bca->fresh()?->balance;
 
     // Dompet tunai fixture (transfer 300.000 lalu disesuaikan ke 250.000).
-    expect($d['balances'])->toBe(['bank' => $bca, 'ewallet' => 250_000, 'cash' => 250_000, 'total' => $bca + 500_000])
+    expect($d['balances'])->toBe(['bank' => $bca, 'ewallet' => 250_000, 'cash' => 250_000, 'total' => $bca + 500_000, 'savings' => 0])
         ->and($d['is_current_month'])->toBeTrue()
         ->and($d['free_money'])->toBe($bca + 500_000 - 1_240_000)
         ->and(dashboard($f, '2026-10')['free_money'])->toBeNull()
         ->and(dashboard($f, '2026-10')['is_current_month'])->toBeFalse();
+});
+
+it('leaves savings out of free money and summarises the savings goals', function () {
+    $user = User::factory()->create();
+    Account::factory()->forUser($user)->opening(5_000_000)->create();
+    $savings = Account::factory()->forUser($user)->savings()->opening(20_000_000)->create();
+    Account::factory()->forUser($user)->savings()->opening(7_000_000)->archived()->create();
+    PlanItem::factory()->forUser($user)->create(['name' => 'Listrik', 'planned_amount' => 1_000_000]);
+
+    $goal = fn (string $name, int $allocated, int $target, array $extra = []) => SavingsGoal::factory()->forAccount($savings)
+        ->allocated($allocated)->create(['name' => $name, 'target_amount' => $target] + $extra);
+    $laptop = $goal('Laptop', 6_000_000, 10_000_000);       // 60%
+    $motor = $goal('Motor', 1_000_000, 10_000_000);         // 10%
+    $goal('Kursi', 2_000_000, 2_000_000);                   // tercapai (100%)
+    $rumah = $goal('DP Rumah', 3_000_000, 10_000_000);      // 30%
+    $goal('Sepeda', 1_000_000, 5_000_000, ['achieved_at' => now()]); // ditandai selesai
+    $goal('Lama', 0, 1_000_000, ['archived_at' => now()]);  // arsip
+
+    $d = app(DashboardQuery::class)->for($user, PlanMonth::parse('2026-11'), CarbonImmutable::parse('2026-11-24 03:00', 'UTC'));
+
+    expect($d['still_to_spend'])->toBe(1_000_000)
+        ->and($d['balances']['total'])->toBe(25_000_000)
+        ->and($d['balances']['savings'])->toBe(20_000_000)
+        ->and($d['free_money'])->toBe(4_000_000)
+        ->and($d['savings'])->toBe([
+            'balance' => 20_000_000, 'allocated' => 13_000_000, 'unallocated' => 7_000_000, 'overdrawn' => 0,
+            'goals' => [
+                ['id' => $laptop->id, 'name' => 'Laptop', 'allocated_amount' => 6_000_000, 'target_amount' => 10_000_000, 'percent' => 60],
+                ['id' => $rumah->id, 'name' => 'DP Rumah', 'allocated_amount' => 3_000_000, 'target_amount' => 10_000_000, 'percent' => 30],
+                ['id' => $motor->id, 'name' => 'Motor', 'allocated_amount' => 1_000_000, 'target_amount' => 10_000_000, 'percent' => 10],
+            ],
+        ]);
 });
 
 it('builds a six-month trend that matches the plan of each month', function () {

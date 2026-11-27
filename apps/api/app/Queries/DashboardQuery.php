@@ -8,9 +8,11 @@ use App\Enums\PlanItemType;
 use App\Enums\PlanMode;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Plan\PlanMonth;
+use App\Support\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -31,6 +33,8 @@ final class DashboardQuery
     public const TREND_MONTHS = 6;
 
     public const RECENT = 5;
+
+    public const TOP_GOALS = 3;
 
     public function __construct(
         private readonly PlanComparisonQuery $plans,
@@ -57,8 +61,10 @@ final class DashboardQuery
             'expense' => $expense,
             'remaining_budget' => $plan->remainingBudget(),
             'still_to_spend' => $plan->stillToSpend(),
-            // Saldo hari ini − yang masih akan keluar bulan ini; bulan lain tidak bermakna → null.
-            'free_money' => $isCurrent ? $balances['total'] - $plan->stillToSpend() : null,
+            // Saldo hari ini di luar rekening tabungan − yang masih akan keluar bulan ini; bulan lain
+            // tidak bermakna → null. Tabungan sudah "dipegang" tujuan, jadi bukan uang bebas.
+            'free_money' => $isCurrent ? $balances['total'] - $balances['savings'] - $plan->stillToSpend() : null,
+            'savings' => $this->savings($user, $now),
             'categories' => $this->categories($user, $plan),
             'income_sources' => $this->incomeSources($plan),
             'due_items' => $this->dueItems($plan, $today),
@@ -70,22 +76,51 @@ final class DashboardQuery
     }
 
     /**
-     * @return array{bank: int, ewallet: int, cash: int, total: int}
+     * `total` = semua akun aktif (termasuk tabungan); `savings` = bagian dari total yang di rekening tabungan.
+     *
+     * @return array{bank: int, ewallet: int, cash: int, total: int, savings: int}
      */
     private function balances(User $user): array
     {
-        $sums = Account::ownedBy($user)->whereNull('archived_at')
-            ->groupBy('type')->selectRaw('type, SUM(balance) AS total')
-            ->pluck('total', 'type');
+        $active = Account::ownedBy($user)->whereNull('archived_at');
+        $sums = (clone $active)->groupBy('type')->selectRaw('type, SUM(balance) AS total')->pluck('total', 'type');
 
         $out = [];
         foreach (AccountType::cases() as $type) {
             $out[$type->value] = (int) ($sums[$type->value] ?? 0);
         }
         $out['total'] = array_sum($out);
+        $out['savings'] = (int) $active->where('is_savings', true)->sum('balance');
 
-        /** @var array{bank: int, ewallet: int, cash: int, total: int} */
+        /** @var array{bank: int, ewallet: int, cash: int, total: int, savings: int} */
         return $out;
+    }
+
+    /**
+     * Ringkasan tabungan dari SavingsQuery (angka sama dengan halaman Tabungan) + maksimal 3 tujuan
+     * belum tercapai dengan persen tertinggi.
+     *
+     * @return array{balance: int, allocated: int, unallocated: int, overdrawn: int, goals: list<array{id: int, name: string, allocated_amount: int, target_amount: int, percent: int}>}
+     */
+    private function savings(User $user, ?CarbonImmutable $now): array
+    {
+        $summary = SavingsQuery::for($user, $now);
+
+        $goals = collect($summary['accounts'])
+            ->flatMap(fn (array $row) => $row['goals']->all())
+            ->filter(fn (SavingsGoal $g) => $g->achieved_at === null && $g->allocated_amount < $g->target_amount)
+            ->map(fn (SavingsGoal $g) => [
+                'id' => (int) $g->getKey(),
+                'name' => $g->name,
+                'allocated_amount' => $g->allocated_amount,
+                'target_amount' => $g->target_amount,
+                'percent' => Money::percentOf($g->allocated_amount, $g->target_amount),
+            ])
+            ->sortByDesc('percent')
+            ->take(self::TOP_GOALS)
+            ->values()->all();
+
+        return $summary['totals'] + ['goals' => $goals];
     }
 
     /**

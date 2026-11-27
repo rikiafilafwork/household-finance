@@ -3,6 +3,7 @@
 namespace App\Actions\Savings;
 
 use App\Actions\Accounts\LockAccounts;
+use App\Jobs\CheckSavingsOverdrawn;
 use App\Models\SavingsAllocation;
 use App\Models\SavingsGoal;
 use App\Models\User;
@@ -97,6 +98,11 @@ class AllocateSavings
             ]);
 
             $locked->increment('allocated_amount', $amount);
+
+            // Mengurangi alokasi bisa membuat rekening sehat lagi → reset flag terpakai (sesudah commit).
+            if ($amount < 0) {
+                CheckSavingsOverdrawn::dispatch($account->getKey());
+            }
 
             return [$allocation, true];
         });

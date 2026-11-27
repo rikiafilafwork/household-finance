@@ -85,7 +85,7 @@ it('does not raise the overdrawn notification', function () {
     useSavingsVia($user, $goal, $category, 4_000_000);
 
     expect($user->notifications()->where('type', 'savings_overdrawn')->count())->toBe(0);
-})->skip('aktif setelah Task 5: notifikasi SavingsOverdrawn belum ada');
+});
 
 it('refuses to use more than the goal holds', function () {
     [$user, $account, $goal, $category] = useSavingsFixture();

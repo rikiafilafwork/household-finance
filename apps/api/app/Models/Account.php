@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AccountType;
+use App\Jobs\CheckSavingsOverdrawn;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -29,6 +30,16 @@ class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
     use BelongsToUser, HasFactory;
+
+    protected static function booted(): void
+    {
+        // Satu titik untuk semua jalur tulis saldo (transaksi, transfer, import, penyesuaian): Actions
+        // memakai increment()/decrement() pada instance, yang menembakkan `updated`. Job baru jalan
+        // setelah commit, jadi "Gunakan" (saldo & alokasi turun bersama) terlihat sehat.
+        static::updated(fn (Account $a) => $a->is_savings && $a->wasChanged('balance')
+            ? CheckSavingsOverdrawn::dispatch($a->getKey())
+            : null);
+    }
 
     /**
      * @return array<string, string>
