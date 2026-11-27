@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BarChart3, CalendarCheck, FileUp, LayoutDashboard, LogOut, Settings, UserRound, Wallet } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, CalendarCheck, FileUp, LayoutDashboard, LogOut, PiggyBank, Settings, UserRound, Wallet } from 'lucide-react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { useLogout, useMe } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,11 @@ import { Brand } from './AuthLayout';
 const NAV = [
   { to: '/', label: 'Beranda', icon: LayoutDashboard, end: true },
   { to: '/plan', label: 'Rencana', icon: CalendarCheck },
+  { to: '/savings', label: 'Tabungan', icon: PiggyBank },
   { to: '/transactions', label: 'Transaksi', icon: ArrowLeftRight },
   { to: '/accounts', label: 'Rekening', icon: Wallet },
   { to: '/reports', label: 'Laporan', icon: BarChart3, desktopOnly: true },
-  // Impor CSV sengaja hanya di web desktop (Architecture.md § Mobile); bottom nav HP tetap 5 item.
+  // Impor CSV sengaja hanya di web desktop (Architecture.md § Mobile); bottom nav HP 6 item.
   { to: '/imports', label: 'Impor', icon: FileUp, desktopOnly: true },
   { to: '/settings', label: 'Pengaturan', icon: Settings },
 ] as const;

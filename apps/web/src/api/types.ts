@@ -97,3 +97,45 @@ export interface LengthAwarePage<T, M = object> {
   data: T[];
   meta: { current_page: number; last_page: number; total: number; per_page: number } & M;
 }
+
+export interface SavingsGoal {
+  id: Id;
+  account_id: Id;
+  name: string;
+  target_amount: number;
+  allocated_amount: number;
+  target_date: string | null; // Y-m-d
+  achieved_at: string | null;
+  archived_at: string | null;
+  sort_order: number;
+  percent: number;
+  reached: boolean;
+  /** Perlu ditabung per bulan sampai tenggat; null tanpa tenggat / sudah tercapai. */
+  monthly_needed: number | null;
+}
+
+export interface SavingsAccountSummary {
+  account: Account;
+  balance: number;
+  allocated: number;
+  unallocated: number; // boleh negatif kalau tabungan terpakai
+  overdrawn: number;
+  goals: SavingsGoal[];
+}
+
+export interface SavingsSummary {
+  accounts: SavingsAccountSummary[];
+  totals: { balance: number; allocated: number; unallocated: number; overdrawn: number };
+}
+
+export interface SavingsAllocation {
+  id: Id;
+  savings_goal_id: Id;
+  amount: number; // bertanda: positif = tambah, negatif = kurangi
+  occurred_on: string;
+  note: string | null;
+  transaction_id: Id | null;
+  move_group_id: string | null;
+  client_id: string;
+  created_at: string | null;
+}

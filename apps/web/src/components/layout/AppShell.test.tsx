@@ -34,6 +34,7 @@ describe('AppShell (tanpa household)', () => {
     expect(links.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
       ['Beranda', '/'],
       ['Rencana', '/plan'],
+      ['Tabungan', '/savings'],
       ['Transaksi', '/transactions'],
       ['Rekening', '/accounts'],
       ['Laporan', '/reports'],
@@ -43,11 +44,11 @@ describe('AppShell (tanpa household)', () => {
     expect(within(desktop!).getByRole('link', { name: 'Transaksi' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('shows the same five tabs on mobile, with no “Lainnya” overflow menu', () => {
+  it('shows the same six tabs on mobile, with no “Lainnya” overflow menu', () => {
     renderAt('/');
 
     const [, mobile] = screen.getAllByRole('navigation', { name: 'Menu utama' });
-    expect(within(mobile!).getAllByRole('link')).toHaveLength(5);
+    expect(within(mobile!).getAllByRole('link')).toHaveLength(6);
     expect(within(mobile!).queryByRole('link', { name: 'Impor' })).not.toBeInTheDocument();
     expect(within(mobile!).queryByRole('link', { name: 'Laporan' })).not.toBeInTheDocument();
     expect(screen.queryByText('Lainnya')).not.toBeInTheDocument();

@@ -12,6 +12,8 @@ export const qk = {
   notifications: ['notifications'] as const,
   plan: (month?: string) => (month ? ['plan', month] : ['plan']) as readonly unknown[],
   dashboard: ['dashboard'] as const,
+  savings: ['savings'] as const,
+  savingsAllocations: (goalId: number) => ['savings', goalId, 'allocations'] as const,
   templates: ['plan-templates'] as const,
   imports: ['imports'] as const,
   importDetail: (id: number) => ['imports', id] as const,

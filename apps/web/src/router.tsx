@@ -13,6 +13,7 @@ import { ImportPreviewPage } from '@/pages/imports/ImportPreviewPage';
 import { ImportUploadPage } from '@/pages/imports/ImportUploadPage';
 import { PlanPage } from '@/pages/PlanPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { SavingsPage } from '@/pages/SavingsPage';
 import { CategoriesPage } from '@/pages/settings/CategoriesPage';
 import { ProfilePage } from '@/pages/settings/ProfilePage';
 import { TemplatesPage } from '@/pages/settings/TemplatesPage';
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/', element: <DashboardPage /> },
           { path: '/plan', element: <PlanPage /> },
+          { path: '/savings', element: <SavingsPage /> },
           { path: '/transactions', element: <TransactionsPage /> },
           { path: '/accounts', element: <AccountsPage /> },
           { path: '/reports', element: <ReportsPage /> },
