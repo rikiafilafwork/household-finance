@@ -23,9 +23,9 @@ function AccountRow({ account, onEdit, onAdjust }: { account: Account; onEdit: (
   return (
     <li className="flex items-center justify-between gap-3 py-2.5">
       <div className="grid min-w-0">
-        <span className="flex items-center gap-2">
+        <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-medium">{account.name}</span>
-          {account.is_savings && <Badge variant="secondary">Tabungan</Badge>}
+          {account.is_savings && <Badge variant="secondary" className="shrink-0">Tabungan</Badge>}
         </span>
         {account.balance < 0 && (
           <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-500">
@@ -33,7 +33,7 @@ function AccountRow({ account, onEdit, onAdjust }: { account: Account; onEdit: (
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <MoneyText amount={account.balance} tone="balance" className="mr-1 text-sm font-medium" />
         {onAdjust && (
           <Button variant="ghost" size="icon" className="size-8" aria-label={`Sesuaikan saldo ${account.name}`} onClick={onAdjust}>

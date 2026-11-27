@@ -88,10 +88,10 @@ export function AccountForm({ initial, onSubmit, onArchive, onDelete }: {
         )} />
       </Field>
       <label className="flex items-start gap-3 rounded-md border p-3 text-sm">
-        <input type="checkbox" className="mt-0.5 size-4 accent-primary" {...form.register('is_savings')} />
+        <input type="checkbox" className="mt-0.5 size-4 accent-primary" aria-labelledby="account-savings-label" aria-describedby="account-savings-hint" {...form.register('is_savings')} />
         <span className="grid gap-0.5">
-          <span className="font-medium">Rekening tabungan</span>
-          <span className="text-xs text-muted-foreground">Saldonya tidak dihitung sebagai uang bebas dan bisa dibagi ke tujuan tabungan.</span>
+          <span id="account-savings-label" className="font-medium">Rekening tabungan</span>
+          <span id="account-savings-hint" className="text-xs text-muted-foreground">Saldonya tidak dihitung sebagai uang bebas dan bisa dibagi ke tujuan tabungan.</span>
           {errors.is_savings?.message && <span role="alert" className="text-xs text-destructive">{errors.is_savings.message}</span>}
         </span>
       </label>
