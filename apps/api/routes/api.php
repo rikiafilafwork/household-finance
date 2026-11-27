@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\PlanTemplateController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SavingsController;
+use App\Http\Controllers\Api\SavingsGoalController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
@@ -52,6 +54,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('accounts/{account}/archive', [AccountController::class, 'archive']);
     Route::post('accounts/{account}/unarchive', [AccountController::class, 'unarchive']);
     Route::post('accounts/{account}/adjust', [AccountController::class, 'adjust']);
+
+    // Tabungan dengan tujuan: ringkasan per rekening tabungan + CRUD tujuan.
+    Route::get('savings', SavingsController::class);
+    Route::apiResource('savings-goals', SavingsGoalController::class)->parameters(['savings-goals' => 'savingsGoal'])->except('index');
+    Route::post('savings-goals/{savingsGoal}/archive', [SavingsGoalController::class, 'archive']);
+    Route::post('savings-goals/{savingsGoal}/unarchive', [SavingsGoalController::class, 'unarchive']);
+    Route::post('savings-goals/{savingsGoal}/achieve', [SavingsGoalController::class, 'achieve']);
+    Route::post('savings-goals/{savingsGoal}/unachieve', [SavingsGoalController::class, 'unachieve']);
+    Route::get('savings-goals/{savingsGoal}/allocations', [SavingsGoalController::class, 'allocations']);
+    Route::post('savings-goals/{savingsGoal}/allocations', [SavingsGoalController::class, 'allocate']);
+    Route::post('savings-goals/{savingsGoal}/move', [SavingsGoalController::class, 'move']);
+    Route::post('savings-goals/{savingsGoal}/use', [SavingsGoalController::class, 'use']);
 
     Route::apiResource('categories', CategoryController::class);
     Route::post('categories/{category}/archive', [CategoryController::class, 'archive']);

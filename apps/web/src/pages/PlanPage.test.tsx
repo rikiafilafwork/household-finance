@@ -39,8 +39,8 @@ const plan: PlanComparison = {
 };
 
 const accounts: Account[] = [
-  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 5_000_000, sort_order: 0, archived_at: null },
-  { id: 2, name: 'Jago', type: 'bank', opening_balance: 0, balance: 1_000_000, sort_order: 1, archived_at: null },
+  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 5_000_000, sort_order: 0, archived_at: null, is_savings: false },
+  { id: 2, name: 'Jago', type: 'bank', opening_balance: 0, balance: 1_000_000, sort_order: 1, archived_at: null, is_savings: false },
 ];
 const categories: Category[] = [
   { id: 1, kind: 'expense', name: 'Makan', color: '#F97316', icon: 'utensils', archived_at: null },
@@ -96,7 +96,7 @@ describe('PlanPage — tampilan', () => {
     const free = await screen.findByTestId('summary-free');
 
     expect(free).toHaveTextContent('Uang bebasRp4.760.000'); // 6.000.000 − 1.240.000
-    expect(free).toHaveTextContent('Saldo semua akun Rp6.000.000 − masih akan keluar Rp1.240.000');
+    expect(free).toHaveTextContent('Saldo semua rekening (tidak termasuk tabungan) Rp6.000.000 − masih akan keluar Rp1.240.000');
   });
 
   it('hides free money for other months, because balances are today\'s', async () => {
@@ -170,7 +170,7 @@ describe('PlanPage — centang', () => {
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Centang Listrik' }));
     const amount = screen.getByLabelText('Nominal dibayar');
     expect(amount).toHaveValue('500.000');
-    expect(screen.getByLabelText('Dari akun')).toHaveValue('2'); // akun bawaan item
+    expect(screen.getByLabelText('Dari rekening')).toHaveValue('2'); // rekening bawaan item
     expect(screen.getByLabelText('Tanggal')).toHaveValue(todayIn(TZ));
 
     await userEvent.clear(amount);

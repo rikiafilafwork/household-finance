@@ -18,7 +18,7 @@ export type DialogState =
   | { mode: 'edit'; transaction: Transaction }
   | null;
 
-const titles = { expense: 'Catat pengeluaran', income: 'Catat pemasukan', transfer: 'Transfer antar akun' } as const;
+const titles = { expense: 'Catat pengeluaran', income: 'Catat pemasukan', transfer: 'Transfer antar rekening' } as const;
 
 export function TransactionDialog({ state, onClose, accounts, categories, today }: {
   state: DialogState;
@@ -116,7 +116,7 @@ export function TransactionDialog({ state, onClose, accounts, categories, today 
     }
   } else if (editing) {
     title = 'Penyesuaian saldo';
-    body = <ReadOnly tx={editing} accounts={accounts} categories={categories} note="Penyesuaian saldo dibuat dari halaman Akun (Sesuaikan saldo) dan tidak diubah di sini. Hapus untuk membatalkannya." onDelete={async () => {
+    body = <ReadOnly tx={editing} accounts={accounts} categories={categories} note="Penyesuaian saldo dibuat dari halaman Rekening (Sesuaikan saldo) dan tidak diubah di sini. Hapus untuk membatalkannya." onDelete={async () => {
       await m.remove.mutateAsync(editing.id);
       done('Penyesuaian saldo dibatalkan.');
     }} />;
@@ -143,7 +143,7 @@ function ReadOnly({ tx, accounts, categories, note, onDelete }: { tx: Transactio
       <MoneyText amount={tx.amount} tone="signed" className="text-2xl font-semibold" />
       <dl className="grid grid-cols-[6rem_1fr] gap-y-1.5">
         <dt className="text-muted-foreground">Tanggal</dt><dd>{formatDate(tx.occurred_on, { dateStyle: 'long' })}</dd>
-        <dt className="text-muted-foreground">Akun</dt><dd>{account?.name ?? '—'}</dd>
+        <dt className="text-muted-foreground">Rekening</dt><dd>{account?.name ?? '—'}</dd>
         {category && (<><dt className="text-muted-foreground">Kategori</dt><dd>{category.name}</dd></>)}
         {tx.note && (<><dt className="text-muted-foreground">Catatan</dt><dd>{tx.note}</dd></>)}
       </dl>

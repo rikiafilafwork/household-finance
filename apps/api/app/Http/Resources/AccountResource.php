@@ -20,6 +20,7 @@ class AccountResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'type' => $this->type->value,
+            'is_savings' => $this->is_savings,
             'opening_balance' => $this->opening_balance, // integer rupiah
             'balance' => $this->balance,                 // integer rupiah; negatif boleh, UI memberi peringatan
             'sort_order' => $this->sort_order,

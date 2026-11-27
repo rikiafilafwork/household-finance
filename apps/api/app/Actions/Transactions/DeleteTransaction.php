@@ -5,6 +5,7 @@ namespace App\Actions\Transactions;
 use App\Actions\Accounts\LockAccounts;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Savings\LinkedAllocation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -32,6 +33,8 @@ class DeleteTransaction
             }
 
             $account->decrement('balance', $current->amount);
+            // Hapus transaksi "Gunakan tabungan" → uangnya kembali ke tujuan.
+            LinkedAllocation::afterDelete($current, $account);
 
             $current->forceFill(['plan_item_id' => null])->save();
             $current->delete();

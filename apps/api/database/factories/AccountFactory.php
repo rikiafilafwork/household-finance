@@ -49,6 +49,11 @@ class AccountFactory extends Factory
         return $this->state(['type' => AccountType::Ewallet]);
     }
 
+    public function savings(): static
+    {
+        return $this->state(['is_savings' => true]);
+    }
+
     public function archived(): static
     {
         return $this->state(['archived_at' => now()]);

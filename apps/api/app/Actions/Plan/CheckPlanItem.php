@@ -56,7 +56,7 @@ class CheckPlanItem
 
             $accountId = $input->accountId ?? $locked->account_id;
             if ($accountId === null) {
-                throw ValidationException::withMessages(['account_id' => 'Pilih akun: item ini belum punya akun default.']);
+                throw ValidationException::withMessages(['account_id' => 'Pilih rekening: item ini belum punya rekening default.']);
             }
             $account = $this->lockAccounts->one($user, $accountId);
 
@@ -82,7 +82,7 @@ class CheckPlanItem
                 throw self::alreadyDone();
             }
             if ($account->isArchived()) {
-                throw ValidationException::withMessages(['account_id' => 'Akun ini sudah diarsip.']);
+                throw ValidationException::withMessages(['account_id' => 'Rekening ini sudah diarsip.']);
             }
 
             $magnitude = abs($input->amount ?? $locked->planned_amount);

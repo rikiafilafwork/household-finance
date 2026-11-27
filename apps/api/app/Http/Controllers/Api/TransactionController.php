@@ -33,7 +33,7 @@ class TransactionController extends Controller
         $filters = $request->safe()->except(['per_page', 'cursor']);
 
         $page = TransactionQuery::for($this->user($request), $filters)
-            ->with('category')
+            ->with(['category', 'savingsAllocation'])
             ->orderByDesc('occurred_on')
             ->orderByDesc('id')
             ->cursorPaginate($request->integer('per_page', 50))
@@ -47,18 +47,18 @@ class TransactionController extends Controller
         [$transaction, $created] = $createTransaction->handle($this->user($request), $request->toInput());
 
         // Retry dengan client_id yang sama → 200 + transaksi lama (Keputusan #15).
-        return (new TransactionResource($transaction->load('category')))->response()->setStatusCode($created ? 201 : 200);
+        return (new TransactionResource($transaction->load(['category', 'savingsAllocation'])))->response()->setStatusCode($created ? 201 : 200);
     }
 
     public function show(Transaction $transaction): TransactionResource
     {
-        return new TransactionResource($transaction->load('category'));
+        return new TransactionResource($transaction->load(['category', 'savingsAllocation']));
     }
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction, UpdateTransaction $updateTransaction): TransactionResource
     {
         return new TransactionResource(
-            $updateTransaction->handle($this->user($request), $transaction, $request->toInput($transaction))->load('category')
+            $updateTransaction->handle($this->user($request), $transaction, $request->toInput($transaction))->load(['category', 'savingsAllocation'])
         );
     }
 

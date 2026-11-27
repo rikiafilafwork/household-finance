@@ -45,8 +45,8 @@ const cash: CashVsNonCash = {
   ],
 };
 const accounts: Account[] = [
-  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null },
-  { id: 2, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 0, sort_order: 1, archived_at: null },
+  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null, is_savings: false },
+  { id: 2, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 0, sort_order: 1, archived_at: null, is_savings: false },
 ];
 
 const reportsApi = vi.hoisted(() => ({
@@ -163,7 +163,7 @@ describe('ReportsPage', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(3);                // hanya hari yang ada pergerakan
     expect(screen.getByRole('img', { name: 'Saldo berjalan harian' })).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText('Akun'), 'Dompet');
+    await user.selectOptions(screen.getByLabelText('Rekening'), 'Dompet');
     await waitFor(() => expect(reportsApi.cashFlow).toHaveBeenLastCalledWith({ from: '2026-11-01', to: '2026-11-20', account: 2 }));
     expect(screen.queryByText(/saling meniadakan/)).not.toBeInTheDocument();
   });
@@ -171,7 +171,7 @@ describe('ReportsPage', () => {
   it('splits spending into bank, e-wallet and cash with unrecorded cash', async () => {
     renderPage('/reports?tab=cash');
 
-    await screen.findByLabelText('Pengeluaran per jenis akun');
+    await screen.findByLabelText('Pengeluaran per jenis rekening');
     expect(screen.getByTestId('cash-bank')).toHaveTextContent('RekeningRp3.000.000 · 73%');
     expect(screen.getByTestId('cash-cash')).toHaveTextContent('DompetRp200.000 · 4%');
     expect(screen.getByTestId('cash-cash')).toHaveTextContent('Tak tercatat (sesuaikan saldo): −Rp50.000');

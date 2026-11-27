@@ -6,9 +6,9 @@ const base = '/accounts';
 export const accountsApi = {
   list: (opts: { includeArchived?: boolean } = {}) =>
     unwrap(api.get<{ data: Account[] }>(base, { params: opts.includeArchived ? { include_archived: 1 } : {} })),
-  create: (body: { name: string; type: AccountType; opening_balance?: number; sort_order?: number }) =>
+  create: (body: { name: string; type: AccountType; opening_balance?: number; sort_order?: number; is_savings?: boolean }) =>
     unwrap(api.post<{ data: Account }>(base, body)),
-  update: (id: Id, body: { name?: string; type?: AccountType; opening_balance?: number; sort_order?: number }) =>
+  update: (id: Id, body: { name?: string; type?: AccountType; opening_balance?: number; sort_order?: number; is_savings?: boolean }) =>
     unwrap(api.patch<{ data: Account }>(`${base}/${id}`, body)),
   archive: (id: Id) => unwrap(api.post<{ data: Account }>(`${base}/${id}/archive`)),
   unarchive: (id: Id) => unwrap(api.post<{ data: Account }>(`${base}/${id}/unarchive`)),

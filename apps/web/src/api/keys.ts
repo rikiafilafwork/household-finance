@@ -12,6 +12,8 @@ export const qk = {
   notifications: ['notifications'] as const,
   plan: (month?: string) => (month ? ['plan', month] : ['plan']) as readonly unknown[],
   dashboard: ['dashboard'] as const,
+  savings: ['savings'] as const,
+  savingsAllocations: (goalId: number) => ['savings', goalId, 'allocations'] as const,
   templates: ['plan-templates'] as const,
   imports: ['imports'] as const,
   importDetail: (id: number) => ['imports', id] as const,
@@ -45,6 +47,7 @@ export function refreshNotifications(queryClient: QueryClient) {
 export function invalidateMoney(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: qk.accounts }),
+    queryClient.invalidateQueries({ queryKey: qk.savings }),
     queryClient.invalidateQueries({ queryKey: ['reports'] }),
     queryClient.invalidateQueries({ queryKey: qk.transactions() }),
     queryClient.invalidateQueries({ queryKey: ['transfers'] }),

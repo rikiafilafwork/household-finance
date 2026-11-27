@@ -38,20 +38,20 @@ class ImportController extends Controller
         $user = $request->user();
 
         $account = Account::query()->find($request->integer('account_id'));
-        abort_if($account === null, 404, 'Akun tidak ditemukan.');
+        abort_if($account === null, 404, 'Rekening tidak ditemukan.');
 
         if ($account->type !== AccountType::Bank) {
-            throw ValidationException::withMessages(['account_id' => 'Import mutasi hanya untuk akun rekening (bank).']);
+            throw ValidationException::withMessages(['account_id' => 'Import mutasi hanya untuk rekening bank.']);
         }
         if ($account->isArchived()) {
-            throw ValidationException::withMessages(['account_id' => 'Akun ini sudah diarsip.']);
+            throw ValidationException::withMessages(['account_id' => 'Rekening ini sudah diarsip.']);
         }
 
         $format = $request->statementFormat();
         $mapping = $request->columnMapping()?->toArray();
         if ($format->needsColumnMapping() && $mapping === null) {
             $mapping = $this->preset($account, $format->value)
-                ?? throw ValidationException::withMessages(['column_mapping' => 'Petakan kolom file ini (belum ada pemetaan tersimpan untuk akun ini).']);
+                ?? throw ValidationException::withMessages(['column_mapping' => 'Petakan kolom file ini (belum ada pemetaan tersimpan untuk rekening ini).']);
         }
 
         $file = $request->file('file');

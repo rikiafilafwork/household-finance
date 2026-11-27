@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Import;
 use App\Models\PlanItem;
 use App\Models\PlanTemplate;
+use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
@@ -352,4 +353,26 @@ it('never doubles a transaction when overlapping imports are committed in parall
     $rows = DB::table('import_rows')->whereIn('import_id', [$first->id, $second->id])->get();
     expect($rows->where('status', 'committed')->pluck('transaction_id')->filter()->unique()->count())->toBe(7)
         ->and($rows->where('status', 'committed')->count() + $rows->where('status', 'duplicate')->count())->toBe(10);
+});
+
+it('never allocates beyond the savings balance when 20 allocations race', function () {
+    $owner = User::factory()->create();
+    $savings = Account::factory()->forUser($owner)->savings()->opening(1_000_000)->create(['name' => 'Tabungan']);
+    // Beberapa tujuan di rekening yang sama: kunci per tujuan saja tidak cukup, Σ alokasi rekening
+    // hanya aman karena rekening dikunci lebih dulu.
+    $goals = SavingsGoal::factory()->forAccount($savings)->count(4)->create();
+
+    $results = runConcurrently(array_map(fn (int $i) => [
+        'op' => 'allocate', 'user_id' => $owner->id, 'goal_id' => $goals[$i % 4]->id,
+        'amount' => 100_000, 'client_id' => (string) Str::uuid(),
+    ], range(0, 19)));
+
+    $statuses = array_count_values(array_map(fn (array $r) => (int) ($r['status'] ?? 0), $results));
+    ksort($statuses);
+
+    expect($statuses)->toBe([201 => 10, 422 => 10], json_encode($results))
+        ->and((int) SavingsGoal::ownedBy($owner)->sum('allocated_amount'))->toBe(1_000_000)
+        ->and($savings->fresh()?->balance)->toBe(1_000_000);
+    assertSavingsBalanced();
+    assertLedgerBalanced();
 });

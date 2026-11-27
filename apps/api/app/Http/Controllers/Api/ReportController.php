@@ -85,7 +85,7 @@ class ReportController extends Controller
         $account = null;
         if ($request->filled('account')) {
             $account = Account::query()->find($request->integer('account'));
-            abort_if($account === null, 404, 'Akun tidak ditemukan.');
+            abort_if($account === null, 404, 'Rekening tidak ditemukan.');
         }
 
         return $this->data($query->for($user, $from, $to, $account));

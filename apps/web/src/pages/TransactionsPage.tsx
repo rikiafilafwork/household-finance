@@ -96,8 +96,8 @@ export function TransactionsPage() {
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input aria-label="Cari catatan" placeholder="Cari catatan…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
         </div>
-        <NativeSelect aria-label="Filter akun" value={params.get('account_id') ?? ''} onChange={(e) => setFilter('account_id', e.target.value)}>
-          <option value="">Semua akun</option>
+        <NativeSelect aria-label="Filter rekening" value={params.get('account_id') ?? ''} onChange={(e) => setFilter('account_id', e.target.value)}>
+          <option value="">Semua rekening</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.archived_at ? ' (arsip)' : ''}</option>)}
         </NativeSelect>
         <NativeSelect aria-label="Filter kategori" value={params.get('category_id') ?? ''} onChange={(e) => setFilter('category_id', e.target.value)}>

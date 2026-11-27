@@ -7,7 +7,7 @@ import type { Account, Category, Transaction } from '@/api/types';
 import { TransactionForm } from './TransactionForm';
 
 const account = (id: number, name: string, extra: Partial<Account> = {}): Account => ({
-  id, name, type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null, ...extra,
+  id, name, type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null, is_savings: false, ...extra,
 });
 const category = (id: number, name: string, kind: 'income' | 'expense', archived = false): Category => ({
   id, name, kind, color: '#000000', icon: null, archived_at: archived ? '2026-11-01T00:00:00Z' : null,
@@ -51,7 +51,7 @@ describe('TransactionForm', () => {
 
     const options = () => Array.from((screen.getByLabelText('Kategori') as HTMLSelectElement).options).map((o) => o.text);
     expect(options()).toEqual(['Tanpa kategori', 'Makan']);
-    expect(Array.from((screen.getByLabelText('Akun') as HTMLSelectElement).options).map((o) => o.text)).toEqual(['BCA']);
+    expect(Array.from((screen.getByLabelText('Rekening') as HTMLSelectElement).options).map((o) => o.text)).toEqual(['BCA']);
 
     await userEvent.click(screen.getByRole('radio', { name: 'Pemasukan' }));
     expect(options()).toEqual(['Tanpa kategori', 'Gaji']);
@@ -66,7 +66,7 @@ describe('TransactionForm', () => {
 
     expect(screen.getByLabelText('Kategori')).toHaveValue('11');
     expect(screen.getByRole('option', { name: 'Rokok (diarsip)' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Akun')).toHaveValue('2');
+    expect(screen.getByLabelText('Rekening')).toHaveValue('2');
     expect(screen.getByLabelText('Nominal')).toHaveValue('25.000');
   });
 

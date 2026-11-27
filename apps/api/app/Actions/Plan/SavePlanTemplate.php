@@ -94,7 +94,7 @@ class SavePlanTemplate
             } elseif ($input->dayOfMonth === null) {
                 $errors['day_of_month'] = 'Auto-post butuh tanggal jatuh tempo.';
             } elseif ($input->accountId === null) {
-                $errors['account_id'] = 'Auto-post butuh akun default.';
+                $errors['account_id'] = 'Auto-post butuh rekening default.';
             }
         }
         if ($errors !== []) {

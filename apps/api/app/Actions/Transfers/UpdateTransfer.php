@@ -21,7 +21,7 @@ class UpdateTransfer
     public function handle(User $user, TransferPair $pair, TransferInput $input): TransferPair
     {
         if ($input->fromAccountId === $input->toAccountId) {
-            throw ValidationException::withMessages(['to_account_id' => 'Akun asal dan tujuan harus berbeda.']);
+            throw ValidationException::withMessages(['to_account_id' => 'Rekening asal dan tujuan harus berbeda.']);
         }
 
         return DB::transaction(function () use ($user, $pair, $input) {

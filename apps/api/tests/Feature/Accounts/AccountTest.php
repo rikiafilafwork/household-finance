@@ -46,7 +46,7 @@ describe('creating', function () {
 
         actingAs($user)->postJson(accountsUrl(), ['name' => ' BCA ', 'type' => 'bank'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['name' => 'Akun dengan nama ini sudah ada.']);
+            ->assertJsonValidationErrors(['name' => 'Rekening dengan nama ini sudah ada.']);
         actingAs($user)->postJson(accountsUrl(), ['name' => 'Jago', 'type' => 'bank'])->assertCreated();
     });
 

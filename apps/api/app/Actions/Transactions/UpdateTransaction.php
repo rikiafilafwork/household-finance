@@ -6,6 +6,7 @@ use App\Actions\Accounts\LockAccounts;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Plan\EnvelopeCheck;
+use App\Savings\LinkedAllocation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -46,6 +47,8 @@ class UpdateTransaction
                 $this->assertAccountWritable($newAccount);
             }
             $this->assertCategoryMatches($user, $input->categoryId, $input->type, $current->category_id);
+            // Transaksi "Gunakan tabungan": rekening & jenis terkunci, nominal dibatasi alokasi tujuan.
+            LinkedAllocation::assertUpdatable($current, $input);
 
             $oldAccount->decrement('balance', $current->amount);
 
@@ -60,6 +63,7 @@ class UpdateTransaction
 
             // Model akun di koleksi sama: refresh nilai supaya increment memakai angka terbaru.
             $newAccount->refresh()->increment('balance', $current->amount);
+            LinkedAllocation::afterUpdate($current);
 
             // Hanya keadaan baru yang bisa menembus ambang (kategori/bulan lama hanya turun),
             // termasuk saat transaksi dipindah ke bulan lalu (backdate).

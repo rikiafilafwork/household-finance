@@ -22,6 +22,7 @@ export interface Account {
   balance: number; // boleh negatif (diberi peringatan di UI)
   sort_order: number;
   archived_at: string | null;
+  is_savings: boolean;
 }
 
 export interface Category {
@@ -73,6 +74,15 @@ export interface ReconcileMismatchPayload {
   fixed: boolean;
 }
 
+/** Saldo rekening tabungan kurang dari total alokasi tujuan (SavingsOverdrawn). */
+export interface SavingsOverdrawnPayload {
+  account_id: Id;
+  name: string;
+  balance: number;
+  allocated: number;
+  shortfall: number;
+}
+
 /** Amplop tembus 80% / 100% (job CheckEnvelopeThresholds). Angka dalam rupiah bulat. */
 export interface EnvelopeThresholdPayload {
   plan_item_id: Id;
@@ -95,4 +105,46 @@ export interface CursorPage<T> {
 export interface LengthAwarePage<T, M = object> {
   data: T[];
   meta: { current_page: number; last_page: number; total: number; per_page: number } & M;
+}
+
+export interface SavingsGoal {
+  id: Id;
+  account_id: Id;
+  name: string;
+  target_amount: number;
+  allocated_amount: number;
+  target_date: string | null; // Y-m-d
+  achieved_at: string | null;
+  archived_at: string | null;
+  sort_order: number;
+  percent: number;
+  reached: boolean;
+  /** Perlu ditabung per bulan sampai tenggat; null tanpa tenggat; 0 kalau target sudah terpenuhi. */
+  monthly_needed: number | null;
+}
+
+export interface SavingsAccountSummary {
+  account: Account;
+  balance: number;
+  allocated: number;
+  unallocated: number; // boleh negatif kalau tabungan terpakai
+  overdrawn: number;
+  goals: SavingsGoal[];
+}
+
+export interface SavingsSummary {
+  accounts: SavingsAccountSummary[];
+  totals: { balance: number; allocated: number; unallocated: number; overdrawn: number };
+}
+
+export interface SavingsAllocation {
+  id: Id;
+  savings_goal_id: Id;
+  amount: number; // bertanda: positif = tambah, negatif = kurangi
+  occurred_on: string;
+  note: string | null;
+  transaction_id: Id | null;
+  move_group_id: string | null;
+  client_id: string;
+  created_at: string | null;
 }

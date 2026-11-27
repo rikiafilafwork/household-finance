@@ -8,6 +8,7 @@ import { ACCOUNT_TYPES, accountTypeGroupLabel, accountTypeIcon } from '@/compone
 import { AdjustBalanceForm } from '@/components/accounts/AdjustBalanceForm';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MoneyText } from '@/components/money/MoneyText';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,14 +23,17 @@ function AccountRow({ account, onEdit, onAdjust }: { account: Account; onEdit: (
   return (
     <li className="flex items-center justify-between gap-3 py-2.5">
       <div className="grid min-w-0">
-        <span className="truncate text-sm font-medium">{account.name}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium">{account.name}</span>
+          {account.is_savings && <Badge variant="secondary" className="shrink-0">Tabungan</Badge>}
+        </span>
         {account.balance < 0 && (
           <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-500">
             <AlertTriangle className="size-3" aria-hidden /> Saldo negatif — ada transaksi yang belum dicatat?
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <MoneyText amount={account.balance} tone="balance" className="mr-1 text-sm font-medium" />
         {onAdjust && (
           <Button variant="ghost" size="icon" className="size-8" aria-label={`Sesuaikan saldo ${account.name}`} onClick={onAdjust}>
@@ -60,21 +64,21 @@ export function AccountsPage() {
   let title = '';
   let body: React.ReactNode = null;
   if (dialog?.mode === 'new') {
-    title = 'Tambah akun';
-    body = <AccountForm onSubmit={async (payload) => { await m.create.mutateAsync(payload); toast.success('Akun ditambahkan.'); close(); }} />;
+    title = 'Tambah rekening';
+    body = <AccountForm onSubmit={async (payload) => { await m.create.mutateAsync(payload); toast.success('Rekening ditambahkan.'); close(); }} />;
   } else if (dialog?.mode === 'edit') {
     const { account } = dialog;
-    title = 'Ubah akun';
+    title = 'Ubah rekening';
     body = (
       <AccountForm
         initial={account}
-        onSubmit={async (body) => { await m.update.mutateAsync({ id: account.id, body }); toast.success('Akun diperbarui.'); close(); }}
+        onSubmit={async (body) => { await m.update.mutateAsync({ id: account.id, body }); toast.success('Rekening diperbarui.'); close(); }}
         onArchive={async () => {
           await m.archive.mutateAsync({ id: account.id, archived: !account.archived_at });
-          toast.success(account.archived_at ? 'Akun aktif lagi.' : 'Akun diarsip. Transaksi lamanya tetap tampil.');
+          toast.success(account.archived_at ? 'Rekening aktif lagi.' : 'Rekening diarsip. Transaksi lamanya tetap tampil.');
           close();
         }}
-        onDelete={async () => { await m.remove.mutateAsync(account.id); toast.success('Akun dihapus.'); close(); }}
+        onDelete={async () => { await m.remove.mutateAsync(account.id); toast.success('Rekening dihapus.'); close(); }}
       />
     );
   } else if (dialog?.mode === 'adjust') {
@@ -96,15 +100,15 @@ export function AccountsPage() {
   return (
     <>
       <PageHeader
-        title="Akun"
+        title="Rekening"
         description={active.length > 0 ? <>Total saldo <MoneyText amount={total} tone="balance" className="font-medium text-foreground" /></> : undefined}
-        actions={<Button onClick={() => setDialog({ mode: 'new' })}><Plus /> Tambah akun</Button>}
+        actions={<Button onClick={() => setDialog({ mode: 'new' })}><Plus /> Tambah rekening</Button>}
       />
 
       {isPending && <Skeleton className="h-40" />}
       {!isPending && active.length === 0 && (
         <div className="rounded-lg border border-dashed bg-background p-10 text-center text-sm text-muted-foreground">
-          Belum ada akun aktif. Tambahkan rekening bank, e-wallet, atau dompet tunai.
+          Belum ada rekening aktif. Tambahkan rekening bank, e-wallet, atau dompet tunai.
         </div>
       )}
 
@@ -134,7 +138,7 @@ export function AccountsPage() {
       {archived.length > 0 && (
         <div className="mt-6">
           <Button variant="ghost" size="sm" onClick={() => setShowArchived((v) => !v)} aria-expanded={showArchived}>
-            <Archive /> {showArchived ? 'Sembunyikan' : 'Tampilkan'} akun diarsip ({archived.length})
+            <Archive /> {showArchived ? 'Sembunyikan' : 'Tampilkan'} rekening diarsip ({archived.length})
           </Button>
           {showArchived && (
             <ul className="mt-2 divide-y rounded-lg border bg-background px-4 opacity-80">

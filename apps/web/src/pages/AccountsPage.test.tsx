@@ -8,7 +8,7 @@ import { qk } from '@/api/keys';
 import type { Account } from '@/api/types';
 
 const account = (id: number, name: string, type: Account['type'], balance: number, extra: Partial<Account> = {}): Account => ({
-  id, name, type, opening_balance: balance, balance, sort_order: id, archived_at: null, ...extra,
+  id, name, type, opening_balance: balance, balance, sort_order: id, archived_at: null, is_savings: false, ...extra,
 });
 
 const accounts = [
@@ -56,7 +56,7 @@ describe('AccountsPage', () => {
     await screen.findByText('BCA');
     expect(screen.queryByText('Mandiri Lama')).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /Tampilkan akun diarsip \(1\)/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Tampilkan rekening diarsip \(1\)/ }));
 
     expect(screen.getByText('Mandiri Lama')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sesuaikan saldo Mandiri Lama' })).not.toBeInTheDocument();
@@ -90,17 +90,49 @@ describe('AccountsPage', () => {
     api.create.mockResolvedValue(account(6, 'OVO', 'ewallet', 50_000));
     renderPage();
 
-    await userEvent.click(await screen.findByRole('button', { name: /Tambah akun/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Tambah rekening/ }));
     await userEvent.type(screen.getByLabelText('Nama'), 'OVO');
     await userEvent.selectOptions(screen.getByLabelText('Jenis'), 'ewallet');
     await userEvent.type(screen.getByLabelText('Saldo awal'), '50000');
-    await userEvent.click(screen.getAllByRole('button', { name: 'Tambah akun' }).at(-1)!);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Tambah rekening' }).at(-1)!);
 
-    expect(api.create).toHaveBeenCalledWith({ name: 'OVO', type: 'ewallet', opening_balance: 50_000 });
+    expect(api.create).toHaveBeenCalledWith({ name: 'OVO', type: 'ewallet', opening_balance: 50_000, is_savings: false });
+  });
+
+  it('marks an account as a savings account from the edit form', async () => {
+    api.update.mockResolvedValue(account(2, 'Jago', 'bank', 500_000, { is_savings: true }));
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Ubah Jago' }));
+    await userEvent.click(screen.getByLabelText(/Rekening tabungan/));
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }));
+
+    expect(api.update).toHaveBeenCalledWith(2, { name: 'Jago', type: 'bank', opening_balance: 500_000, is_savings: true });
+  });
+
+  it('shows the server reason on the toggle when a savings account still holds goal money', async () => {
+    api.list.mockResolvedValue([account(2, 'Jago', 'bank', 500_000, { is_savings: true })]);
+    api.update.mockRejectedValue(new ApiError(422, 'Data tidak valid.', { is_savings: ['Masih ada uang di tujuan tabungan.'] }));
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Ubah Jago' }));
+    await userEvent.click(screen.getByLabelText(/Rekening tabungan/));
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }));
+
+    expect(await screen.findByText('Masih ada uang di tujuan tabungan.')).toBeInTheDocument();
+  });
+
+  it('badges savings accounts', async () => {
+    api.list.mockResolvedValue([account(2, 'Jago', 'bank', 500_000, { is_savings: true }), account(1, 'BCA', 'bank', 1_000)]);
+    renderPage();
+
+    const row = (await screen.findByText('Jago')).closest('li')!;
+    expect(within(row).getByText('Tabungan')).toBeInTheDocument();
+    expect(within(screen.getByText('BCA').closest('li')!).queryByText('Tabungan')).not.toBeInTheDocument();
   });
 
   it('shows the server reason when an account with transactions cannot be deleted', async () => {
-    api.remove.mockRejectedValue(new ApiError(422, 'Data tidak valid.', { account: ['Akun sudah punya transaksi. Arsipkan saja.'] }));
+    api.remove.mockRejectedValue(new ApiError(422, 'Data tidak valid.', { account: ['Rekening sudah punya transaksi. Arsipkan saja.'] }));
     renderPage();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Ubah BCA' }));

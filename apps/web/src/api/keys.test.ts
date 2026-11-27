@@ -7,6 +7,15 @@ afterEach(() => {
 });
 
 describe('invalidateMoney', () => {
+  it('invalidates savings so the Tabungan page refetches balances', async () => {
+    const queryClient = new QueryClient();
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await invalidateMoney(queryClient);
+
+    expect(spy.mock.calls.some(([filters]) => filters?.queryKey === qk.savings)).toBe(true);
+  });
+
   it('rechecks notifications after the queued envelope job had time to run', async () => {
     vi.useFakeTimers();
     const queryClient = new QueryClient();

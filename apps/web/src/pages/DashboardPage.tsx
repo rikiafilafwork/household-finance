@@ -100,6 +100,7 @@ function KpiCards({ d }: { d: Dashboard }) {
           <p data-testid="kpi-free">
             Uang bebas <MoneyText amount={d.free_money} tone="balance" className="font-medium text-foreground" />
             {d.free_money < 0 && <span className="text-destructive"> — saldo tidak cukup menutup rencana</span>}
+            <span className="block">tidak termasuk tabungan</span>
           </p>
         )}
       </Kpi>
@@ -187,7 +188,7 @@ function EnvelopeWarnings({ envelopes }: { envelopes: Dashboard['envelopes_warni
 
 function AccountBalances({ accounts }: { accounts: Account[] }) {
   if (accounts.length === 0) {
-    return <p className="text-sm text-muted-foreground">Belum ada akun. <Link to="/accounts" className={linkClass}>Tambah rekening, e-wallet, atau dompet</Link>.</p>;
+    return <p className="text-sm text-muted-foreground">Belum ada rekening. <Link to="/accounts" className={linkClass}>Tambah rekening, e-wallet, atau dompet</Link>.</p>;
   }
   return (
     <ul className="grid gap-1">
@@ -213,6 +214,38 @@ function AccountBalances({ accounts }: { accounts: Account[] }) {
   );
 }
 
+function SavingsSummary({ savings }: { savings: Dashboard['savings'] }) {
+  return (
+    <div className="grid gap-3">
+      <MoneyText amount={savings.balance} tone="balance" className="text-xl font-semibold" />
+      {savings.overdrawn > 0 && (
+        <Link to="/savings" className="flex items-center gap-2 text-sm font-medium text-destructive underline-offset-4 hover:underline">
+          <AlertTriangle className="size-3.5 shrink-0" />
+          <span>Tabungan terpakai <MoneyText amount={savings.overdrawn} /></span>
+        </Link>
+      )}
+      {savings.goals.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Belum ada tujuan tabungan.</p>
+      ) : (
+        <ul className="grid gap-3">
+          {savings.goals.map((g) => (
+            <li key={g.id} className="grid gap-1">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="truncate">{g.name}</span>
+                {g.percent !== null && <span className="text-xs font-medium tabular-nums">{g.percent}%</span>}
+              </div>
+              {g.target_amount !== null && <Progress actual={g.allocated_amount} planned={g.target_amount} label={`Progres ${g.name}`} className="bg-primary" />}
+              <span className="text-xs text-muted-foreground">
+                <MoneyText amount={g.allocated_amount} />{g.target_amount !== null && <> / <MoneyText amount={g.target_amount} /></>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function RecentList({ recent, accounts, categories }: { recent: Dashboard['recent']; accounts: Map<number, Account>; categories: Map<number, Category> }) {
   if (recent.length === 0) {
     return <p className="text-sm text-muted-foreground">Belum ada transaksi. Catat pengeluaran pertama Anda.</p>;
@@ -224,7 +257,7 @@ function RecentList({ recent, accounts, categories }: { recent: Dashboard['recen
           <div className="grid min-w-0">
             <span className="truncate text-sm font-medium">{transactionLabel(tx, categories)}</span>
             <span className="truncate text-xs text-muted-foreground">
-              {formatDate(tx.occurred_on, { day: 'numeric', month: 'short' })} · {accounts.get(tx.account_id)?.name ?? 'Akun'}{tx.note ? ` · ${tx.note}` : ''}
+              {formatDate(tx.occurred_on, { day: 'numeric', month: 'short' })} · {accounts.get(tx.account_id)?.name ?? 'Rekening'}{tx.note ? ` · ${tx.note}` : ''}
             </span>
           </div>
           <MoneyText amount={tx.amount} tone="signed" className="text-sm font-medium" />
@@ -311,9 +344,9 @@ export function DashboardPage() {
           {!d.reconcile_ok && (
             <Alert data-testid="reconcile-banner" variant="destructive">
               <AlertTriangle />
-              <AlertTitle>Saldo akun tidak cocok dengan riwayat transaksi</AlertTitle>
+              <AlertTitle>Saldo rekening tidak cocok dengan riwayat transaksi</AlertTitle>
               <AlertDescription>
-                <p>Ada akun yang saldonya berbeda dari jumlah transaksinya. Jalankan <code>php artisan accounts:reconcile --fix</code> untuk membetulkan.</p>
+                <p>Ada rekening yang saldonya berbeda dari jumlah transaksinya. Jalankan <code>php artisan accounts:reconcile --fix</code> untuk membetulkan.</p>
               </AlertDescription>
             </Alert>
           )}
@@ -340,9 +373,14 @@ export function DashboardPage() {
             <Panel testId="panel-envelopes" title="Amplop hampir habis">
               <EnvelopeWarnings envelopes={d.envelopes_warning} />
             </Panel>
-            <Panel testId="panel-accounts" title="Saldo per akun" action={<Button asChild variant="ghost" size="sm"><Link to="/accounts">Akun</Link></Button>}>
+            <Panel testId="panel-accounts" title="Saldo per rekening" action={<Button asChild variant="ghost" size="sm"><Link to="/accounts">Rekening</Link></Button>}>
               <AccountBalances accounts={active} />
             </Panel>
+            {(d.savings.balance > 0 || d.savings.goals.length > 0 || d.savings.allocated > 0 || d.savings.overdrawn > 0) && (
+              <Panel testId="panel-savings" title="Tabungan" action={<Button asChild variant="ghost" size="sm"><Link to="/savings">Tabungan</Link></Button>}>
+                <SavingsSummary savings={d.savings} />
+              </Panel>
+            )}
             <Panel testId="panel-recent" title="Transaksi terbaru" action={<Button asChild variant="ghost" size="sm"><Link to="/transactions">Semua</Link></Button>}>
               <RecentList recent={d.recent} accounts={accountMap} categories={categoryMap} />
             </Panel>

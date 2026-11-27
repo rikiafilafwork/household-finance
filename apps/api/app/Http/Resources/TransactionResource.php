@@ -29,6 +29,8 @@ class TransactionResource extends JsonResource
             'transfer_group_id' => $this->transfer_group_id,
             'client_id' => $this->client_id,
             'plan_item_id' => $this->plan_item_id,
+            // Tujuan tabungan kalau transaksi ini dibuat lewat "Gunakan" (di-eager-load di daftar).
+            'savings_goal_id' => $this->savingsAllocation?->savings_goal_id,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

@@ -1,5 +1,5 @@
 import { formatIDR } from '@personal-finance/shared';
-import type { AppNotification, EnvelopeThresholdPayload, ReconcileMismatchPayload } from '@/api/types';
+import type { AppNotification, EnvelopeThresholdPayload, ReconcileMismatchPayload, SavingsOverdrawnPayload } from '@/api/types';
 import { formatMonth } from '@/lib/dates';
 
 export type NotificationTone = 'warning' | 'over' | 'info';
@@ -29,10 +29,19 @@ export function describeNotification(n: AppNotification): NotificationView {
       const p = n.payload as unknown as ReconcileMismatchPayload;
       const names = p.mismatches.map((m) => m.name).join(', ');
       return {
-        title: p.fixed ? 'Saldo akun diperbaiki' : 'Saldo akun tidak cocok',
-        body: `${names || 'Akun'}: saldo tersimpan berbeda dengan jumlah transaksinya${p.fixed ? ' dan sudah disamakan' : ''}.`,
+        title: p.fixed ? 'Saldo rekening diperbaiki' : 'Saldo rekening tidak cocok',
+        body: `${names || 'Rekening'}: saldo tersimpan berbeda dengan jumlah transaksinya${p.fixed ? ' dan sudah disamakan' : ''}.`,
         href: '/accounts',
         tone: p.fixed ? 'info' : 'over',
+      };
+    }
+    case 'savings_overdrawn': {
+      const p = n.payload as unknown as SavingsOverdrawnPayload;
+      return {
+        title: 'Tabungan terpakai',
+        body: `${p.name}: kurang ${formatIDR(p.shortfall)} dari total alokasi tujuan.`,
+        href: '/savings',
+        tone: 'over',
       };
     }
     default:

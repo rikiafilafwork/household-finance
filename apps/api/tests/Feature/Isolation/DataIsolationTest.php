@@ -5,6 +5,7 @@ use App\Models\Category;
 use App\Models\Import;
 use App\Models\PlanItem;
 use App\Models\PlanTemplate;
+use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
@@ -67,6 +68,16 @@ final class IsolationContext
     public int $myPlanItemId;
 
     public PlanTemplate $victimTemplate;
+
+    public Account $victimSavingsAccount;
+
+    public SavingsGoal $victimGoal;
+
+    public string $victimAllocationClientId;
+
+    public int $myGoalId;
+
+    public int $myGoal2Id;
 
     public Import $victimImport;
 
@@ -133,6 +144,14 @@ final class IsolationContext
             'fingerprint' => str_repeat('a', 64), 'status' => 'new', 'raw' => ['03/11/2026', 'TRANSFER RAHASIA', '-25.000'],
         ])->id;
 
+        // Rekening tabungan korban + satu tujuan yang memegang uang.
+        $this->victimSavingsAccount = Account::factory()->forUser($this->victim)->savings()->opening(200_000)->create(['name' => 'BCA Tabungan Korban']);
+        $this->victimGoal = SavingsGoal::factory()->forAccount($this->victimSavingsAccount)->create(['name' => 'Tujuan Rahasia']);
+        $this->victimAllocationClientId = (string) Str::uuid();
+        actingAs($this->victim)->postJson("/api/savings-goals/{$this->victimGoal->id}/allocations", [
+            'amount' => 50_000, 'occurred_on' => '2026-11-22', 'note' => 'catatan rahasia', 'client_id' => $this->victimAllocationClientId,
+        ])->assertCreated();
+
         $this->attacker = User::factory()->create(['name' => 'Penyerang']);
         $this->myAccount = Account::factory()->forUser($this->attacker)->opening(500_000)->create(['name' => 'Akun Saya']);
         $this->myAccount2 = Account::factory()->forUser($this->attacker)->opening(0)->create(['name' => 'Akun Saya 2']);
@@ -149,6 +168,9 @@ final class IsolationContext
             'user_id' => $this->attacker->id, 'account_id' => $this->myAccount->id, 'bank_format' => 'generic',
             'original_filename' => 'punyaku.csv', 'status' => 'ready',
         ])->id;
+        $mySavings = Account::factory()->forUser($this->attacker)->savings()->opening(1_000_000)->create(['name' => 'Tabungan Saya']);
+        $this->myGoalId = SavingsGoal::factory()->forAccount($mySavings)->allocated(100_000)->create(['name' => 'Tujuan Saya'])->id;
+        $this->myGoal2Id = SavingsGoal::factory()->forAccount($mySavings)->create(['name' => 'Tujuan Saya 2'])->id;
     }
 
     /**
@@ -169,6 +191,8 @@ final class IsolationContext
             'notifications' => $rows('notifications', 'notifiable_id'),
             'plan_items' => $rows('plan_items'),
             'plan_templates' => $rows('plan_templates'),
+            'savings_goals' => $rows('savings_goals'),
+            'savings_allocations' => $rows('savings_allocations'),
             'imports' => $rows('imports'),
             'import_rows' => DB::table('import_rows')->where('import_id', $this->victimImport->id)->orderBy('id')->get()->map(fn ($r) => (array) $r)->all(),
         ];
@@ -181,7 +205,7 @@ final class IsolationContext
      */
     public function leakMarkers(): array
     {
-        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', 'Template Rahasia', 'mutasi-rahasia.csv', 'TRANSFER RAHASIA', $this->victimTransferGroup, $this->victimNotification->id];
+        return ['BCA Korban', 'Dompet Korban', 'Rahasia Korban', 'catatan rahasia', 'Cicilan Rahasia', 'Template Rahasia', 'mutasi-rahasia.csv', 'TRANSFER RAHASIA', 'BCA Tabungan Korban', 'Tujuan Rahasia', $this->victimTransferGroup, $this->victimNotification->id];
     }
 }
 
@@ -216,6 +240,13 @@ function isolationCases(): array
     $transfer = fn (IsolationContext $c, array $overrides = []) => array_merge([
         'from_account_id' => $c->myAccount->id, 'to_account_id' => $c->myAccount2->id, 'amount' => 1_000,
         'occurred_on' => '2026-11-22', 'client_id' => (string) Str::uuid(),
+    ], $overrides);
+    $allocation = fn (array $overrides = []) => array_merge([
+        'amount' => 10_000, 'occurred_on' => '2026-11-22', 'client_id' => (string) Str::uuid(),
+    ], $overrides);
+
+    $use = fn (IsolationContext $c, array $overrides = []) => array_merge([
+        'amount' => 10_000, 'category_id' => $c->myCategory->id, 'occurred_on' => '2026-11-22', 'client_id' => (string) Str::uuid(),
     ], $overrides);
 
     $cases = [
@@ -311,6 +342,26 @@ function isolationCases(): array
         'list import rows' => ['GET api/imports/{import}/rows', fn ($c, $id) => ['GET', '/api/imports/'.$id('import').'/rows']],
         'commit the victim’s import' => ['POST api/imports/{import}/commit', fn ($c, $id) => ['POST', '/api/imports/'.$id('import').'/commit', ['rows' => []]]],
         'commit the victim’s staged row into own import' => ['POST api/imports/{import}/commit', fn ($c, $id) => ['POST', '/api/imports/'.$c->myImportId.'/commit', ['rows' => [['id' => $id('import_row'), 'category_id' => null]]]]],
+
+        // Tabungan
+        'savings summary' => ['GET api/savings', fn ($c, $id) => ['GET', '/api/savings']],
+        'create goal on the victim’s savings account' => ['POST api/savings-goals', fn ($c, $id) => ['POST', '/api/savings-goals', ['account_id' => $id('savings_account'), 'name' => 'Tujuan Saya', 'target_amount' => 1_000_000]]],
+        'show goal' => ['GET api/savings-goals/{savingsGoal}', fn ($c, $id) => ['GET', '/api/savings-goals/'.$id('savings_goal')]],
+        'update goal' => ['PUT api/savings-goals/{savingsGoal}', fn ($c, $id) => ['PATCH', '/api/savings-goals/'.$id('savings_goal'), ['name' => 'Diretas']]],
+        'delete goal' => ['DELETE api/savings-goals/{savingsGoal}', fn ($c, $id) => ['DELETE', '/api/savings-goals/'.$id('savings_goal')]],
+        'archive goal' => ['POST api/savings-goals/{savingsGoal}/archive', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/archive']],
+        'unarchive goal' => ['POST api/savings-goals/{savingsGoal}/unarchive', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/unarchive']],
+        'achieve goal' => ['POST api/savings-goals/{savingsGoal}/achieve', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/achieve']],
+        'unachieve goal' => ['POST api/savings-goals/{savingsGoal}/unachieve', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/unachieve']],
+        'allocate to the victim’s goal' => ['POST api/savings-goals/{savingsGoal}/allocations', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/allocations', $allocation()]],
+        'allocate to own goal replaying the victim’s client_id' => ['POST api/savings-goals/{savingsGoal}/allocations', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/allocations', $allocation(['client_id' => $id('savings_client_id')])]],
+        'history of the victim’s goal' => ['GET api/savings-goals/{savingsGoal}/allocations', fn ($c, $id) => ['GET', '/api/savings-goals/'.$id('savings_goal').'/allocations']],
+        'move out of the victim’s goal' => ['POST api/savings-goals/{savingsGoal}/move', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/move', ['to_goal_id' => $c->myGoalId, 'amount' => 10_000, 'client_id' => (string) Str::uuid()]]],
+        'move own allocation into the victim’s goal' => ['POST api/savings-goals/{savingsGoal}/move', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/move', ['to_goal_id' => $id('savings_goal'), 'amount' => 10_000, 'client_id' => (string) Str::uuid()]]],
+        'move own allocation replaying the victim’s client_id' => ['POST api/savings-goals/{savingsGoal}/move', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/move', ['to_goal_id' => $c->myGoal2Id, 'amount' => 10_000, 'client_id' => $id('savings_client_id')]]],
+        'use the victim’s goal' => ['POST api/savings-goals/{savingsGoal}/use', fn ($c, $id) => ['POST', '/api/savings-goals/'.$id('savings_goal').'/use', $use($c)]],
+        'use own goal with the victim’s category' => ['POST api/savings-goals/{savingsGoal}/use', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/use', $use($c, ['category_id' => $id('category')])]],
+        'use own goal replaying the victim’s client_id' => ['POST api/savings-goals/{savingsGoal}/use', fn ($c, $id) => ['POST', '/api/savings-goals/'.$c->myGoalId.'/use', $use($c, ['client_id' => $id('client_id')])]],
     ];
 
     return array_map(fn (array $case) => new IsolationCase($case[0], $case[1]), $cases);
@@ -334,6 +385,9 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'plan_template' => $c->victimTemplate->id,
         'import' => $c->victimImport->id,
         'import_row' => $c->victimImportRowId,
+        'savings_account' => $c->victimSavingsAccount->id,
+        'savings_goal' => $c->victimGoal->id,
+        'savings_client_id' => $c->victimAllocationClientId,
         'own_transaction' => $ownTransaction,
     ];
     $missing = [
@@ -347,6 +401,9 @@ function attack(IsolationContext $c, IsolationCase $case, string $mode): array
         'plan_template' => 999_999_999,
         'import' => 999_999_999,
         'import_row' => 999_999_999,
+        'savings_account' => 999_999_999,
+        'savings_goal' => 999_999_999,
+        'savings_client_id' => (string) Str::uuid(),
         'own_transaction' => $ownTransaction,
     ];
     $ids = $mode === 'foreign' ? $foreign : $missing;

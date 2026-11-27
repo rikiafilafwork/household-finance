@@ -7,7 +7,7 @@ import type { ImportRow, StatementImport } from '@/api/imports';
 import { qk } from '@/api/keys';
 import type { Account, Category } from '@/api/types';
 
-const accounts: Account[] = [{ id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null }];
+const accounts: Account[] = [{ id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null, is_savings: false }];
 const categories: Category[] = [
   { id: 1, kind: 'expense', name: 'Makan', color: null, icon: null, archived_at: null },
   { id: 2, kind: 'expense', name: 'Lama', color: null, icon: null, archived_at: '2026-01-01T00:00:00Z' },

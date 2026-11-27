@@ -62,7 +62,7 @@ function Summary({ plan, free }: { plan: PlanComparison; free: FreeMoney | null 
         <SummaryCard
           testId="summary-free"
           label="Uang bebas"
-          footer={<>Saldo semua akun <MoneyText amount={free.balance} tone="balance" /> − masih akan keluar <MoneyText amount={free.stillToSpend} /></>}
+          footer={<>Saldo semua rekening (tidak termasuk tabungan) <MoneyText amount={free.balance} tone="balance" /> − masih akan keluar <MoneyText amount={free.stillToSpend} /></>}
         >
           <MoneyText amount={free.free} tone="balance" />
         </SummaryCard>
@@ -215,7 +215,7 @@ export function PlanPage() {
     body = (
       <Confirm
         message={unchecking
-          ? <>Transaksi <MoneyText amount={item.actual} className="font-medium" /> yang dicatat saat mencentang akan dihapus dan saldo akunnya dikembalikan.</>
+          ? <>Transaksi <MoneyText amount={item.actual} className="font-medium" /> yang dicatat saat mencentang akan dihapus dan saldo rekeningnya dikembalikan.</>
           : 'Item dihapus dari rencana bulan ini. Kalau hanya tidak terjadi bulan ini, pilih “Lewati” saja.'}
         confirmLabel={unchecking ? 'Ya, batal centang' : 'Ya, hapus'}
         onConfirm={async () => {

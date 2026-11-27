@@ -35,14 +35,22 @@ describe('freeMoney', () => {
 
   it('is the active balance minus what the plan still has to spend', () => {
     const accounts = [
-      { balance: 5_000_000, archived_at: null },
-      { balance: 250_000, archived_at: null },
-      { balance: 999_000, archived_at: '2026-01-01T00:00:00Z' }, // arsip tidak dihitung
+      { balance: 5_000_000, archived_at: null, is_savings: false },
+      { balance: 250_000, archived_at: null, is_savings: false },
+      { balance: 999_000, archived_at: '2026-01-01T00:00:00Z', is_savings: false }, // arsip tidak dihitung
     ];
     expect(freeMoney(accounts, plan)).toEqual({ balance: 5_250_000, stillToSpend: 1_240_000, free: 4_010_000 });
   });
 
+  it('excludes savings accounts', () => {
+    const accounts = [
+      { balance: 5_000_000, archived_at: null, is_savings: false },
+      { balance: 20_000_000, archived_at: null, is_savings: true },
+    ];
+    expect(freeMoney(accounts, plan)).toEqual({ balance: 5_000_000, stillToSpend: 1_240_000, free: 3_760_000 });
+  });
+
   it('goes negative when the balance cannot cover the plan', () => {
-    expect(freeMoney([{ balance: 1_000_000, archived_at: null }], plan).free).toBe(-240_000);
+    expect(freeMoney([{ balance: 1_000_000, archived_at: null, is_savings: false }], plan).free).toBe(-240_000);
   });
 });

@@ -16,7 +16,7 @@ const TODAY = todayIn(TZ);
 const dashboard: Dashboard = {
   month: MONTH,
   is_current_month: true,
-  balances: { bank: 5_000_000, ewallet: 250_000, cash: 150_000, total: 5_400_000 },
+  balances: { bank: 5_000_000, ewallet: 250_000, cash: 150_000, savings: 0, total: 5_400_000 },
   income: { planned: 9_500_000, actual: 8_000_000, unplanned: 0, unpaid: 0, envelope_remaining: 1_500_000 },
   expense: { planned: 5_100_000, actual: 4_075_000, unplanned: 180_000, unpaid: 500_000, envelope_remaining: 740_000 },
   remaining_budget: 1_025_000,
@@ -46,13 +46,14 @@ const dashboard: Dashboard = {
     { id: 50, type: 'expense', account_id: 3, category_id: 11, amount: -45_000, occurred_on: TODAY, note: 'Nasi padang', plan_item_id: null },
   ],
   reconcile_ok: true,
+  savings: { balance: 0, allocated: 0, unallocated: 0, overdrawn: 0, goals: [] },
 };
 
 const accounts: Account[] = [
-  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 5_000_000, sort_order: 0, archived_at: null },
-  { id: 2, name: 'GoPay', type: 'ewallet', opening_balance: 0, balance: 250_000, sort_order: 1, archived_at: null },
-  { id: 3, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 150_000, sort_order: 2, archived_at: null },
-  { id: 4, name: 'Lama', type: 'bank', opening_balance: 0, balance: 999_000, sort_order: 3, archived_at: '2026-01-01T00:00:00Z' },
+  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 5_000_000, sort_order: 0, archived_at: null, is_savings: false },
+  { id: 2, name: 'GoPay', type: 'ewallet', opening_balance: 0, balance: 250_000, sort_order: 1, archived_at: null, is_savings: false },
+  { id: 3, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 150_000, sort_order: 2, archived_at: null, is_savings: false },
+  { id: 4, name: 'Lama', type: 'bank', opening_balance: 0, balance: 999_000, sort_order: 3, archived_at: '2026-01-01T00:00:00Z', is_savings: false },
 ];
 const categories: Category[] = [{ id: 11, kind: 'expense', name: 'Makan', color: null, icon: null, archived_at: null }];
 
@@ -106,6 +107,76 @@ describe('DashboardPage — Beranda', () => {
     dashboardApi.get.mockResolvedValue({ ...dashboard, free_money: -240_000 });
     renderPage();
     expect(await screen.findByTestId('kpi-free')).toHaveTextContent('Uang bebas −Rp240.000 — saldo tidak cukup menutup rencana');
+  });
+
+  it('says free money excludes savings', async () => {
+    renderPage();
+    expect(await screen.findByTestId('kpi-free')).toHaveTextContent('tidak termasuk tabungan');
+  });
+
+  it('shows the Tabungan panel with the total and at most three goals', async () => {
+    const goal = (id: number, name: string) => ({ id, name, allocated_amount: 1_000_000, target_amount: 4_000_000, percent: 25 });
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: 5_000_000, allocated: 3_000_000, unallocated: 2_000_000, overdrawn: 0, goals: [goal(1, 'Dana darurat'), goal(2, 'Laptop'), goal(3, 'Liburan')] },
+    });
+    renderPage();
+    const panel = await screen.findByTestId('panel-savings');
+    expect(panel).toHaveTextContent('Rp5.000.000');
+    expect(within(panel).getAllByRole('progressbar')).toHaveLength(3);
+    expect(panel).toHaveTextContent('Dana darurat');
+    expect(panel).toHaveTextContent('Liburan');
+    expect(within(panel).queryByText(/Tabungan terpakai/)).not.toBeInTheDocument();
+    expect(within(panel).queryByText('0')).not.toBeInTheDocument();
+    expect(panel.textContent).not.toMatch(/(^|\D)0(\D|$)/);
+    expect(within(panel).getByRole('link', { name: 'Tabungan' })).toHaveAttribute('href', '/savings');
+  });
+
+  it('warns with a link to /savings when savings are overdrawn', async () => {
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: 1_000_000, allocated: 2_200_000, unallocated: 0, overdrawn: 1_200_000, goals: [{ id: 1, name: 'Laptop', allocated_amount: 2_200_000, target_amount: null, percent: null }] },
+    });
+    renderPage();
+    const panel = await screen.findByTestId('panel-savings');
+    expect(panel).toHaveTextContent('Tabungan terpakai Rp1.200.000');
+    expect(within(panel).getByRole('link', { name: /Tabungan terpakai/ })).toHaveAttribute('href', '/savings');
+  });
+
+  it('shows the server overdrawn amount, not allocated minus balance', async () => {
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: -500_000, allocated: 2_200_000, unallocated: 0, overdrawn: 2_200_000, goals: [{ id: 1, name: 'Laptop', allocated_amount: 2_200_000, target_amount: null, percent: null }] },
+    });
+    renderPage();
+    const panel = await screen.findByTestId('panel-savings');
+    expect(panel).toHaveTextContent('Tabungan terpakai Rp2.200.000');
+    expect(panel).not.toHaveTextContent('Rp2.700.000');
+  });
+
+  it('shows the Tabungan panel when the balance is 0 but goals exist', async () => {
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: 0, allocated: 0, unallocated: 0, overdrawn: 0, goals: [{ id: 1, name: 'Laptop', allocated_amount: 0, target_amount: 5_000_000, percent: 0 }] },
+    });
+    renderPage();
+    expect(await screen.findByTestId('panel-savings')).toBeInTheDocument();
+  });
+
+  it('keeps the overdrawn warning when a reached goal was spent down and no goals are listed', async () => {
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: -300_000, allocated: 2_000_000, unallocated: 0, overdrawn: 2_000_000, goals: [] },
+    });
+    renderPage();
+    const panel = await screen.findByTestId('panel-savings');
+    expect(panel).toHaveTextContent('Tabungan terpakai Rp2.000.000');
+  });
+
+  it('hides the Tabungan panel without a savings account or goals', async () => {
+    renderPage();
+    await screen.findByTestId('kpi-balance');
+    expect(screen.queryByTestId('panel-savings')).not.toBeInTheDocument();
   });
 
   it('hides free money for another month taken from the URL', async () => {
@@ -171,7 +242,7 @@ describe('DashboardPage — Beranda', () => {
 
     await user.click(screen.getByRole('button', { name: 'Centang Listrik' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByLabelText('Dari akun')).toHaveValue('2');
+    expect(within(dialog).getByLabelText('Dari rekening')).toHaveValue('2');
     await user.click(within(dialog).getByRole('button', { name: 'Centang & catat' }));
 
     expect(planApi.check).toHaveBeenCalledWith(3, expect.objectContaining({ amount: 500_000, account_id: 2, occurred_on: TODAY, note: 'Listrik' }));

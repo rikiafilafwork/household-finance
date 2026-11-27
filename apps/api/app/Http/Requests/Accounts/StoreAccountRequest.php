@@ -24,6 +24,7 @@ class StoreAccountRequest extends FormRequest
             'type' => ['required', Rule::enum(AccountType::class)],
             // Uang dikirim sebagai integer JSON rupiah (Keputusan #1); string/float ditolak.
             'opening_balance' => ['sometimes', 'integer:strict', 'between:-'.self::MAX_AMOUNT.','.self::MAX_AMOUNT],
+            'is_savings' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer:strict', 'between:0,32767'],
         ];
     }
@@ -33,7 +34,7 @@ class StoreAccountRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['name.unique' => 'Akun dengan nama ini sudah ada.'];
+        return ['name.unique' => 'Rekening dengan nama ini sudah ada.'];
     }
 
     protected function prepareForValidation(): void

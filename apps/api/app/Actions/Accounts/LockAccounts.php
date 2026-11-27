@@ -24,7 +24,7 @@ class LockAccounts
 
         $accounts = Account::ownedBy($user)->whereKey($ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
 
-        abort_if($accounts->count() !== count($ids), 404, 'Akun tidak ditemukan.');
+        abort_if($accounts->count() !== count($ids), 404, 'Rekening tidak ditemukan.');
 
         return $accounts;
     }

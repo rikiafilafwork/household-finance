@@ -28,7 +28,7 @@ class CreateTransfer
     public function handle(User $user, TransferInput $input): array
     {
         if ($input->fromAccountId === $input->toAccountId) {
-            throw ValidationException::withMessages(['to_account_id' => 'Akun asal dan tujuan harus berbeda.']);
+            throw ValidationException::withMessages(['to_account_id' => 'Rekening asal dan tujuan harus berbeda.']);
         }
 
         try {

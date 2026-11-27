@@ -47,6 +47,7 @@ class AccountController extends Controller
             AccountType::from($request->string('type')->toString()),
             $request->integer('opening_balance'),
             $request->has('sort_order') ? $request->integer('sort_order') : null,
+            $request->boolean('is_savings'),
         );
 
         return (new AccountResource($account))->response()->setStatusCode(201);
@@ -59,7 +60,7 @@ class AccountController extends Controller
 
     public function update(UpdateAccountRequest $request, Account $account, UpdateAccount $updateAccount): AccountResource
     {
-        /** @var array{name?: string, type?: string, opening_balance?: int, sort_order?: int} $data */
+        /** @var array{name?: string, type?: string, is_savings?: bool, opening_balance?: int, sort_order?: int} $data */
         $data = $request->validated();
 
         return new AccountResource($updateAccount->handle($account, $data));

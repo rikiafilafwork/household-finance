@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BarChart3, CalendarCheck, FileUp, LayoutDashboard, LogOut, Settings, UserRound, Wallet } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, CalendarCheck, FileUp, LayoutDashboard, LogOut, PiggyBank, Settings, UserRound, Wallet } from 'lucide-react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { useLogout, useMe } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,11 @@ import { Brand } from './AuthLayout';
 const NAV = [
   { to: '/', label: 'Beranda', icon: LayoutDashboard, end: true },
   { to: '/plan', label: 'Rencana', icon: CalendarCheck },
+  { to: '/savings', label: 'Tabungan', icon: PiggyBank },
   { to: '/transactions', label: 'Transaksi', icon: ArrowLeftRight },
-  { to: '/accounts', label: 'Akun', icon: Wallet },
+  { to: '/accounts', label: 'Rekening', icon: Wallet },
   { to: '/reports', label: 'Laporan', icon: BarChart3, desktopOnly: true },
-  // Impor CSV sengaja hanya di web desktop (Architecture.md § Mobile); bottom nav HP tetap 5 item.
+  // Impor CSV sengaja hanya di web desktop (Architecture.md § Mobile); bottom nav HP 6 item.
   { to: '/imports', label: 'Impor', icon: FileUp, desktopOnly: true },
   { to: '/settings', label: 'Pengaturan', icon: Settings },
 ] as const;
@@ -89,13 +90,13 @@ export function AppShell() {
         </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Menu utama">
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Menu utama">
         {NAV.filter((item) => !('desktopOnly' in item)).map(({ to, label, icon: Icon, ...rest }) => (
           <NavLink
             key={to}
             to={to}
             end={'end' in rest}
-            className={({ isActive }) => cn('flex flex-col items-center gap-0.5 py-2 text-[11px] text-muted-foreground', isActive && 'text-primary')}
+            className={({ isActive }) => cn('flex min-w-0 flex-col items-center gap-0.5 py-2 text-[11px] text-muted-foreground', isActive && 'text-primary')}
           >
             <Icon className="size-5" /> {label}
           </NavLink>

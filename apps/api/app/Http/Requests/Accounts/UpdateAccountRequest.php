@@ -25,6 +25,7 @@ class UpdateAccountRequest extends FormRequest
             ],
             'type' => ['sometimes', Rule::enum(AccountType::class)],
             'opening_balance' => ['sometimes', 'integer:strict', "between:-{$max},{$max}"],
+            'is_savings' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer:strict', 'between:0,32767'],
             'balance' => ['prohibited'],
         ];
@@ -35,7 +36,7 @@ class UpdateAccountRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['name.unique' => 'Akun dengan nama ini sudah ada.'];
+        return ['name.unique' => 'Rekening dengan nama ini sudah ada.'];
     }
 
     protected function prepareForValidation(): void
