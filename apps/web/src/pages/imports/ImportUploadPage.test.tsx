@@ -9,7 +9,7 @@ import { qk } from '@/api/keys';
 import type { Account } from '@/api/types';
 
 const bank = (id: number, name: string, extra: Partial<Account> = {}): Account => ({
-  id, name, type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null, ...extra,
+  id, name, type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null, is_savings: false, ...extra,
 });
 const accounts: Account[] = [
   bank(1, 'BCA'),
@@ -59,7 +59,7 @@ beforeEach(() => {
 describe('ImportUploadPage', () => {
   it('offers only active bank accounts', async () => {
     renderPage();
-    const select = await screen.findByLabelText('Akun rekening');
+    const select = await screen.findByLabelText('Rekening');
 
     expect([...(select as HTMLSelectElement).options].map((o) => o.text)).toEqual(['BCA', 'Muamalat']);
   });
@@ -85,7 +85,7 @@ describe('ImportUploadPage', () => {
     expect(screen.getByLabelText('Kolom kredit (masuk)')).toHaveDisplayValue('Kredit');
     expect(screen.getByLabelText('Pemisah desimal')).toHaveDisplayValue('Koma — 1.250.000,00');
 
-    await userEvent.selectOptions(screen.getByLabelText('Akun rekening'), 'Muamalat');
+    await userEvent.selectOptions(screen.getByLabelText('Rekening'), 'Muamalat');
     await userEvent.click(screen.getByRole('button', { name: /Unggah & tinjau/ }));
 
     expect(await screen.findByText('halaman preview')).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe('ImportUploadPage', () => {
   it('does not offer another account’s preset', async () => {
     importsApi.list.mockResolvedValue([imported(5, { account_id: 2, column_mapping: { date: 0, date_format: 'd/m/Y', description: [1], amount: 2 } })]);
     renderPage();
-    await screen.findByLabelText('Akun rekening');
+    await screen.findByLabelText('Rekening');
 
     expect(screen.queryByLabelText(/Pakai pemetaan kolom terakhir/)).not.toBeInTheDocument();
   });

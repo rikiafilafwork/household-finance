@@ -57,7 +57,7 @@ export function CheckForm({ item, accounts, today, onSubmit }: {
   });
 
   if (options.length === 0) {
-    return <p className="text-sm text-muted-foreground">Belum ada akun aktif. Tambahkan akun di halaman Akun dulu.</p>;
+    return <p className="text-sm text-muted-foreground">Belum ada akun aktif. Tambahkan akun di halaman Rekening dulu.</p>;
   }
 
   return (

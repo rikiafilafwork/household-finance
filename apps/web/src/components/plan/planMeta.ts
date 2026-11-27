@@ -25,7 +25,7 @@ export function isBadDiff(item: Pick<PlanItem, 'type'>, diff: number): boolean {
 
 
 export interface FreeMoney {
-  /** Total saldo akun yang tidak diarsip. */
+  /** Total saldo rekening aktif, tanpa rekening tabungan. */
   balance: number;
   /** Dari server: belum dibayar + sisa ruang amplop. */
   stillToSpend: number;
@@ -35,10 +35,10 @@ export interface FreeMoney {
 
 /**
  * "Uang bebas" bulan berjalan: berapa yang tersisa setelah semua rencana pengeluaran bulan ini
- * terpenuhi. Komponen rencananya dihitung server (PlanComparisonQuery); di sini hanya selisih.
+ * terpenuhi; rekening tabungan tidak dihitung. Komponen rencananya dihitung server (PlanComparisonQuery); di sini hanya selisih.
  */
-export function freeMoney(accounts: Pick<Account, 'balance' | 'archived_at'>[], plan: Pick<PlanComparison, 'totals'>): FreeMoney {
-  const balance = accounts.filter((a) => !a.archived_at).reduce((sum, a) => sum + a.balance, 0);
+export function freeMoney(accounts: Pick<Account, 'balance' | 'archived_at' | 'is_savings'>[], plan: Pick<PlanComparison, 'totals'>): FreeMoney {
+  const balance = accounts.filter((a) => !a.archived_at && !a.is_savings).reduce((sum, a) => sum + a.balance, 0);
   const stillToSpend = plan.totals.still_to_spend;
   return { balance, stillToSpend, free: balance - stillToSpend };
 }

@@ -266,7 +266,7 @@ function CashFlowTab({ month, today }: { month: string; today: string }) {
           <CardTitle className="text-base">Cash flow</CardTitle>
           <CardDescription>Uang masuk & keluar per hari dan saldo berjalan ({formatDate(from)} – {formatDate(to)}).</CardDescription>
         </div>
-        <NativeSelect aria-label="Akun" className="h-9 w-auto" value={account ?? ''} onChange={(e) => setAccount(e.target.value === '' ? null : Number(e.target.value))}>
+        <NativeSelect aria-label="Rekening" className="h-9 w-auto" value={account ?? ''} onChange={(e) => setAccount(e.target.value === '' ? null : Number(e.target.value))}>
           <option value="">Semua akun</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.archived_at ? ' (arsip)' : ''}</option>)}
         </NativeSelect>

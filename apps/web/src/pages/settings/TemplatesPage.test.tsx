@@ -19,7 +19,7 @@ const templates: PlanTemplate[] = [
   tpl(4, 'Makan', { mode: 'envelope', category_id: 1, planned_amount: 2_000_000, day_of_month: null, account_id: null }),
   tpl(5, 'Netflix', { is_active: false, planned_amount: 186_000 }),
 ];
-const accounts: Account[] = [{ id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 5_000_000, sort_order: 0, archived_at: null }];
+const accounts: Account[] = [{ id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 5_000_000, sort_order: 0, archived_at: null, is_savings: false }];
 const categories: Category[] = [
   { id: 1, kind: 'expense', name: 'Makan', color: '#F97316', icon: 'utensils', archived_at: null },
   { id: 2, kind: 'expense', name: 'Tagihan', color: '#8B5CF6', icon: 'receipt', archived_at: null },
@@ -91,7 +91,7 @@ describe('TemplatesPage — tambah & ubah', () => {
     await userEvent.selectOptions(within(dialog).getByLabelText('Kategori'), 'Tagihan');
     await userEvent.type(within(dialog).getByLabelText('Rencana'), '350000');
     await userEvent.type(within(dialog).getByLabelText('Tanggal jatuh tempo'), '10');
-    await userEvent.selectOptions(within(dialog).getByLabelText('Akun bawaan'), 'BCA');
+    await userEvent.selectOptions(within(dialog).getByLabelText('Rekening bawaan'), 'BCA');
     await userEvent.click(within(dialog).getByRole('checkbox', { name: /Centang otomatis/ }));
     await userEvent.click(within(dialog).getByRole('button', { name: 'Tambah template' }));
 
@@ -110,7 +110,7 @@ describe('TemplatesPage — tambah & ubah', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Tambah amplop' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).queryByLabelText('Tanggal jatuh tempo')).not.toBeInTheDocument();
-    expect(within(dialog).queryByLabelText('Akun bawaan')).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText('Rekening bawaan')).not.toBeInTheDocument();
     await userEvent.type(within(dialog).getByLabelText('Nama'), 'Transport');
     await userEvent.selectOptions(within(dialog).getByLabelText('Kategori'), 'Makan');
     await userEvent.type(within(dialog).getByLabelText('Rencana'), '600000');
@@ -141,7 +141,7 @@ describe('TemplatesPage — tambah & ubah', () => {
 
     await userEvent.selectOptions(within(dialog).getByLabelText('Bulan'), 'Juli');
     await userEvent.type(within(dialog).getByLabelText('Tanggal jatuh tempo'), '31');
-    await userEvent.selectOptions(within(dialog).getByLabelText('Akun bawaan'), 'BCA');
+    await userEvent.selectOptions(within(dialog).getByLabelText('Rekening bawaan'), 'BCA');
     templatesApi.create.mockResolvedValue(tpl(8, 'Pajak motor', {}));
     await userEvent.click(within(dialog).getByRole('button', { name: 'Tambah template' }));
     await waitFor(() => expect(templatesApi.create).toHaveBeenCalledWith(expect.objectContaining({ frequency: 'yearly', month_of_year: 7, day_of_month: 31, auto_post: true, account_id: 1 })));

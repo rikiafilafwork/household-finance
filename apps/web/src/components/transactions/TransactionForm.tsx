@@ -129,7 +129,7 @@ export function TransactionForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Akun" htmlFor="account_id" error={errors.account_id?.message}>
+        <Field label="Rekening" htmlFor="account_id" error={errors.account_id?.message}>
           <NativeSelect id="account_id" aria-invalid={!!errors.account_id} {...form.register('account_id', { valueAsNumber: true })}>
             {accountOptions.length === 0 && <option value={0}>Belum ada akun</option>}
             {accountOptions.map((w) => (

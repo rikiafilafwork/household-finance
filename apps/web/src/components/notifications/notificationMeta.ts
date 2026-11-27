@@ -30,7 +30,7 @@ export function describeNotification(n: AppNotification): NotificationView {
       const names = p.mismatches.map((m) => m.name).join(', ');
       return {
         title: p.fixed ? 'Saldo akun diperbaiki' : 'Saldo akun tidak cocok',
-        body: `${names || 'Akun'}: saldo tersimpan berbeda dengan jumlah transaksinya${p.fixed ? ' dan sudah disamakan' : ''}.`,
+        body: `${names || 'Rekening'}: saldo tersimpan berbeda dengan jumlah transaksinya${p.fixed ? ' dan sudah disamakan' : ''}.`,
         href: '/accounts',
         tone: p.fixed ? 'info' : 'over',
       };

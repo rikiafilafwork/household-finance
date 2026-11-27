@@ -35,7 +35,7 @@ describe('AppShell (tanpa household)', () => {
       ['Beranda', '/'],
       ['Rencana', '/plan'],
       ['Transaksi', '/transactions'],
-      ['Akun', '/accounts'],
+      ['Rekening', '/accounts'],
       ['Laporan', '/reports'],
       ['Impor', '/imports'],
       ['Pengaturan', '/settings'],

@@ -19,7 +19,7 @@ const schema = z
     occurred_on: localDateSchema,
     note: z.string().max(255, 'Catatan maksimal 255 karakter.'),
   })
-  .refine((v) => v.from_account_id !== v.to_account_id, { path: ['to_account_id'], message: 'Akun asal dan tujuan harus berbeda.' });
+  .refine((v) => v.from_account_id !== v.to_account_id, { path: ['to_account_id'], message: 'Rekening asal dan tujuan harus berbeda.' });
 type Input = z.input<typeof schema>;
 type Output = z.output<typeof schema>;
 
@@ -69,7 +69,7 @@ export function TransferForm({ initial, accounts, today, onSubmit, onDelete }: {
   );
 
   if (options.length < 2) {
-    return <p className="text-sm text-muted-foreground">Transfer butuh minimal dua akun aktif. Tambahkan akun di halaman Akun.</p>;
+    return <p className="text-sm text-muted-foreground">Transfer butuh minimal dua akun aktif. Tambahkan akun di halaman Rekening.</p>;
   }
 
   return (

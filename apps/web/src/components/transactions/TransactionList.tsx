@@ -53,7 +53,7 @@ export function TransactionList({ transactions, accounts, categories, onSelect }
                           {category?.archived_at && <span className="ml-1 text-xs font-normal text-muted-foreground">(diarsip)</span>}
                         </span>
                         <span className="truncate text-xs text-muted-foreground">
-                          {account?.name ?? 'Akun'}{tx.plan_item_id ? ' · dari rencana' : ''}{tx.note ? ` · ${tx.note}` : ''}
+                          {account?.name ?? 'Rekening'}{tx.plan_item_id ? ' · dari rencana' : ''}{tx.note ? ` · ${tx.note}` : ''}
                         </span>
                       </span>
                       <MoneyText amount={tx.amount} tone="signed" className="text-sm font-medium" />

@@ -29,7 +29,7 @@ function describeMapping(imp: StatementImport): string {
 
 function ImportHistory({ imports, accounts }: { imports: StatementImport[]; accounts: Account[] }) {
   if (imports.length === 0) return null;
-  const accountName = (id: number) => accounts.find((a) => a.id === id)?.name ?? 'Akun';
+  const accountName = (id: number) => accounts.find((a) => a.id === id)?.name ?? 'Rekening';
 
   return (
     <Card>
@@ -144,7 +144,7 @@ export function ImportUploadPage() {
               <>
                 <FormMessage message={generalError} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Akun rekening" htmlFor="import-account" error={fieldError('account_id')}>
+                  <Field label="Rekening" htmlFor="import-account" error={fieldError('account_id')}>
                     <NativeSelect id="import-account" value={account ?? ''} onChange={(e) => setAccountId(Number(e.target.value))}>
                       {banks.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </NativeSelect>

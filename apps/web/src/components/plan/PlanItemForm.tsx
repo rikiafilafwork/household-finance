@@ -143,7 +143,7 @@ export function PlanItemForm({ month, initial, preset, accounts, categories, onS
       </div>
       {mode === 'checklist' && (
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Akun bawaan" htmlFor="item-account" error={errors.account_id?.message}>
+          <Field label="Rekening bawaan" htmlFor="item-account" error={errors.account_id?.message}>
             <NativeSelect
               id="item-account"
               {...form.register('account_id', { setValueAs: (v: string) => (v === '' || v === null ? null : Number(v)) })}

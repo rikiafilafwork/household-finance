@@ -123,7 +123,7 @@ export function ImportPreviewPage() {
     <>
       <PageHeader
         title={imp.original_filename}
-        description={<>{accountName ?? 'Akun rekening'} · diunggah {formatDate(imp.created_at.slice(0, 10))}</>}
+        description={<>{accountName ?? 'Rekening'} · diunggah {formatDate(imp.created_at.slice(0, 10))}</>}
         actions={<ImportStatusBadge status={imp.status} />}
       />
 

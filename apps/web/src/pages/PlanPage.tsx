@@ -62,7 +62,7 @@ function Summary({ plan, free }: { plan: PlanComparison; free: FreeMoney | null 
         <SummaryCard
           testId="summary-free"
           label="Uang bebas"
-          footer={<>Saldo semua akun <MoneyText amount={free.balance} tone="balance" /> − masih akan keluar <MoneyText amount={free.stillToSpend} /></>}
+          footer={<>Saldo semua rekening (tidak termasuk tabungan) <MoneyText amount={free.balance} tone="balance" /> − masih akan keluar <MoneyText amount={free.stillToSpend} /></>}
         >
           <MoneyText amount={free.free} tone="balance" />
         </SummaryCard>

@@ -143,7 +143,7 @@ export function TemplateForm({ initial, preset, accounts, categories, onSubmit }
 
       {checklist && (
         <>
-          <Field label="Akun bawaan" htmlFor="tpl-account" error={errors.account_id?.message}>
+          <Field label="Rekening bawaan" htmlFor="tpl-account" error={errors.account_id?.message}>
             <NativeSelect id="tpl-account" aria-invalid={!!errors.account_id} {...form.register('account_id', { setValueAs: optionalNumber })}>
               <option value="">—</option>
               {accountOptions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}

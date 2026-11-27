@@ -16,6 +16,7 @@ const schema = z.object({
   name: z.string().trim().min(1, 'Nama akun wajib diisi.').max(60, 'Nama maksimal 60 karakter.'),
   type: z.enum(['bank', 'ewallet', 'cash']),
   opening_balance: z.number().int().nullable(),
+  is_savings: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
 
@@ -23,6 +24,7 @@ export interface AccountPayload {
   name: string;
   type: AccountType;
   opening_balance: number;
+  is_savings: boolean;
 }
 
 /** Tambah / ubah akun. Saat mengubah, arsip & hapus ada di bawah form. */
@@ -37,8 +39,8 @@ export function AccountForm({ initial, onSubmit, onArchive, onDelete }: {
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: initial
-      ? { name: initial.name, type: initial.type, opening_balance: initial.opening_balance }
-      : { name: '', type: 'bank', opening_balance: null },
+      ? { name: initial.name, type: initial.type, opening_balance: initial.opening_balance, is_savings: initial.is_savings }
+      : { name: '', type: 'bank', opening_balance: null, is_savings: false },
   });
   const { errors, isSubmitting } = form.formState;
   const opening = useWatch({ control: form.control, name: 'opening_balance' }) ?? 0;
@@ -46,9 +48,9 @@ export function AccountForm({ initial, onSubmit, onArchive, onDelete }: {
   const submit = form.handleSubmit(async (v) => {
     setMessage(null);
     try {
-      await onSubmit({ name: v.name, type: v.type, opening_balance: v.opening_balance ?? 0 });
+      await onSubmit({ name: v.name, type: v.type, opening_balance: v.opening_balance ?? 0, is_savings: v.is_savings });
     } catch (error) {
-      setMessage(applyServerErrors(error, form.setError, ['name', 'type', 'opening_balance']));
+      setMessage(applyServerErrors(error, form.setError, ['name', 'type', 'opening_balance', 'is_savings']));
     }
   });
 
@@ -85,6 +87,14 @@ export function AccountForm({ initial, onSubmit, onArchive, onDelete }: {
           <MoneyInput id="account-opening" allowNegative value={field.value} onChange={field.onChange} onBlur={field.onBlur} invalid={!!errors.opening_balance} />
         )} />
       </Field>
+      <label className="flex items-start gap-3 rounded-md border p-3 text-sm">
+        <input type="checkbox" className="mt-0.5 size-4 accent-primary" {...form.register('is_savings')} />
+        <span className="grid gap-0.5">
+          <span className="font-medium">Rekening tabungan</span>
+          <span className="text-xs text-muted-foreground">Saldonya tidak dihitung sebagai uang bebas dan bisa dibagi ke tujuan tabungan.</span>
+          {errors.is_savings?.message && <span role="alert" className="text-xs text-destructive">{errors.is_savings.message}</span>}
+        </span>
+      </label>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex flex-wrap gap-1">
           {onArchive && initial && (

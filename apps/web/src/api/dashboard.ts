@@ -10,7 +10,7 @@ export interface Dashboard {
   month: string;
   is_current_month: boolean;
   /** Saldo HARI INI akun aktif, per tipe. */
-  balances: { bank: number; ewallet: number; cash: number; total: number };
+  balances: { bank: number; ewallet: number; cash: number; savings: number; total: number };
   income: PlanTotals;
   expense: PlanTotals;
   remaining_budget: number;
@@ -28,6 +28,14 @@ export interface Dashboard {
   trend: { month: string; income_actual: number; expense_actual: number; expense_planned: number }[];
   recent: { id: Id; type: TransactionType; account_id: Id; category_id: Id | null; amount: number; occurred_on: string; note: string | null; plan_item_id: Id | null }[];
   reconcile_ok: boolean;
+  /** Tabungan: saldo rekening tabungan, yang sudah dialokasikan ke tujuan, sisanya; `overdrawn` bila alokasi melebihi saldo. */
+  savings: {
+    balance: number;
+    allocated: number;
+    unallocated: number;
+    overdrawn: boolean;
+    goals: { id: Id; name: string; allocated_amount: number; target_amount: number | null; percent: number | null }[];
+  };
 }
 
 export const dashboardApi = {

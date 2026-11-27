@@ -224,7 +224,7 @@ function RecentList({ recent, accounts, categories }: { recent: Dashboard['recen
           <div className="grid min-w-0">
             <span className="truncate text-sm font-medium">{transactionLabel(tx, categories)}</span>
             <span className="truncate text-xs text-muted-foreground">
-              {formatDate(tx.occurred_on, { day: 'numeric', month: 'short' })} · {accounts.get(tx.account_id)?.name ?? 'Akun'}{tx.note ? ` · ${tx.note}` : ''}
+              {formatDate(tx.occurred_on, { day: 'numeric', month: 'short' })} · {accounts.get(tx.account_id)?.name ?? 'Rekening'}{tx.note ? ` · ${tx.note}` : ''}
             </span>
           </div>
           <MoneyText amount={tx.amount} tone="signed" className="text-sm font-medium" />
@@ -340,7 +340,7 @@ export function DashboardPage() {
             <Panel testId="panel-envelopes" title="Amplop hampir habis">
               <EnvelopeWarnings envelopes={d.envelopes_warning} />
             </Panel>
-            <Panel testId="panel-accounts" title="Saldo per akun" action={<Button asChild variant="ghost" size="sm"><Link to="/accounts">Akun</Link></Button>}>
+            <Panel testId="panel-accounts" title="Saldo per rekening" action={<Button asChild variant="ghost" size="sm"><Link to="/accounts">Rekening</Link></Button>}>
               <AccountBalances accounts={active} />
             </Panel>
             <Panel testId="panel-recent" title="Transaksi terbaru" action={<Button asChild variant="ghost" size="sm"><Link to="/transactions">Semua</Link></Button>}>

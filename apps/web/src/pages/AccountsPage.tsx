@@ -8,6 +8,7 @@ import { ACCOUNT_TYPES, accountTypeGroupLabel, accountTypeIcon } from '@/compone
 import { AdjustBalanceForm } from '@/components/accounts/AdjustBalanceForm';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MoneyText } from '@/components/money/MoneyText';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,7 +23,10 @@ function AccountRow({ account, onEdit, onAdjust }: { account: Account; onEdit: (
   return (
     <li className="flex items-center justify-between gap-3 py-2.5">
       <div className="grid min-w-0">
-        <span className="truncate text-sm font-medium">{account.name}</span>
+        <span className="flex items-center gap-2">
+          <span className="truncate text-sm font-medium">{account.name}</span>
+          {account.is_savings && <Badge variant="secondary">Tabungan</Badge>}
+        </span>
         {account.balance < 0 && (
           <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-500">
             <AlertTriangle className="size-3" aria-hidden /> Saldo negatif — ada transaksi yang belum dicatat?
@@ -96,7 +100,7 @@ export function AccountsPage() {
   return (
     <>
       <PageHeader
-        title="Akun"
+        title="Rekening"
         description={active.length > 0 ? <>Total saldo <MoneyText amount={total} tone="balance" className="font-medium text-foreground" /></> : undefined}
         actions={<Button onClick={() => setDialog({ mode: 'new' })}><Plus /> Tambah akun</Button>}
       />

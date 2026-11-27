@@ -45,8 +45,8 @@ const cash: CashVsNonCash = {
   ],
 };
 const accounts: Account[] = [
-  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null },
-  { id: 2, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 0, sort_order: 1, archived_at: null },
+  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 0, sort_order: 0, archived_at: null, is_savings: false },
+  { id: 2, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 0, sort_order: 1, archived_at: null, is_savings: false },
 ];
 
 const reportsApi = vi.hoisted(() => ({
@@ -163,7 +163,7 @@ describe('ReportsPage', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(3);                // hanya hari yang ada pergerakan
     expect(screen.getByRole('img', { name: 'Saldo berjalan harian' })).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText('Akun'), 'Dompet');
+    await user.selectOptions(screen.getByLabelText('Rekening'), 'Dompet');
     await waitFor(() => expect(reportsApi.cashFlow).toHaveBeenLastCalledWith({ from: '2026-11-01', to: '2026-11-20', account: 2 }));
     expect(screen.queryByText(/saling meniadakan/)).not.toBeInTheDocument();
   });

@@ -16,7 +16,7 @@ const TODAY = todayIn(TZ);
 const dashboard: Dashboard = {
   month: MONTH,
   is_current_month: true,
-  balances: { bank: 5_000_000, ewallet: 250_000, cash: 150_000, total: 5_400_000 },
+  balances: { bank: 5_000_000, ewallet: 250_000, cash: 150_000, savings: 0, total: 5_400_000 },
   income: { planned: 9_500_000, actual: 8_000_000, unplanned: 0, unpaid: 0, envelope_remaining: 1_500_000 },
   expense: { planned: 5_100_000, actual: 4_075_000, unplanned: 180_000, unpaid: 500_000, envelope_remaining: 740_000 },
   remaining_budget: 1_025_000,
@@ -46,13 +46,14 @@ const dashboard: Dashboard = {
     { id: 50, type: 'expense', account_id: 3, category_id: 11, amount: -45_000, occurred_on: TODAY, note: 'Nasi padang', plan_item_id: null },
   ],
   reconcile_ok: true,
+  savings: { balance: 0, allocated: 0, unallocated: 0, overdrawn: false, goals: [] },
 };
 
 const accounts: Account[] = [
-  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 5_000_000, sort_order: 0, archived_at: null },
-  { id: 2, name: 'GoPay', type: 'ewallet', opening_balance: 0, balance: 250_000, sort_order: 1, archived_at: null },
-  { id: 3, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 150_000, sort_order: 2, archived_at: null },
-  { id: 4, name: 'Lama', type: 'bank', opening_balance: 0, balance: 999_000, sort_order: 3, archived_at: '2026-01-01T00:00:00Z' },
+  { id: 1, name: 'BCA', type: 'bank', opening_balance: 0, balance: 5_000_000, sort_order: 0, archived_at: null, is_savings: false },
+  { id: 2, name: 'GoPay', type: 'ewallet', opening_balance: 0, balance: 250_000, sort_order: 1, archived_at: null, is_savings: false },
+  { id: 3, name: 'Dompet', type: 'cash', opening_balance: 0, balance: 150_000, sort_order: 2, archived_at: null, is_savings: false },
+  { id: 4, name: 'Lama', type: 'bank', opening_balance: 0, balance: 999_000, sort_order: 3, archived_at: '2026-01-01T00:00:00Z', is_savings: false },
 ];
 const categories: Category[] = [{ id: 11, kind: 'expense', name: 'Makan', color: null, icon: null, archived_at: null }];
 

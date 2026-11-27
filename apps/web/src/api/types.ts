@@ -22,6 +22,7 @@ export interface Account {
   balance: number; // boleh negatif (diberi peringatan di UI)
   sort_order: number;
   archived_at: string | null;
+  is_savings: boolean;
 }
 
 export interface Category {
