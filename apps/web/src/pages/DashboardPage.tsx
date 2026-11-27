@@ -218,10 +218,10 @@ function SavingsSummary({ savings }: { savings: Dashboard['savings'] }) {
   return (
     <div className="grid gap-3">
       <MoneyText amount={savings.balance} tone="balance" className="text-xl font-semibold" />
-      {savings.overdrawn && (
+      {savings.overdrawn > 0 && (
         <Link to="/savings" className="flex items-center gap-2 text-sm font-medium text-destructive underline-offset-4 hover:underline">
           <AlertTriangle className="size-3.5 shrink-0" />
-          <span>Tabungan terpakai <MoneyText amount={savings.allocated - savings.balance} /></span>
+          <span>Tabungan terpakai <MoneyText amount={savings.overdrawn} /></span>
         </Link>
       )}
       {savings.goals.length === 0 ? (

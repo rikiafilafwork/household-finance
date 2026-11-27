@@ -46,7 +46,7 @@ const dashboard: Dashboard = {
     { id: 50, type: 'expense', account_id: 3, category_id: 11, amount: -45_000, occurred_on: TODAY, note: 'Nasi padang', plan_item_id: null },
   ],
   reconcile_ok: true,
-  savings: { balance: 0, allocated: 0, unallocated: 0, overdrawn: false, goals: [] },
+  savings: { balance: 0, allocated: 0, unallocated: 0, overdrawn: 0, goals: [] },
 };
 
 const accounts: Account[] = [
@@ -118,7 +118,7 @@ describe('DashboardPage — Beranda', () => {
     const goal = (id: number, name: string) => ({ id, name, allocated_amount: 1_000_000, target_amount: 4_000_000, percent: 25 });
     dashboardApi.get.mockResolvedValue({
       ...dashboard,
-      savings: { balance: 5_000_000, allocated: 3_000_000, unallocated: 2_000_000, overdrawn: false, goals: [goal(1, 'Dana darurat'), goal(2, 'Laptop'), goal(3, 'Liburan')] },
+      savings: { balance: 5_000_000, allocated: 3_000_000, unallocated: 2_000_000, overdrawn: 0, goals: [goal(1, 'Dana darurat'), goal(2, 'Laptop'), goal(3, 'Liburan')] },
     });
     renderPage();
     const panel = await screen.findByTestId('panel-savings');
@@ -127,18 +127,31 @@ describe('DashboardPage — Beranda', () => {
     expect(panel).toHaveTextContent('Dana darurat');
     expect(panel).toHaveTextContent('Liburan');
     expect(within(panel).queryByText(/Tabungan terpakai/)).not.toBeInTheDocument();
+    expect(within(panel).queryByText('0')).not.toBeInTheDocument();
+    expect(panel.textContent).not.toMatch(/(^|\D)0(\D|$)/);
     expect(within(panel).getByRole('link', { name: 'Tabungan' })).toHaveAttribute('href', '/savings');
   });
 
   it('warns with a link to /savings when savings are overdrawn', async () => {
     dashboardApi.get.mockResolvedValue({
       ...dashboard,
-      savings: { balance: 1_000_000, allocated: 2_200_000, unallocated: 0, overdrawn: true, goals: [{ id: 1, name: 'Laptop', allocated_amount: 2_200_000, target_amount: null, percent: null }] },
+      savings: { balance: 1_000_000, allocated: 2_200_000, unallocated: 0, overdrawn: 1_200_000, goals: [{ id: 1, name: 'Laptop', allocated_amount: 2_200_000, target_amount: null, percent: null }] },
     });
     renderPage();
     const panel = await screen.findByTestId('panel-savings');
     expect(panel).toHaveTextContent('Tabungan terpakai Rp1.200.000');
     expect(within(panel).getByRole('link', { name: /Tabungan terpakai/ })).toHaveAttribute('href', '/savings');
+  });
+
+  it('shows the server overdrawn amount, not allocated minus balance', async () => {
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: -500_000, allocated: 2_200_000, unallocated: 0, overdrawn: 2_200_000, goals: [{ id: 1, name: 'Laptop', allocated_amount: 2_200_000, target_amount: null, percent: null }] },
+    });
+    renderPage();
+    const panel = await screen.findByTestId('panel-savings');
+    expect(panel).toHaveTextContent('Tabungan terpakai Rp2.200.000');
+    expect(panel).not.toHaveTextContent('Rp2.700.000');
   });
 
   it('hides the Tabungan panel without a savings account or goals', async () => {
