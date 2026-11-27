@@ -115,7 +115,7 @@ User memilih **1**.
   `POST /savings-goals/{id}/archive`.
 - `POST /savings-goals/{id}/use` (`amount`, `category_id`, `occurred_on`, `note`, `client_id`) →
   transaksi pengeluaran + log alokasi negatif.
-- `POST /savings-goals/{id}/transfer` (pindah alokasi ke tujuan lain: `to_goal_id`, `amount`,
+- `POST /savings-goals/{id}/move` (pindah alokasi ke tujuan lain: `to_goal_id`, `amount`,
   `client_id`).
 - `POST /savings-goals/{id}/allocations` (`amount` bertanda, `note`, `client_id`) dan
   `GET /savings-goals/{id}/allocations` (riwayat).

@@ -29,7 +29,7 @@ class AdjustBalance
             $locked = $this->lockAccounts->one($user, $account->getKey());
 
             if ($locked->isArchived()) {
-                throw ValidationException::withMessages(['account' => 'Akun ini sudah diarsip.']);
+                throw ValidationException::withMessages(['account' => 'Rekening ini sudah diarsip.']);
             }
 
             $delta = $actualBalance - $locked->balance;

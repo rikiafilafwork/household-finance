@@ -97,7 +97,7 @@ export function ImportUploadPage() {
 
   async function submit() {
     setError(null);
-    if (account === null) return setError({ field: 'account_id', message: 'Pilih akun rekening.' });
+    if (account === null) return setError({ field: 'account_id', message: 'Pilih rekening bank.' });
     if (!file) return setError({ field: 'file', message: 'Pilih file CSV mutasi.' });
 
     let mapping = null;
@@ -131,14 +131,14 @@ export function ImportUploadPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Unggah file</CardTitle>
-            <CardDescription>Hanya untuk akun rekening (bank). Unduh mutasi dalam format CSV dari internet banking.</CardDescription>
+            <CardDescription>Hanya untuk rekening bank. Unduh mutasi dalam format CSV dari internet banking.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             {isPending ? (
               <Skeleton className="h-10 w-full" />
             ) : banks.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Belum ada akun rekening. <Link to="/accounts" className="text-primary underline">Tambahkan akun bank</Link> dulu.
+                Belum ada rekening bank. <Link to="/accounts" className="text-primary underline">Tambahkan rekening bank</Link> dulu.
               </p>
             ) : (
               <>
@@ -158,7 +158,7 @@ export function ImportUploadPage() {
                   <label className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-sm">
                     <input type="checkbox" className="mt-0.5 size-4" checked={usePreset} onChange={(e) => setUsePreset(e.target.checked)} />
                     <span>
-                      Pakai pemetaan kolom terakhir akun ini
+                      Pakai pemetaan kolom terakhir rekening ini
                       <span className="block text-xs text-muted-foreground">{describeMapping(preset)}</span>
                     </span>
                   </label>

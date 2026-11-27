@@ -13,8 +13,8 @@ import { applyServerErrors } from '@/lib/form-errors';
 
 const schema = z
   .object({
-    from_account_id: z.number().int().positive('Pilih akun asal.'),
-    to_account_id: z.number().int().positive('Pilih akun tujuan.'),
+    from_account_id: z.number().int().positive('Pilih rekening asal.'),
+    to_account_id: z.number().int().positive('Pilih rekening tujuan.'),
     amount: amountSchema.nullable().refine((v) => v !== null, 'Nominal wajib diisi.').transform((v) => v as number),
     occurred_on: localDateSchema,
     note: z.string().max(255, 'Catatan maksimal 255 karakter.'),
@@ -69,7 +69,7 @@ export function TransferForm({ initial, accounts, today, onSubmit, onDelete }: {
   );
 
   if (options.length < 2) {
-    return <p className="text-sm text-muted-foreground">Transfer butuh minimal dua akun aktif. Tambahkan akun di halaman Rekening.</p>;
+    return <p className="text-sm text-muted-foreground">Transfer butuh minimal dua rekening aktif. Tambahkan rekening di halaman Rekening.</p>;
   }
 
   return (

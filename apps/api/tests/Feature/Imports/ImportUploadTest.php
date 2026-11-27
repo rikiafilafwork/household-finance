@@ -194,8 +194,8 @@ it('only imports into active bank accounts', function (Closure $account, int $st
     }
     expect(Import::query()->count())->toBe(0);
 })->with([
-    'e-wallet' => [fn (User $u) => Account::factory()->forUser($u)->ewallet()->create(), 422, 'hanya untuk akun rekening'],
-    'cash' => [fn (User $u) => Account::factory()->forUser($u)->cash()->create(), 422, 'hanya untuk akun rekening'],
+    'e-wallet' => [fn (User $u) => Account::factory()->forUser($u)->ewallet()->create(), 422, 'hanya untuk rekening bank'],
+    'cash' => [fn (User $u) => Account::factory()->forUser($u)->cash()->create(), 422, 'hanya untuk rekening bank'],
     'archived bank' => [fn (User $u) => Account::factory()->forUser($u)->archived()->create(), 422, 'diarsip'],
     'another user’s bank' => [fn (User $u) => Account::factory()->create(), 404, null],
 ]);

@@ -6,7 +6,7 @@ export function progressTone(goal: Pick<SavingsGoal, 'reached'>): 'reached' | 'o
   return goal.reached ? 'reached' : 'ok';
 }
 
-/** "perlu Rp875.000/bln"; null tanpa tenggat atau kalau tidak ada yang perlu ditabung lagi. */
+/** "perlu Rp875.000/bln"; null tanpa tenggat atau kalau tidak ada yang perlu ditabung lagi (0). */
 export function formatMonthlyNeeded(goal: Pick<SavingsGoal, 'monthly_needed'>): string | null {
-  return goal.monthly_needed === null ? null : `perlu ${formatIDR(goal.monthly_needed)}/bln`;
+  return goal.monthly_needed === null || goal.monthly_needed === 0 ? null : `perlu ${formatIDR(goal.monthly_needed)}/bln`;
 }

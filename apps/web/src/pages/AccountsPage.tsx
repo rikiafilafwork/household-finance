@@ -64,21 +64,21 @@ export function AccountsPage() {
   let title = '';
   let body: React.ReactNode = null;
   if (dialog?.mode === 'new') {
-    title = 'Tambah akun';
-    body = <AccountForm onSubmit={async (payload) => { await m.create.mutateAsync(payload); toast.success('Akun ditambahkan.'); close(); }} />;
+    title = 'Tambah rekening';
+    body = <AccountForm onSubmit={async (payload) => { await m.create.mutateAsync(payload); toast.success('Rekening ditambahkan.'); close(); }} />;
   } else if (dialog?.mode === 'edit') {
     const { account } = dialog;
-    title = 'Ubah akun';
+    title = 'Ubah rekening';
     body = (
       <AccountForm
         initial={account}
-        onSubmit={async (body) => { await m.update.mutateAsync({ id: account.id, body }); toast.success('Akun diperbarui.'); close(); }}
+        onSubmit={async (body) => { await m.update.mutateAsync({ id: account.id, body }); toast.success('Rekening diperbarui.'); close(); }}
         onArchive={async () => {
           await m.archive.mutateAsync({ id: account.id, archived: !account.archived_at });
-          toast.success(account.archived_at ? 'Akun aktif lagi.' : 'Akun diarsip. Transaksi lamanya tetap tampil.');
+          toast.success(account.archived_at ? 'Rekening aktif lagi.' : 'Rekening diarsip. Transaksi lamanya tetap tampil.');
           close();
         }}
-        onDelete={async () => { await m.remove.mutateAsync(account.id); toast.success('Akun dihapus.'); close(); }}
+        onDelete={async () => { await m.remove.mutateAsync(account.id); toast.success('Rekening dihapus.'); close(); }}
       />
     );
   } else if (dialog?.mode === 'adjust') {
@@ -102,13 +102,13 @@ export function AccountsPage() {
       <PageHeader
         title="Rekening"
         description={active.length > 0 ? <>Total saldo <MoneyText amount={total} tone="balance" className="font-medium text-foreground" /></> : undefined}
-        actions={<Button onClick={() => setDialog({ mode: 'new' })}><Plus /> Tambah akun</Button>}
+        actions={<Button onClick={() => setDialog({ mode: 'new' })}><Plus /> Tambah rekening</Button>}
       />
 
       {isPending && <Skeleton className="h-40" />}
       {!isPending && active.length === 0 && (
         <div className="rounded-lg border border-dashed bg-background p-10 text-center text-sm text-muted-foreground">
-          Belum ada akun aktif. Tambahkan rekening bank, e-wallet, atau dompet tunai.
+          Belum ada rekening aktif. Tambahkan rekening bank, e-wallet, atau dompet tunai.
         </div>
       )}
 
@@ -138,7 +138,7 @@ export function AccountsPage() {
       {archived.length > 0 && (
         <div className="mt-6">
           <Button variant="ghost" size="sm" onClick={() => setShowArchived((v) => !v)} aria-expanded={showArchived}>
-            <Archive /> {showArchived ? 'Sembunyikan' : 'Tampilkan'} akun diarsip ({archived.length})
+            <Archive /> {showArchived ? 'Sembunyikan' : 'Tampilkan'} rekening diarsip ({archived.length})
           </Button>
           {showArchived && (
             <ul className="mt-2 divide-y rounded-lg border bg-background px-4 opacity-80">

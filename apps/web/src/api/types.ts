@@ -119,7 +119,7 @@ export interface SavingsGoal {
   sort_order: number;
   percent: number;
   reached: boolean;
-  /** Perlu ditabung per bulan sampai tenggat; null tanpa tenggat / sudah tercapai. */
+  /** Perlu ditabung per bulan sampai tenggat; null tanpa tenggat; 0 kalau target sudah terpenuhi. */
   monthly_needed: number | null;
 }
 

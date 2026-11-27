@@ -16,7 +16,7 @@ import { isBadDiff } from './planMeta';
 
 const schema = z.object({
   amount: amountSchema.nullable().refine((v) => v !== null, 'Nominal wajib diisi.').transform((v) => v as number),
-  account_id: z.number().int().positive('Pilih akun.'),
+  account_id: z.number().int().positive('Pilih rekening.'),
   occurred_on: localDateSchema,
   note: z.string().max(255, 'Catatan maksimal 255 karakter.'),
 });
@@ -57,7 +57,7 @@ export function CheckForm({ item, accounts, today, onSubmit }: {
   });
 
   if (options.length === 0) {
-    return <p className="text-sm text-muted-foreground">Belum ada akun aktif. Tambahkan akun di halaman Rekening dulu.</p>;
+    return <p className="text-sm text-muted-foreground">Belum ada rekening aktif. Tambahkan rekening di halaman Rekening dulu.</p>;
   }
 
   return (
@@ -76,7 +76,7 @@ export function CheckForm({ item, accounts, today, onSubmit }: {
         )} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label={item.type === 'income' ? 'Masuk ke' : 'Dari akun'} htmlFor="check-account" error={errors.account_id?.message}>
+        <Field label={item.type === 'income' ? 'Masuk ke' : 'Dari rekening'} htmlFor="check-account" error={errors.account_id?.message}>
           <NativeSelect id="check-account" {...form.register('account_id', { valueAsNumber: true })}>
             {options.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </NativeSelect>

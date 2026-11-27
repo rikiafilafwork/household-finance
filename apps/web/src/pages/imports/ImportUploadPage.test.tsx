@@ -68,8 +68,8 @@ describe('ImportUploadPage', () => {
     accountsApi.list.mockResolvedValue([{ ...bank(4, 'GoPay'), type: 'ewallet' }]);
     renderPage();
 
-    expect(await screen.findByText(/Belum ada akun rekening/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Tambahkan akun bank' })).toHaveAttribute('href', '/accounts');
+    expect(await screen.findByText(/Belum ada rekening bank/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tambahkan rekening bank' })).toHaveAttribute('href', '/accounts');
   });
 
   it('guesses the column mapping from the file header and uploads it', async () => {

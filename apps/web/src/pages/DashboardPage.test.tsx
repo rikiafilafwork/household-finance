@@ -154,6 +154,25 @@ describe('DashboardPage — Beranda', () => {
     expect(panel).not.toHaveTextContent('Rp2.700.000');
   });
 
+  it('shows the Tabungan panel when the balance is 0 but goals exist', async () => {
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: 0, allocated: 0, unallocated: 0, overdrawn: 0, goals: [{ id: 1, name: 'Laptop', allocated_amount: 0, target_amount: 5_000_000, percent: 0 }] },
+    });
+    renderPage();
+    expect(await screen.findByTestId('panel-savings')).toBeInTheDocument();
+  });
+
+  it('keeps the overdrawn warning when a reached goal was spent down and no goals are listed', async () => {
+    dashboardApi.get.mockResolvedValue({
+      ...dashboard,
+      savings: { balance: -300_000, allocated: 2_000_000, unallocated: 0, overdrawn: 2_000_000, goals: [] },
+    });
+    renderPage();
+    const panel = await screen.findByTestId('panel-savings');
+    expect(panel).toHaveTextContent('Tabungan terpakai Rp2.000.000');
+  });
+
   it('hides the Tabungan panel without a savings account or goals', async () => {
     renderPage();
     await screen.findByTestId('kpi-balance');
@@ -223,7 +242,7 @@ describe('DashboardPage — Beranda', () => {
 
     await user.click(screen.getByRole('button', { name: 'Centang Listrik' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByLabelText('Dari akun')).toHaveValue('2');
+    expect(within(dialog).getByLabelText('Dari rekening')).toHaveValue('2');
     await user.click(within(dialog).getByRole('button', { name: 'Centang & catat' }));
 
     expect(planApi.check).toHaveBeenCalledWith(3, expect.objectContaining({ amount: 500_000, account_id: 2, occurred_on: TODAY, note: 'Listrik' }));

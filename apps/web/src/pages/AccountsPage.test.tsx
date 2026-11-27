@@ -56,7 +56,7 @@ describe('AccountsPage', () => {
     await screen.findByText('BCA');
     expect(screen.queryByText('Mandiri Lama')).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /Tampilkan akun diarsip \(1\)/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Tampilkan rekening diarsip \(1\)/ }));
 
     expect(screen.getByText('Mandiri Lama')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sesuaikan saldo Mandiri Lama' })).not.toBeInTheDocument();
@@ -90,11 +90,11 @@ describe('AccountsPage', () => {
     api.create.mockResolvedValue(account(6, 'OVO', 'ewallet', 50_000));
     renderPage();
 
-    await userEvent.click(await screen.findByRole('button', { name: /Tambah akun/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Tambah rekening/ }));
     await userEvent.type(screen.getByLabelText('Nama'), 'OVO');
     await userEvent.selectOptions(screen.getByLabelText('Jenis'), 'ewallet');
     await userEvent.type(screen.getByLabelText('Saldo awal'), '50000');
-    await userEvent.click(screen.getAllByRole('button', { name: 'Tambah akun' }).at(-1)!);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Tambah rekening' }).at(-1)!);
 
     expect(api.create).toHaveBeenCalledWith({ name: 'OVO', type: 'ewallet', opening_balance: 50_000, is_savings: false });
   });
@@ -132,7 +132,7 @@ describe('AccountsPage', () => {
   });
 
   it('shows the server reason when an account with transactions cannot be deleted', async () => {
-    api.remove.mockRejectedValue(new ApiError(422, 'Data tidak valid.', { account: ['Akun sudah punya transaksi. Arsipkan saja.'] }));
+    api.remove.mockRejectedValue(new ApiError(422, 'Data tidak valid.', { account: ['Rekening sudah punya transaksi. Arsipkan saja.'] }));
     renderPage();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Ubah BCA' }));

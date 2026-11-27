@@ -175,7 +175,7 @@ it('reports an item it cannot post because its default account is archived', fun
     $result = autoPost($s['user'], '2026-11-12 03:00');
 
     expect($result['posted'])->toBe([])
-        ->and($result['skipped'])->toBe([$s['internet']->id => 'Akun ini sudah diarsip.'])
+        ->and($result['skipped'])->toBe([$s['internet']->id => 'Rekening ini sudah diarsip.'])
         ->and($s['internet']->fresh()?->auto_posted_at)->toBeNull(); // dicoba lagi setelah akun dipulihkan
 });
 
@@ -186,7 +186,7 @@ it('runs for every user from the command and prints a summary', function () {
     $b['bca']->update(['archived_at' => now()]);
 
     artisan('plan:auto-post')
-        ->expectsOutputToContain("User {$b['user']->id}, item {$b['internet']->id} dilewati: Akun ini sudah diarsip.")
+        ->expectsOutputToContain("User {$b['user']->id}, item {$b['internet']->id} dilewati: Rekening ini sudah diarsip.")
         ->expectsOutputToContain('Selesai: 2 item dicentang otomatis, 2 dilewati.')
         ->assertSuccessful();
 

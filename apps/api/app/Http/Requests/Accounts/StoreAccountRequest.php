@@ -34,7 +34,7 @@ class StoreAccountRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['name.unique' => 'Akun dengan nama ini sudah ada.'];
+        return ['name.unique' => 'Rekening dengan nama ini sudah ada.'];
     }
 
     protected function prepareForValidation(): void

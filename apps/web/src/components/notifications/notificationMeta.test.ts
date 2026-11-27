@@ -31,7 +31,7 @@ describe('describeNotification', () => {
       id: 'n2', type: 'reconcile_mismatch', read_at: null, created_at: null,
       payload: { mismatches: [{ account_id: 1, name: 'BCA', balance: 10, expected: 0, diff: 10 }], fixed: false },
     });
-    expect(view).toMatchObject({ title: 'Saldo akun tidak cocok', href: '/accounts', tone: 'over' });
+    expect(view).toMatchObject({ title: 'Saldo rekening tidak cocok', href: '/accounts', tone: 'over' });
     expect(view.body).toContain('BCA');
   });
 

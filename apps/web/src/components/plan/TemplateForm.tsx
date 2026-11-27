@@ -38,7 +38,7 @@ const schema = z
     }
     if (v.auto_post && v.mode === 'checklist') {
       if (v.day_of_month === null) ctx.addIssue({ code: 'custom', path: ['day_of_month'], message: 'Auto-post butuh tanggal.' });
-      if (v.account_id === null) ctx.addIssue({ code: 'custom', path: ['account_id'], message: 'Auto-post butuh akun.' });
+      if (v.account_id === null) ctx.addIssue({ code: 'custom', path: ['account_id'], message: 'Auto-post butuh rekening.' });
     }
   });
 type Input = z.input<typeof schema>;
@@ -153,7 +153,7 @@ export function TemplateForm({ initial, preset, accounts, categories, onSubmit }
             <input type="checkbox" className="mt-0.5 size-4 accent-primary" {...form.register('auto_post')} />
             <span className="grid gap-0.5">
               <span className="font-medium">Centang otomatis saat jatuh tempo</span>
-              <span className="text-xs text-muted-foreground">Untuk autodebet atau gaji yang pasti masuk. Transaksi dicatat di tanggal jatuh tempo dari akun bawaan; bisa dibatalkan seperti centang biasa.</span>
+              <span className="text-xs text-muted-foreground">Untuk autodebet atau gaji yang pasti masuk. Transaksi dicatat di tanggal jatuh tempo dari rekening bawaan; bisa dibatalkan seperti centang biasa.</span>
               {errors.auto_post?.message && <span role="alert" className="text-xs text-destructive">{errors.auto_post.message}</span>}
             </span>
           </label>

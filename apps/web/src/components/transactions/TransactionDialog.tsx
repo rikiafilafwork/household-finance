@@ -18,7 +18,7 @@ export type DialogState =
   | { mode: 'edit'; transaction: Transaction }
   | null;
 
-const titles = { expense: 'Catat pengeluaran', income: 'Catat pemasukan', transfer: 'Transfer antar akun' } as const;
+const titles = { expense: 'Catat pengeluaran', income: 'Catat pemasukan', transfer: 'Transfer antar rekening' } as const;
 
 export function TransactionDialog({ state, onClose, accounts, categories, today }: {
   state: DialogState;

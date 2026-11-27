@@ -47,6 +47,7 @@ export function refreshNotifications(queryClient: QueryClient) {
 export function invalidateMoney(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: qk.accounts }),
+    queryClient.invalidateQueries({ queryKey: qk.savings }),
     queryClient.invalidateQueries({ queryKey: ['reports'] }),
     queryClient.invalidateQueries({ queryKey: qk.transactions() }),
     queryClient.invalidateQueries({ queryKey: ['transfers'] }),

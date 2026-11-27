@@ -37,10 +37,10 @@ final class PlanReferences
         if ($accountId !== null) {
             $account = Account::ownedBy($user)->whereKey($accountId)->first();
             if ($account === null) {
-                throw ValidationException::withMessages(['account_id' => 'Akun tidak ditemukan.']);
+                throw ValidationException::withMessages(['account_id' => 'Rekening tidak ditemukan.']);
             }
             if ($account->isArchived() && $account->getKey() !== $keepArchivedAccountId) {
-                throw ValidationException::withMessages(['account_id' => 'Akun ini sudah diarsip.']);
+                throw ValidationException::withMessages(['account_id' => 'Rekening ini sudah diarsip.']);
             }
         }
     }

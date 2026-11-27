@@ -159,6 +159,19 @@ it('restores the allocation when the transaction is deleted', function () {
     assertSavingsBalanced();
 });
 
+it('refuses to delete a use transaction once its account is archived or no longer savings', function (string $state) {
+    [$user, $account, $goal, $category] = useSavingsFixture();
+    $transactionId = useSavingsVia($user, $goal, $category, 4_000_000);
+    $account->forceFill($state === 'archived' ? ['archived_at' => now()] : ['is_savings' => false])->save();
+
+    actingAs($user)->deleteJson("/api/transactions/{$transactionId}")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['transaction']);
+
+    expect(Transaction::ownedBy($user)->whereKey($transactionId)->exists())->toBeTrue()
+        ->and($goal->fresh()?->allocated_amount)->toBe(6_000_000);
+})->with(['archived', 'not savings']);
+
 it('unarchives the goal when an edit puts money back', function () {
     [$user, $account, $goal, $category] = useSavingsFixture();
     $transactionId = useSavingsVia($user, $goal, $category, 10_000_000);

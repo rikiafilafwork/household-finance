@@ -85,6 +85,20 @@ describe('SavingsPage', () => {
     expect(api.allocate).toHaveBeenCalledWith(10, expect.objectContaining({ amount: -200_000, client_id: expect.any(String) }));
   });
 
+  it('lists only goals that hold money in the reduce picker', async () => {
+    api.summary.mockResolvedValue(summary({
+      overdrawn: 500_000,
+      goals: [goal(10, 'Dana darurat', 10_000_000, 12_000_000), goal(12, 'Kosong', 0, 5_000_000)],
+    }));
+    renderPage();
+
+    await userEvent.click(within(await screen.findByRole('alert')).getByRole('button', { name: 'Kurangi alokasi' }));
+
+    const picker = await screen.findByLabelText('Tujuan');
+    expect(within(picker).getByRole('option', { name: /Dana darurat/ })).toBeInTheDocument();
+    expect(within(picker).queryByRole('option', { name: /Kosong/ })).not.toBeInTheDocument();
+  });
+
   it('invites to mark a savings account when there is none', async () => {
     api.summary.mockResolvedValue({ accounts: [], totals: { balance: 0, allocated: 0, unallocated: 0, overdrawn: 0 } });
     renderPage();

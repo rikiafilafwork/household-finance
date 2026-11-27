@@ -34,7 +34,7 @@ class DeleteTransaction
 
             $account->decrement('balance', $current->amount);
             // Hapus transaksi "Gunakan tabungan" → uangnya kembali ke tujuan.
-            LinkedAllocation::afterDelete($current);
+            LinkedAllocation::afterDelete($current, $account);
 
             $current->forceFill(['plan_item_id' => null])->save();
             $current->delete();

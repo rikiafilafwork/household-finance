@@ -267,7 +267,7 @@ function CashFlowTab({ month, today }: { month: string; today: string }) {
           <CardDescription>Uang masuk & keluar per hari dan saldo berjalan ({formatDate(from)} – {formatDate(to)}).</CardDescription>
         </div>
         <NativeSelect aria-label="Rekening" className="h-9 w-auto" value={account ?? ''} onChange={(e) => setAccount(e.target.value === '' ? null : Number(e.target.value))}>
-          <option value="">Semua akun</option>
+          <option value="">Semua rekening</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.archived_at ? ' (arsip)' : ''}</option>)}
         </NativeSelect>
       </CardHeader>
@@ -280,7 +280,7 @@ function CashFlowTab({ month, today }: { month: string; today: string }) {
               <div><dt className="text-muted-foreground">Perubahan</dt><dd className="font-medium"><MoneyText amount={data.closing_balance - data.opening_balance} tone="signed" /></dd></div>
             </dl>
             <CashFlowChart flow={data} />
-            {account === null && <p className="text-xs text-muted-foreground">Transfer antar akun sendiri saling meniadakan di tampilan semua akun.</p>}
+            {account === null && <p className="text-xs text-muted-foreground">Transfer antar rekening sendiri saling meniadakan di tampilan semua rekening.</p>}
             {moving.length === 0 ? (
               <p className="text-sm text-muted-foreground">Tidak ada pergerakan uang di periode ini.</p>
             ) : (
@@ -311,10 +311,10 @@ function CashTab({ report }: { report: CashVsNonCash }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Tunai vs non-tunai</CardTitle>
-        <CardDescription>Pengeluaran {formatMonth(report.month)} menurut jenis akun pembayarnya. Total <MoneyText amount={report.total} />.</CardDescription>
+        <CardDescription>Pengeluaran {formatMonth(report.month)} menurut jenis rekening pembayarnya. Total <MoneyText amount={report.total} />.</CardDescription>
       </CardHeader>
       <CardContent>
-        <ul className="grid gap-4" aria-label="Pengeluaran per jenis akun">
+        <ul className="grid gap-4" aria-label="Pengeluaran per jenis rekening">
           {report.types.map((t) => (
             <li key={t.type} data-testid={`cash-${t.type}`} className="grid gap-1.5">
               <div className="flex items-baseline justify-between gap-3 text-sm">

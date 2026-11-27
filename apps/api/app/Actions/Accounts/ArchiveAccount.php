@@ -49,7 +49,7 @@ class ArchiveAccount
     {
         if ($account->transactions()->withoutGlobalScopes()->exists()) {
             throw ValidationException::withMessages([
-                'account' => 'Akun ini sudah punya transaksi. Arsipkan saja supaya riwayatnya tetap utuh.',
+                'account' => 'Rekening ini sudah punya transaksi. Arsipkan saja supaya riwayatnya tetap utuh.',
             ]);
         }
 

@@ -32,7 +32,7 @@ trait ValidatesTransactionTarget
     protected function assertAccountWritable(Account $account, string $field = 'account_id'): void
     {
         if ($account->isArchived()) {
-            throw ValidationException::withMessages([$field => 'Akun ini sudah diarsip.']);
+            throw ValidationException::withMessages([$field => 'Rekening ini sudah diarsip.']);
         }
     }
 

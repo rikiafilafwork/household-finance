@@ -3,6 +3,7 @@
 namespace App\Savings;
 
 use App\Actions\Transactions\TransactionInput;
+use App\Models\Account;
 use App\Models\SavingsAllocation;
 use App\Models\SavingsGoal;
 use App\Models\Transaction;
@@ -65,14 +66,23 @@ final class LinkedAllocation
         $goal->save();
     }
 
-    /** Uang kembali ke tujuannya; tujuan arsip dibuka lagi karena kini memegang uang. */
-    public static function afterDelete(Transaction $current): void
+    /**
+     * Uang kembali ke tujuannya; tujuan arsip dibuka lagi karena kini memegang uang. Ditolak kalau
+     * rekeningnya sudah diarsip / bukan rekening tabungan lagi: tujuan tidak boleh memegang uang di sana.
+     */
+    public static function afterDelete(Transaction $current, Account $account): void
     {
         $locked = self::locked($current);
         if ($locked === null) {
             return;
         }
         [$allocation, $goal] = $locked;
+
+        if (! $account->is_savings || $account->isArchived()) {
+            throw ValidationException::withMessages([
+                'transaction' => 'Transaksi ini memakai tabungan dari rekening yang sudah diarsip atau bukan rekening tabungan lagi. Aktifkan kembali rekeningnya dulu.',
+            ]);
+        }
 
         $allocation->delete();
         $goal->allocated_amount -= $allocation->amount;

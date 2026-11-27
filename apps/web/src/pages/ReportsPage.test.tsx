@@ -171,7 +171,7 @@ describe('ReportsPage', () => {
   it('splits spending into bank, e-wallet and cash with unrecorded cash', async () => {
     renderPage('/reports?tab=cash');
 
-    await screen.findByLabelText('Pengeluaran per jenis akun');
+    await screen.findByLabelText('Pengeluaran per jenis rekening');
     expect(screen.getByTestId('cash-bank')).toHaveTextContent('RekeningRp3.000.000 · 73%');
     expect(screen.getByTestId('cash-cash')).toHaveTextContent('DompetRp200.000 · 4%');
     expect(screen.getByTestId('cash-cash')).toHaveTextContent('Tak tercatat (sesuaikan saldo): −Rp50.000');

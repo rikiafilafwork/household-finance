@@ -72,7 +72,7 @@ function AccountSection({ row, onAction, onReducePick }: {
             <span className="flex items-center gap-2">
               <AlertTriangle className="size-4" aria-hidden /> Tabungan terpakai <MoneyText amount={row.overdrawn} className="font-medium" />
             </span>
-            {row.goals.length > 0 && <Button size="sm" variant="outline" onClick={onReducePick}>Kurangi alokasi</Button>}
+            {row.goals.some((g) => g.allocated_amount > 0) && <Button size="sm" variant="outline" onClick={onReducePick}>Kurangi alokasi</Button>}
           </div>
         )}
         {row.goals.length === 0 ? (
@@ -193,7 +193,7 @@ export function SavingsPage() {
             key={row.account.id}
             row={row}
             onAction={(goal, action) => setDialog({ mode: action, goal })}
-            onReducePick={() => setDialog({ mode: 'reduce-pick', goals: row.goals })}
+            onReducePick={() => setDialog({ mode: 'reduce-pick', goals: row.goals.filter((g) => g.allocated_amount > 0) })}
           />
         ))}
       </div>

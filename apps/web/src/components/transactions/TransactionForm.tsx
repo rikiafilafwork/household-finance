@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 const schema = z.object({
   type: z.enum(['expense', 'income']),
   amount: amountSchema.nullable().refine((v) => v !== null, 'Nominal wajib diisi.').transform((v) => v as number),
-  account_id: z.number({ error: 'Pilih akun.' }).int().positive('Pilih akun.'),
+  account_id: z.number({ error: 'Pilih rekening.' }).int().positive('Pilih rekening.'),
   category_id: z.number().int().positive().nullable(),
   occurred_on: localDateSchema,
   note: z.string().max(255, 'Catatan maksimal 255 karakter.'),
@@ -131,7 +131,7 @@ export function TransactionForm({
       <div className="grid grid-cols-2 gap-3">
         <Field label="Rekening" htmlFor="account_id" error={errors.account_id?.message}>
           <NativeSelect id="account_id" aria-invalid={!!errors.account_id} {...form.register('account_id', { valueAsNumber: true })}>
-            {accountOptions.length === 0 && <option value={0}>Belum ada akun</option>}
+            {accountOptions.length === 0 && <option value={0}>Belum ada rekening</option>}
             {accountOptions.map((w) => (
               <option key={w.id} value={w.id}>{w.name}</option>
             ))}

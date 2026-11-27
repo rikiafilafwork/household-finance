@@ -13,7 +13,7 @@ import { applyServerErrors } from '@/lib/form-errors';
 import { accountTypeLabel, ACCOUNT_TYPES } from './accountMeta';
 
 const schema = z.object({
-  name: z.string().trim().min(1, 'Nama akun wajib diisi.').max(60, 'Nama maksimal 60 karakter.'),
+  name: z.string().trim().min(1, 'Nama rekening wajib diisi.').max(60, 'Nama maksimal 60 karakter.'),
   type: z.enum(['bank', 'ewallet', 'cash']),
   opening_balance: z.number().int().nullable(),
   is_savings: z.boolean(),
@@ -81,7 +81,7 @@ export function AccountForm({ initial, onSubmit, onArchive, onDelete }: {
         error={errors.opening_balance?.message}
         hint={initial
           ? <>Mengubah saldo awal menggeser saldo sekarang dengan selisih yang sama (jadi <MoneyText amount={initial.balance + (opening - initial.opening_balance)} />). Untuk mencocokkan dengan saldo asli, pakai “Sesuaikan saldo”.</>
-          : 'Saldo saat akun mulai dicatat. Boleh 0.'}
+          : 'Saldo saat rekening mulai dicatat. Boleh 0.'}
       >
         <Controller control={form.control} name="opening_balance" render={({ field }) => (
           <MoneyInput id="account-opening" allowNegative value={field.value} onChange={field.onChange} onBlur={field.onBlur} invalid={!!errors.opening_balance} />
@@ -108,7 +108,7 @@ export function AccountForm({ initial, onSubmit, onArchive, onDelete }: {
             </span>
           ) : <Button type="button" variant="ghost" className="text-destructive" onClick={() => setConfirmDelete(true)}>Hapus</Button>)}
         </span>
-        <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Menyimpan…' : initial ? 'Simpan' : 'Tambah akun'}</Button>
+        <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Menyimpan…' : initial ? 'Simpan' : 'Tambah rekening'}</Button>
       </div>
     </form>
   );

@@ -188,7 +188,7 @@ function EnvelopeWarnings({ envelopes }: { envelopes: Dashboard['envelopes_warni
 
 function AccountBalances({ accounts }: { accounts: Account[] }) {
   if (accounts.length === 0) {
-    return <p className="text-sm text-muted-foreground">Belum ada akun. <Link to="/accounts" className={linkClass}>Tambah rekening, e-wallet, atau dompet</Link>.</p>;
+    return <p className="text-sm text-muted-foreground">Belum ada rekening. <Link to="/accounts" className={linkClass}>Tambah rekening, e-wallet, atau dompet</Link>.</p>;
   }
   return (
     <ul className="grid gap-1">
@@ -344,9 +344,9 @@ export function DashboardPage() {
           {!d.reconcile_ok && (
             <Alert data-testid="reconcile-banner" variant="destructive">
               <AlertTriangle />
-              <AlertTitle>Saldo akun tidak cocok dengan riwayat transaksi</AlertTitle>
+              <AlertTitle>Saldo rekening tidak cocok dengan riwayat transaksi</AlertTitle>
               <AlertDescription>
-                <p>Ada akun yang saldonya berbeda dari jumlah transaksinya. Jalankan <code>php artisan accounts:reconcile --fix</code> untuk membetulkan.</p>
+                <p>Ada rekening yang saldonya berbeda dari jumlah transaksinya. Jalankan <code>php artisan accounts:reconcile --fix</code> untuk membetulkan.</p>
               </AlertDescription>
             </Alert>
           )}
@@ -376,7 +376,7 @@ export function DashboardPage() {
             <Panel testId="panel-accounts" title="Saldo per rekening" action={<Button asChild variant="ghost" size="sm"><Link to="/accounts">Rekening</Link></Button>}>
               <AccountBalances accounts={active} />
             </Panel>
-            {(d.savings.balance > 0 || d.savings.goals.length > 0) && (
+            {(d.savings.balance > 0 || d.savings.goals.length > 0 || d.savings.allocated > 0 || d.savings.overdrawn > 0) && (
               <Panel testId="panel-savings" title="Tabungan" action={<Button asChild variant="ghost" size="sm"><Link to="/savings">Tabungan</Link></Button>}>
                 <SavingsSummary savings={d.savings} />
               </Panel>

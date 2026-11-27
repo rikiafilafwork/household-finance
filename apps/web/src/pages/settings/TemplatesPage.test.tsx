@@ -136,7 +136,7 @@ describe('TemplatesPage — tambah & ubah', () => {
 
     expect(await within(dialog).findByText('Pilih bulannya.')).toBeInTheDocument();
     expect(within(dialog).getByText('Auto-post butuh tanggal.')).toBeInTheDocument();
-    expect(within(dialog).getByText('Auto-post butuh akun.')).toBeInTheDocument();
+    expect(within(dialog).getByText('Auto-post butuh rekening.')).toBeInTheDocument();
     expect(templatesApi.create).not.toHaveBeenCalled();
 
     await userEvent.selectOptions(within(dialog).getByLabelText('Bulan'), 'Juli');

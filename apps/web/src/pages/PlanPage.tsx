@@ -215,7 +215,7 @@ export function PlanPage() {
     body = (
       <Confirm
         message={unchecking
-          ? <>Transaksi <MoneyText amount={item.actual} className="font-medium" /> yang dicatat saat mencentang akan dihapus dan saldo akunnya dikembalikan.</>
+          ? <>Transaksi <MoneyText amount={item.actual} className="font-medium" /> yang dicatat saat mencentang akan dihapus dan saldo rekeningnya dikembalikan.</>
           : 'Item dihapus dari rencana bulan ini. Kalau hanya tidak terjadi bulan ini, pilih “Lewati” saja.'}
         confirmLabel={unchecking ? 'Ya, batal centang' : 'Ya, hapus'}
         onConfirm={async () => {

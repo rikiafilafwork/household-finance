@@ -170,7 +170,7 @@ describe('PlanPage — centang', () => {
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Centang Listrik' }));
     const amount = screen.getByLabelText('Nominal dibayar');
     expect(amount).toHaveValue('500.000');
-    expect(screen.getByLabelText('Dari akun')).toHaveValue('2'); // akun bawaan item
+    expect(screen.getByLabelText('Dari rekening')).toHaveValue('2'); // rekening bawaan item
     expect(screen.getByLabelText('Tanggal')).toHaveValue(todayIn(TZ));
 
     await userEvent.clear(amount);
